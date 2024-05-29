@@ -43,7 +43,7 @@ export default {
     },
 
     loadOrderByUser(){
-      axios.get('http://localhost:8000/get_orders_by_user')
+      axios.get(this.$Url + '/get_orders_by_user')
           .then(response => {
               this.orders = response.data
               console.log(response.data)
@@ -75,7 +75,7 @@ export default {
       console.log('открытие ордера с id: ', orderId)
       this.isOrderOpened = true
       this.isOrdersListVisible = false
-      axios.get(`http://localhost:8000/api/get_services/${orderId}`)
+      axios.get(this.$Url + `/api/get_services/${orderId}`)
           .then(response => {
             this.services = response.data
           }).catch(err => {
@@ -95,7 +95,7 @@ export default {
       this.isEditOrderDivVisible = false
     },
     deleteOrder(){
-      axios.delete(`http://localhost:8000/api/delete_order/${this.selectedOrder.id}`)
+      axios.delete(this.$Url + `/api/delete_order/${this.selectedOrder.id}`)
           .then(response => {
             console.log(response.data)
           })

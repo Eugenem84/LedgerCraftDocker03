@@ -43,7 +43,7 @@ export default {
   computed: {
 
     totalAddedServicesPrice(){
-      return this.addedServices.reduce((total, service) => total + service.price, 0)
+      return this.addedServices.reduce((total, service) => total + Number(service.price), 0)
     },
 
   },
@@ -82,7 +82,7 @@ export default {
     },
 
     loadCategories(){
-      axios.get(`http://localhost:8000/api/get_categories/${this.selectedSpecialization}`)
+      axios.get(this.$Url + `/api/get_categories/${this.selectedSpecialization}`)
           .then(response => {
             this.categories = response.data
             console.log('список категорий: ', this.categories)
@@ -97,7 +97,7 @@ export default {
     },
 
     loadClients(){
-      axios.get(`http://localhost:8000/api/get_clients/${this.selectedSpecialization}`)
+      axios.get(this.$Url + `/api/get_clients/${this.selectedSpecialization}`)
           .then(response => {
             this.clients = response.data
             console.log('список клиентов: ', this.clients)
@@ -108,7 +108,7 @@ export default {
     },
 
     loadServicesByCategory(){
-      axios.get(`http://localhost:8000/api/get_service/${this.selectedCategory}`)
+      axios.get(this.$Url + `/api/get_service/${this.selectedCategory}`)
           .then(response => {
             this.services = response.data
             console.log('Список услуг: ', this.services)
@@ -119,7 +119,7 @@ export default {
     },
 
     loadSpecializations (){
-      axios.get('http://localhost:8000/api/getSpecialization')
+      axios.get(this.$Url + '/api/getSpecialization')
           .then(response => {
             this.specializations = response.data
             console.log('список специализаций: ', this.specializations )
@@ -208,7 +208,7 @@ export default {
         // проверка на пустое поле выбора клиента
         this.showAlert('danger', 'Сначала выберите клиента')
       } else {
-        axios.post('http://localhost:8000/save_order', orderData, {
+        axios.post(this.$Url +'/save_order', orderData, {
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken
@@ -231,18 +231,19 @@ export default {
   },
 
   mounted() {
-      console.log('cookie: ', document.cookie)
-      console.log('laravel-session cookie: ',document.cookie.includes('laravel_session'));
+       console.log(this.$Url)
+      //console.log('cookie: ', document.cookie)
+      //console.log('laravel-session cookie: ',document.cookie.includes('laravel_session'));
       const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
       axios.defaults.withCredentials = true
       //const laravelSessionToken = document.cookie.match(/laravel_session=([^;]+)/)[1];
       console.log('csrf: ', csrfToken)
       //console.log('auth-token: ', laravelSessionToken)
-      axios.get('http://localhost:8000/get_all_specializations', {
+      axios.get(this.$Url +'/get_all_specializations', {
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
-          //  'Authorization': `Bearer ${laravelSessionToken}`
+            //'Authorization': `Bearer ${laravelSessionToken}`
             }
         })
         .then(response => {

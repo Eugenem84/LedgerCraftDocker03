@@ -25,7 +25,7 @@ export default {
         service: this.currentServiceName,
         price: this.currentServicePrice,
       }
-      axios.post('http://localhost:8000/api/edit_service', requestData)
+      axios.post(this.$Url + '/api/edit_service', requestData)
           .then(response => {
             console.log(response.data.message)
             this.$emit('service-edited')

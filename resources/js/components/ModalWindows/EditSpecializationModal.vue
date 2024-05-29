@@ -22,7 +22,7 @@ export default {
         id: this.specializationId,
         specializationName: this.currentSpecializationName
       }
-      axios.post('http://localhost:8000/api/edit_specialization', requestData)
+      axios.post(this.$Url + '/api/edit_specialization', requestData)
           .then(response => {
             console.log(response.data.message)
             this.$emit('specialization-deleted')

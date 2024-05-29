@@ -19,7 +19,7 @@ export default {
       const requestData = {
         specializationId: this.specializationId,
       }
-      axios.post('http://localhost:8000/api/delete_specialization', requestData)
+      axios.post(this.$Url + '/api/delete_specialization', requestData)
           .then(response => {
             this.$emit('specialization-deleted')
             console.log(response.data.message)

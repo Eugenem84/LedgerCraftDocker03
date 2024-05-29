@@ -20,7 +20,7 @@ export default {
         serviceId: this.serviceId
       }
       console.log(requestData)
-      axios.post('http://localhost:8000/api/delete_service', requestData)
+      axios.post( this.$Url +'/api/delete_service', requestData)
           .then(response => {
             console.log(response.data.message)
             this.$emit('service-deleted')

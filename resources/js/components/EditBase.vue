@@ -158,7 +158,7 @@ export default {
     },
 
     loadClients() {
-      axios.get(`http://localhost:8000/api/get_clients/${this.selectedSpecializations}`)
+      axios.get(this.$Url + `/api/get_clients/${this.selectedSpecializations}`)
           .then(response => {
             this.clients = response.data
           })
@@ -168,7 +168,7 @@ export default {
     },
 
     loadCategories() {
-      axios.get(`http://localhost:8000/api/get_categories/${this.selectedSpecializations}`)
+      axios.get(this.$Url + `/api/get_categories/${this.selectedSpecializations}`)
           .then(response => {
             this.categories = response.data
             if (this.categories.length > 0){
@@ -182,7 +182,7 @@ export default {
     },
 
     loadServicesByCategory() {
-      axios.get(`http://localhost:8000/api/get_service/${this.selectedCategory}`)
+      axios.get(this.$Url + `/api/get_service/${this.selectedCategory}`)
           .then(response => {
             this.services = response.data
           })
@@ -259,7 +259,7 @@ export default {
 
   mounted() {
       const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-      axios.get('http://localhost:8000/get_all_specializations', {
+      axios.get(this.$Url + '/get_all_specializations', {
           headers: {
               'Content-Type': 'application/json',
               'X-CSRF-TOKEN': csrfToken,

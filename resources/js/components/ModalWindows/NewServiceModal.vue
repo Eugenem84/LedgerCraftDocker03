@@ -28,7 +28,7 @@ export default {
         price: this.newServicePriceInput,
         category_id: this.selectedCategory,
       }
-      axios.post('http://localhost:8000/api/add_service', requestData)
+      axios.post(this.$Url + '/api/add_service', requestData)
           .then(response => {
             console.log(response.data.message)
             this.$emit('service-added')

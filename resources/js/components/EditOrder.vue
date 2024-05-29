@@ -49,7 +49,7 @@ export default {
     },
 
     totalAddedServicesPrice(){
-      return this.addedServices.reduce((total, service) => total + service.price, 0)
+      return this.addedServices.reduce((total, service) => total + Number(service.price), 0)
     },
 
   },
@@ -91,7 +91,7 @@ export default {
     },
 
     loadCategories(){
-      axios.get(`http://localhost:8000/api/get_categories/${this.selectedSpecialization}`)
+      axios.get(this.$Url + `/api/get_categories/${this.selectedSpecialization}`)
           .then(response => {
             this.categories = response.data
             console.log('список категорий: ',this.categories)
@@ -103,7 +103,7 @@ export default {
 
     loadClients(){
       console.log('loadClients')
-      axios.get(`http://localhost:8000/api/get_clients/${this.selectedSpecialization}`)
+      axios.get(this.$Url + `/api/get_clients/${this.selectedSpecialization}`)
           .then(response => {
             this.clients = response.data
             console.log('список клиентов: ', this.clients)
@@ -114,7 +114,7 @@ export default {
     },
 
     loadServicesByCategory(){
-      axios.get(`http://localhost:8000/api/get_service/${this.selectedCategory}`)
+      axios.get(this.$Url + `/api/get_service/${this.selectedCategory}`)
           .then(response => {
             this.services = response.data
             console.log('Список услуг: ', this.services)
@@ -125,7 +125,7 @@ export default {
     },
 
     loadSpecializations (){
-      axios.get('http://localhost:8000/api/getSpecialization')
+      axios.get( this.$Url + '/api/getSpecialization')
           .then(response => {
             this.specializations = response.data
             console.log('список специализаций: ', this.specializations )
@@ -219,7 +219,7 @@ export default {
         // проверка на пустое поле выбора клиента
         this.showAlert('danger', 'Сначала выберите клиента')
       } else {
-        axios.post('http://localhost:8000/api/update_order', orderData, {
+        axios.post(this.$Url + '/api/update_order', orderData, {
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken
@@ -247,7 +247,7 @@ export default {
     this.selectedSpecialization = this.orderToEdit.specialization_id
     this.selectedClient = this.orderToEdit.client_id
     //this.selectedClient = this.orderToEdit.client_id
-     await axios.get('http://localhost:8000/api/getSpecialization')
+     await axios.get(this.$Url + '/api/getSpecialization')
         .then(response => {
           this.specializations = response.data
           console.log('список специализаций: ', this.specializations )
@@ -267,16 +267,16 @@ export default {
 <template>
   <div>
     <div>
-      <select v-model="selectedSpecialization" @change="handleSpecializationChange" class="w-auto">
-        <option v-for="specialization in specializations"
-                              :key="specialization.id" :value="specialization.id" >
-          {{ specialization.specializationName }}
-        </option>
+<!--      <select v-model="selectedSpecialization" @change="handleSpecializationChange" class="w-auto">-->
+<!--        <option v-for="specialization in specializations"-->
+<!--                              :key="specialization.id" :value="specialization.id" >-->
+<!--          {{ specialization.specializationName }}-->
+<!--        </option>-->
 
-        <option value="create_new_specialization">
-          создать новую специализацию
-        </option>
-      </select>
+<!--        <option value="create_new_specialization">-->
+<!--          создать новую специализацию-->
+<!--        </option>-->
+<!--      </select>-->
 
       <select v-model="selectedClient" class="w-auto" @change="handleClientChange"  >
         <option v-for="client in clients"

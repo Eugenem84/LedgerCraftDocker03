@@ -21,7 +21,7 @@ export default {
 
       }
       console.log(requestData)
-      axios.post('http://localhost:8000/api/delete_category', requestData)
+      axios.post(this.$Url + '/api/delete_category', requestData)
           .then(response => {
             this.$emit('category-deleted')
             console.log(response.data.message)

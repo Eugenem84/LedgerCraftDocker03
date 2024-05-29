@@ -19,7 +19,7 @@ export default {
         clientId: this.clientId,
       }
       console.log('удаление клиента с Id: ', requestData)
-      axios.post('http://localhost:8000/api/delete_client', requestData)
+      axios.post( this.$Url + '/api/delete_client', requestData)
           .then(response => {
             console.log(response.data.message)
             this.$emit('client-deleted')

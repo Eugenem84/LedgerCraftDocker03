@@ -22,7 +22,7 @@ export default {
         phone: this.newClientPhoneInput,
         specialization_id: this.selectedSpecialization,
       }
-      axios.post('http://localhost:8000/api/add_client', requestData)
+      axios.post(this.$Url + '/api/add_client', requestData)
           .then(response => {
             console.log(response.data.message)
             this.$emit('client_added')

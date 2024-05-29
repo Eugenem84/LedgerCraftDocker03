@@ -7,6 +7,8 @@
 import './bootstrap';
 import { createApp } from 'vue';
 
+
+
 /**
  * Next, we will create a fresh Vue application instance. You may then begin
  * registering components with the application instance so they are ready
@@ -30,6 +32,11 @@ app.component('edit-base' , EditBase)
 app.component('test-order', TestModal)
 app.component('history-orders', HistoryOrders)
 app.component('edit-order', EditOrder)
+
+//console.log(import.meta.env.VITE_URL)
+const URL = import.meta.env.VITE_URL
+app.config.globalProperties.$Url = URL
+
 /**
  * The following block of code may be used to automatically register your
  * Vue components. It will recursively scan this directory for the Vue

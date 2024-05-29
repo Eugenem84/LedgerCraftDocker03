@@ -16,7 +16,7 @@ export default {
       const requestsData = {
         specializationName: this.newSpecializationNameInput
       }
-      axios.post('http://localhost:8000/add_specialization', requestsData)
+      axios.post(this.$Url + '/add_specialization', requestsData)
           .then(response => {
             console.log(response.data.message)
             this.$emit('specialization-added')

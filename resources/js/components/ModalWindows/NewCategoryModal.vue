@@ -23,7 +23,7 @@ export default {
         specialization_id: this.specializationId,
       }
       console.log(requestData)
-      axios.post('http://localhost:8000/api/add_category', requestData)
+      axios.post(this.$Url + '/api/add_category', requestData)
           .then(response => {
             console.log(response.data.message)
             this.$emit('category-added')

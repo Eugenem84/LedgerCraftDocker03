@@ -24,7 +24,7 @@ export default {
         category_name: this.currentCategoryName,
       }
       //console.log(requestData)
-      axios.post('http://localhost:8000/api/edit_category', requestData)
+      axios.post(this.$Url + '/api/edit_category', requestData)
           .then(response => {
             console.log(response.data.message)
             this.$emit('category-edited')
