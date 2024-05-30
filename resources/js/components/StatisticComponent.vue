@@ -28,7 +28,7 @@ export default {
 
 <template>
 <div>
-    Тут будет статистика
+    Тут будет статистика   !!!
 
 <!--&lt;!&ndash;    <button class="btn btn-primary" v-on:click="openModal" >open modal</button>&ndash;&gt;-->
 
