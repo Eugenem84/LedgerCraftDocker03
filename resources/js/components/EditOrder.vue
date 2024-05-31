@@ -4,7 +4,7 @@
 import axios from "axios"
 //import {BIconTrash} from 'bootstrap-vue'
 //import {BAlert} from "bootstrap-vue";
-import alert from "bootstrap/js/src/alert";
+//import alert from "bootstrap/js/src/alert";
 import NewServiceModal from "./ModalWindows/NewServiceModal.vue";
 import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import NewClientModal from "./ModalWindows/NewClientModal.vue";
@@ -54,7 +54,28 @@ export default {
 
   },
 
+    watch: {
+        'orderToEdit.materials': function(newVal) {
+            this.$nextTick(() => {
+                const materialsTextArea = document.getElementById('materialsTextArea');
+                if (materialsTextArea) this.autoResize({ target: materialsTextArea });
+            });
+        },
+        'orderToEdit.comments': function(newVal) {
+            this.$nextTick(() => {
+                const commentsTextArea = document.getElementById('commentsTextArea');
+                if (commentsTextArea) this.autoResize({ target: commentsTextArea });
+            });
+        }
+    },
+
   methods: {
+
+      autoResize(event){
+          const textarea = event.target;
+          textarea.style.height = 'auto';
+          textarea.style.height = textarea.scrollHeight + 'px';
+      },
 
     handleSpecializationChange(){
       console.log('handleSpecializationChange')
@@ -243,6 +264,12 @@ export default {
   },
 
    async mounted() {
+
+    //события для ресайза текстогого поля
+    document.querySelectorAll('textarea').forEach((element) => {
+        element.addEventListener('input', this.autoResize);
+    });
+
     this.addedServices = this.alreadyAddedServices
     this.selectedSpecialization = this.orderToEdit.specialization_id
     this.selectedClient = this.orderToEdit.client_id
@@ -314,9 +341,9 @@ export default {
 
     </div>
 
-    <BAlert v-model="alertVisible" :variant="alertVariant" dismissible fade class="fixed-top"  >
-      {{ alertMessage }}
-    </BAlert>
+<!--    <BAlert v-model="alertVisible" :variant="alertVariant" dismissible fade class="fixed-top"  >-->
+<!--      {{ alertMessage }}-->
+<!--    </BAlert>-->
 
     <div id="tabsTest">
         <div class="container">
@@ -354,7 +381,7 @@ export default {
                             <div>{{service.price}}</div>
                             <button class="btn btn-danger" @click="deleteFromAdded(service.id)">
                                 -
-                                <BIconTrash icon="trash"></BIconTrash>
+<!--                                <BIconTrash icon="trash"></BIconTrash>-->
                             </button>
                         </div>
                     </div>
@@ -362,7 +389,7 @@ export default {
                     <br>
 
                     <textarea id="materialsTextArea"
-                              v-model="materials"
+                              v-model="this.orderToEdit.materials"
                               placeholder="нет материалов"
                               rows="1"
                               class="form-control form-control-sm"
@@ -371,7 +398,7 @@ export default {
                     <br>
 
                     <textarea id="commentsTextArea"
-                              v-model="comments"
+                              v-model="this.orderToEdit.comments"
                               placeholder="нет комментарии"
                               rows="1"
                               class="form-control form-control-sm"

@@ -3,7 +3,7 @@ import 'bootstrap'
 import axios from "axios"
 //import {BIconTrash} from 'bootstrap-vue'
 //import {BAlert} from "bootstrap-vue";
-import alert from "bootstrap/js/src/alert";
+//import alert from "bootstrap/js/src/alert";
 import NewServiceModal from "./ModalWindows/NewServiceModal.vue";
 import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import NewClientModal from "./ModalWindows/NewClientModal.vue";
@@ -49,6 +49,12 @@ export default {
   },
 
   methods: {
+
+     autoResize(event){
+         const textarea = event.target;
+         textarea.style.height = 'auto';
+         textarea.style.height = textarea.scrollHeight + 'px';
+     },
 
     handleSpecializationChange(){
       if (this.selectedSpecialization === 'create_new_specialization'){
@@ -262,6 +268,11 @@ export default {
         .catch(eError => {
           console.error(eError.message)
         })
+
+      //события для ресайза текстогого поля
+      document.querySelectorAll('textarea').forEach((element) => {
+          element.addEventListener('input', this.autoResize);
+      });
   }
 }
 
@@ -362,7 +373,7 @@ export default {
                               <div>{{service.price}}</div>
                               <button class="btn btn-danger" @click="deleteFromAdded(service.id)">
                                   -
-                                  <BIconTrash icon="trash"></BIconTrash>
+<!--                                  <BIconTrash icon="trash"></BIconTrash>-->
                               </button>
                           </div>
                       </div>
@@ -374,6 +385,7 @@ export default {
                                 placeholder="нет материалов"
                                 rows="1"
                                 class="form-control form-control-sm"
+
                       ></textarea>
 
                       <br>
@@ -383,6 +395,7 @@ export default {
                                 placeholder="нет комментарии"
                                 rows="1"
                                 class="form-control form-control-sm"
+
                       ></textarea>
 
                   </div>
@@ -404,9 +417,9 @@ export default {
       </div>
     </div>
 
-    <BAlert v-model="alertVisible" :variant="alertVariant" dismissible fade class="fixed-top"  >
-      {{ alertMessage }}
-    </BAlert>
+<!--    <BAlert v-model="alertVisible" :variant="alertVariant" dismissible fade class="fixed-top"  >-->
+<!--      {{ alertMessage }}-->
+<!--    </BAlert>-->
 
     <div class="fixed-bottom">
       <div class="justify-content-end">

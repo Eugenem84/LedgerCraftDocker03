@@ -1,11 +1,18 @@
 <script>
+//import Vue from 'vue';
 import axios from "axios";
 //import OrderMake from "@/components/OrderMake.vue";
 import EditOrder from "./EditOrder.vue";
+//import TextareaAutosize from "vue-textarea-autosize";
+//import VueTextareaAutosizeEsm from "vue-textarea-autosize";
 
+//import Autosize from "autosize/dist/autosize.js";
+//Vue.use(VueTextareaAutosize)
 export default {
   components: {
     EditOrder,
+    //Autosize,
+    //TextareaAutosize,
     //OrderMake
     //
   },
@@ -25,7 +32,30 @@ export default {
       isEditOrderDivVisible: false,
     }
   },
+
+    watch: {
+        'selectedOrder.materials': function(newVal) {
+            this.$nextTick(() => {
+                const materialsTextArea = document.getElementById('materialsTextArea');
+                if (materialsTextArea) this.autoResize({ target: materialsTextArea });
+            });
+        },
+        'selectedOrder.comments': function(newVal) {
+            this.$nextTick(() => {
+                const commentsTextArea = document.getElementById('commentsTextArea');
+                if (commentsTextArea) this.autoResize({ target: commentsTextArea });
+            });
+        }
+    },
+
   methods: {
+
+      autoResize(event){
+          const textarea = event.target;
+          textarea.style.height = 'auto';
+          textarea.style.height = textarea.scrollHeight + 'px';
+      },
+
     formatDate(dateTime){
       const options = { year: 'numeric', month: 'long', day: 'numeric'}
       return new Date(dateTime).toLocaleString('ru-RU', options)
@@ -124,6 +154,11 @@ export default {
 
   mounted() {
     this.loadOrderByUser()
+
+    //события для ресайза текстогого поля
+    document.querySelectorAll('textarea').forEach((element) => {
+        element.addEventListener('input', this.autoResize);
+    });
   }
 }
 </script>
@@ -171,9 +206,8 @@ export default {
       <textarea id="materialsTextArea"
                        v-model="this.selectedOrder.materials"
                        placeholder="нет материалов"
-                       rows="1"
-                       max-rows="6"
                        readonly
+                       class="form-control form-control-sm"
       ></textarea>
 
       <br>
@@ -181,9 +215,8 @@ export default {
       <textarea id="commentsTextArea"
                        v-model="this.selectedOrder.comments"
                        placeholder="нет комментарии"
-                       rows="1"
-                       max-rows="6"
                        readonly
+                       class="form-control form-control-sm"
       ></textarea>
     </div>
 
@@ -232,6 +265,10 @@ export default {
 #orderItem:active {
   background-color: red;
   color: white;
+}
+
+textarea {
+    width: 100%;
 }
 
 </style>
