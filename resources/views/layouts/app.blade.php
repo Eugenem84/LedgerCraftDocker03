@@ -90,7 +90,7 @@
                             <a class="nav-link" href="/"> домашняя </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/order"> ордер </a>
+                            <a class="nav-link" href="/order"> заказ-наряд </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="/history">история</a>

@@ -169,7 +169,7 @@ export default {
     <div >
       <div>
         <div class="col-md-4">
-          номер ордера:
+          номер заказ-наряда:
           {{ this.selectedOrder.id }}
         </div>
         <div class="col-md-4">
