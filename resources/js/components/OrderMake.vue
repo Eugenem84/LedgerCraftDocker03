@@ -221,12 +221,13 @@ export default {
           }
         })
             .then(response => {
-              console.log(response.data.message)
-
+              console.log("ответ с сервера: ", response.data.message)
               this.addedServices = []
               this.materials = ''
               this.comments = ''
               this.showAlert('success', 'Ордер успешно сохранен')
+              console.log("адрес перенаправления: ", this.$Url + '/history')
+              window.location.href = this.$Url + '/history'
             })
             .catch(error => {
               console.error('Ошибка сохранения ордера: ', error)
