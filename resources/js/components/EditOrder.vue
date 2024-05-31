@@ -247,11 +247,11 @@ export default {
           }
         })
             .then(response => {
-              console.log(response.data.message)
+              console.log("данный для обновления: ", response.data.message)
 
               this.addedServices = []
-              this.materials = ''
-              this.comments = ''
+              //this.materials = ''
+              //this.comments = ''
               this.showAlert('success', 'Ордер успешно сохранен')
             })
             .catch(error => {
@@ -273,6 +273,8 @@ export default {
     this.addedServices = this.alreadyAddedServices
     this.selectedSpecialization = this.orderToEdit.specialization_id
     this.selectedClient = this.orderToEdit.client_id
+    this.materials = this.orderToEdit.materials
+    this.comments = this.orderToEdit.comments
     //this.selectedClient = this.orderToEdit.client_id
      await axios.get(this.$Url + '/api/getSpecialization')
         .then(response => {
@@ -389,7 +391,7 @@ export default {
                     <br>
 
                     <textarea id="materialsTextArea"
-                              v-model="this.orderToEdit.materials"
+                              v-model="this.materials"
                               placeholder="нет материалов"
                               rows="1"
                               class="form-control form-control-sm"
@@ -398,7 +400,7 @@ export default {
                     <br>
 
                     <textarea id="commentsTextArea"
-                              v-model="this.orderToEdit.comments"
+                              v-model="this.comments"
                               placeholder="нет комментарии"
                               rows="1"
                               class="form-control form-control-sm"
