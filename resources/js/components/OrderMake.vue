@@ -371,11 +371,13 @@ export default {
                       <div v-for="service in addedServices" :key="service.id" >
                           <div class="d-flex justify-content-between align-items-center">
                               <div>{{service.service}}</div>
-                              <div>{{service.price}}</div>
-                              <button class="btn btn-danger" @click="deleteFromAdded(service.id)">
-                                  -
-<!--                                  <BIconTrash icon="trash"></BIconTrash>-->
-                              </button>
+                              <div class="d-flex align-items-center">
+                                  <div id="price">{{service.price}}</div>
+                                  <button class="btn btn-danger" @click="deleteFromAdded(service.id)">
+                                      -
+                                      <!--                                  <BIconTrash icon="trash"></BIconTrash>-->
+                                  </button>
+                              </div>
                           </div>
                       </div>
 
@@ -464,4 +466,9 @@ export default {
   background-color: red;
   color: white;
 }
+
+#price {
+    margin-right: 5px;
+}
+
 </style>
