@@ -86,11 +86,11 @@
             <div id="navigator" class="bg-light text-center">
                 <nav class="navbar navbar-expand navbar-light container justify-content-center">
                     <ul class="navbar-nav mx-auto">
+{{--                        <li class="nav-item">--}}
+{{--                            <a class="nav-link" href="/"> домашняя </a>--}}
+{{--                        </li>--}}
                         <li class="nav-item">
-                            <a class="nav-link" href="/"> домашняя </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/order"> заказ-наряд </a>
+                            <a class="nav-link" href="/order"> новый заказ </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="/history">история</a>

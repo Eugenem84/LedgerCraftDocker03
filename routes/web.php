@@ -16,12 +16,17 @@ use App\Http\Controllers\OrderController;
 |
 */
 
+Route::group(['middleware' => 'auth'], function () {
+    Route::get('/', [HomeController::class, 'showHistory'])->name('statistic');
+});
+
 Route::get('/', function () {
     return view('home');
 });
 
 Auth::routes();
 
+Route::get('/', [HomeController::class, 'showHistory']);
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 Route::get('/statistic', [HomeController::class, 'showStatistic']);
 Route::get('/order', [HomeController::class, 'showOrderMake']);
