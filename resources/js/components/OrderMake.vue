@@ -341,7 +341,11 @@ export default {
           <div class="container">
             <ul class="nav nav-tabs" role="tablist">
               <li class="nav-item"><a class="nav-link active" href="#serviceChoice" role="tab" data-bs-toggle="tab"> ВЫБОР УСЛУГ </a></li>
-              <li class="nav-item"><a class="nav-link" href="#addedServices" role="tab" data-bs-toggle="tab"> ДОБАВЛЕННЫХ УСЛУГ: {{this.addedServices.length}} </a></li>
+              <li class="nav-item">
+                  <a class="nav-link" href="#addedServices" role="tab" data-bs-toggle="tab"> ДОБАВЛЕННЫХ УСЛУГ:
+                        {{this.addedServices.length}}
+                  </a>
+              </li>
             </ul>
           </div>
 
@@ -469,6 +473,20 @@ export default {
 
 #price {
     margin-right: 5px;
+}
+
+.nav-link {
+    color: black;
+}
+
+.nav-link.active {
+    background: #2c6efc;
+    color: white;
+}
+
+#serviceCounter {
+    color: #0a58ca;
+    font-size: x-large;
 }
 
 </style>
