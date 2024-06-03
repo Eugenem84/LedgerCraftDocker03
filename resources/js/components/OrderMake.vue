@@ -25,10 +25,18 @@ export default {
       categories: [],
       services: [],
       addedServices: [],
+      addedMaterials: [],
 
       selectedSpecialization: null,
       selectedClient: null,
       selectedCategory: null,
+
+      newMaterialId: 0,
+      newMaterialName: null,
+      newMaterialPrice: null,
+      newMaterialCounter: 1,
+      newMaterialSumPrice: null,
+
       materials: null,
       comments: null,
 
@@ -46,9 +54,19 @@ export default {
       return this.addedServices.reduce((total, service) => total + Number(service.price), 0)
     },
 
+    newMaterialSumPriceCalc(){
+      return this.newMaterialPrice * this.newMaterialCounter
+    }
+
   },
 
   methods: {
+
+      onlyNumbers(event) {
+          if (!/[0-9]/.test(event.key)) {
+              event.preventDefault();
+          }
+      },
 
      autoResize(event){
          const textarea = event.target;
@@ -143,6 +161,30 @@ export default {
         this.addedServices.splice(index, 1);
       }
       console.log(this.addedServices)
+    },
+
+    //добавление материала в ордер
+    addMaterial(){
+      const newMaterial = {
+        id: this.newMaterialId + 1,
+        name: this.newMaterialName,
+        price: this.newMaterialPrice,
+        counter: this.newMaterialCounter,
+        total: this.newMaterialSumPriceCalc,
+      }
+      this.addedMaterials.push(newMaterial)
+      this.newMaterialName = ''
+      this.newMaterialPrice= ''
+      this.newMaterialCounter = ''
+      console.log("добавленные материалы: ",this.addedMaterials)
+    },
+
+    deleteMaterial(materialId){
+        console.log("удаляем материал с id: ", materialId)
+        const materialIndex = this.addedMaterials.findIndex(material => material.id === materialId)
+        if (materialIndex !== -1) {
+            this.addedMaterials.splice(materialIndex, 1)
+        }
     },
 
     //добавление сервиса в ордер
@@ -385,8 +427,64 @@ export default {
                           </div>
                       </div>
 
-                      <br>
+                      <div v-for="material in addedMaterials" >
+                          <div class="d-flex justify-content-between align-items-center">
+                              <div> {{material.name}} </div>
+                              <div class="d-flex align-items-center">
+                                  <div id="price">{{material.price}}р</div>
+                                  <div id="counter">X{{material.counter}} =</div>
+                                  <div id="total">  {{material.total}}р</div>
+                                  <button class="btn btn-danger" @click="deleteMaterial(material.id)"> - </button>
+                              </div>
+                          </div>
+                      </div>
 
+                      <br>
+                      <div class="container">
+                          <div class="row" style="margin-right: -15px; margin-left: -15px">
+                              <div class="col-md-6" style="flex-basis: 52%; padding-right: 0; padding-left: 0;">
+                                  <input id="newMaterialName"
+                                         v-model="newMaterialName"
+                                         placeholder="название материала"
+                                         class="form-control"
+                                  >
+                              </div>
+                              <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">
+                                  <input id="newMaterialPrice"
+                                         v-model="newMaterialPrice"
+                                         placeholder="цена"
+                                         class="form-control"
+                                         v-on:keypress="onlyNumbers"
+                                  >
+                              </div>
+                              <div class="col-md-1" style="flex-basis: 12%; padding-right: 0; padding-left: 0;" >
+                                  <input id="newMaterialCounter"
+                                         v-model="newMaterialCounter"
+                                         placeholder="шт"
+                                         class="form-control"
+                                         v-on:keypress="onlyNumbers"
+                                  >
+                              </div>
+                              <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">
+                                  <input id="newMaterialSumPrice"
+                                         v-model="newMaterialSumPriceCalc"
+                                         placeholder="всего"
+                                         class="form-control"
+                                         disabled
+                                  >
+                              </div>
+                          </div>
+                          <div class="row justify-content-end mt-3">
+                              <div class="col-auto"
+                                   v-if="newMaterialName && newMaterialName.trim() !== ''">
+                                  <button class="btn btn-primary"
+                                          @click="addMaterial"
+                                          :disabled="!newMaterialPrice || newMaterialPrice.trim() === ''">добавить материал</button>
+                              </div>
+                          </div>
+                      </div>
+
+                      <br>
                       <textarea id="materialsTextArea"
                                 v-model="materials"
                                 placeholder="нет материалов"
@@ -408,6 +506,8 @@ export default {
                   </div>
 
               </div>
+
+
           </div>
       </div>
 
@@ -429,13 +529,12 @@ export default {
 <!--    </BAlert>-->
 
     <div class="fixed-bottom">
-      <div class="justify-content-end">
-        <div>
+      <div class="justify-content-between">
           <button @click="saveOrder()" class="btn btn-primary m-3" >
             сохранить ордер
           </button>
-        </div>
       </div>
+
     </div>
 
       <NewServiceModal :selectedCategory="selectedCategory"
@@ -457,7 +556,8 @@ export default {
                         @category-added="loadCategories"
       />
 
-</div>
+    </div>
+
 </template>
 
 <style scoped>
