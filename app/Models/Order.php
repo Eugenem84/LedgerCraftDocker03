@@ -33,4 +33,9 @@ class Order extends Model
     {
         $this->belongsTo(User::class);
     }
+
+    public function material()
+    {
+        return $this->hasMany(Material::class);
+    }
 }

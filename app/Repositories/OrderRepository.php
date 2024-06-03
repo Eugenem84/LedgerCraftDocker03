@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OrderController;
+use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderService;
 use Illuminate\Support\Facades\Auth;
@@ -47,10 +48,19 @@ class OrderRepository extends Controller
 
         if (isset($data['servicesId']) && is_array($data['servicesId'])) {
             $order->services()->attach($data['servicesId']);
-            return $order;
-        } else {
-            return null;
         }
+
+        if (isset($data['addedMaterials']) && is_array($data['addedMaterials'])) {
+            foreach ($data['addedMaterials'] as $materialData) {
+                $material = new Material();
+                $material->order_id = $order->id;
+                $material->name = $materialData['name'];
+                $material->price = $materialData['price'];
+                $material->amount = $materialData['counter'];
+                $material->save();
+            }
+        }
+        return $order;
     }
 
     public function deleteOrder($id)

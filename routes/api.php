@@ -7,7 +7,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SpecializationController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CategoryController;
-
+use App\Http\Controllers\MaterialController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -64,3 +64,6 @@ Route::get('/order/{orderId}', [OrderController::class, 'getDetails']);
 Route::delete('/delete_order/{orderId}', [OrderController::class, 'deleteOrder']);
 Route::post('/update_order', [OrderController::class, 'updateOrder']);
 Route::get('/get_services/{orderId}', [OrderController::class, 'getServices']);
+
+
+Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'getMaterialsByOrder']);

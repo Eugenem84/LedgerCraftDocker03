@@ -22,6 +22,7 @@ export default {
       clients: [],
       specializations: [],
       services:[],
+      materials: [],
 
       selectedOrder: '',
 
@@ -83,6 +84,18 @@ export default {
           })
     },
 
+    loadMaterialsByOrder(){
+      axios.get(this.$Url + `/api/get_materials_by_order/${this.selectedOrder.id}`)
+          .then(response => {
+              this.materials = response.data
+              console.log("запрашиваем материалы ордера с id: ", this.selectedOrder.id)
+              console.log(this.materials)
+          })
+          .catch(err => {
+              console.error(err.message)
+          })
+    },
+
 
     loadAllClients(){
       axios.get('http://localhost:8000/api/get_all_clients')
@@ -111,6 +124,7 @@ export default {
           }).catch(err => {
             console.error(err.message)
       })
+      this.loadMaterialsByOrder(orderId)
     },
     closeOrderDetailsDiv(){
       this.isOrderOpened = false
@@ -159,6 +173,27 @@ export default {
     document.querySelectorAll('textarea').forEach((element) => {
         element.addEventListener('input', this.autoResize);
     });
+  },
+
+  computed: {
+      totalServicePrice(){
+          let sum = 0;
+          for (let service of this.services){
+              sum += parseFloat(service.price)
+          }
+          return sum;
+      },
+
+      totalMaterialPrice(){
+         console.log("материалы: ", this.materials)
+         let sum = 0;
+         console.log()
+         for (let material of this.materials){
+             sum += material.price * material.amount
+         }
+         return sum
+      }
+
   }
 }
 </script>
@@ -192,12 +227,35 @@ export default {
 
     <div class="container">
       <div>
+
+        <div id="serviceLabel" class="d-flex justify-content-center">Работа: </div>
+
         <div id="serviceItem" v-for="service in services" :key="service.id">
           <div class="d-flex justify-content-between align-items-center">
             <div>{{ service.service }}</div>
             <div>{{ service.price }}</div>
           </div>
         </div>
+        <div id="serviceTotalSum"> итого по работе: {{totalServicePrice}}</div>
+
+
+          <br>
+          <div id="materialsLabel" class="d-flex justify-content-center">Материалы: </div>
+
+          <div v-for="material in materials" >
+              <div class="d-flex justify-content-between align-items-center">
+                  <div> {{material.name}} </div>
+                  <div class="d-flex align-items-center">
+                      <div id="price">{{material.price}}р</div>
+                      <div id="counter">X{{material.amount}}=</div>
+                      <div id="total">  {{material.price * material.amount}}р</div>
+<!--                      <button class="btn btn-danger" @click="deleteMaterial(material.id)"> - </button>-->
+                  </div>
+              </div>
+          </div>
+          <div id="materialTotalSum">итого материалам: {{totalMaterialPrice}}</div>
+          <div id="totalSum"> Всего: {{totalMaterialPrice + totalServicePrice}}</div>
+
       </div>
     </div>
 

@@ -242,6 +242,7 @@ export default {
         clientId: this.selectedClient,
         specializationId: this.selectedSpecialization,
         totalAmount: totalAmount,
+        addedMaterials: this.addedMaterials,
         materials: this.materials,
         comments: this.comments,
         servicesId: this.addedServices.map(service => service.id)
@@ -265,6 +266,7 @@ export default {
             .then(response => {
               console.log("ответ с сервера: ", response.data.message)
               this.addedServices = []
+              this.addedMaterials = []
               this.materials = ''
               this.comments = ''
               this.showAlert('success', 'Ордер успешно сохранен')
@@ -531,7 +533,7 @@ export default {
     <div class="fixed-bottom">
       <div class="justify-content-between">
           <button @click="saveOrder()" class="btn btn-primary m-3" >
-            сохранить ордер
+            сохранить
           </button>
       </div>
 
