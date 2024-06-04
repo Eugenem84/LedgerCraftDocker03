@@ -29,6 +29,9 @@ export default {
       addedServices: [],
       materials: [],
 
+      totalServicePrice: 0,
+      totalMaterialPrice: 0,
+
       newMaterialId: 0,
       newMaterialName: null,
       newMaterialPrice: null,
@@ -62,6 +65,15 @@ export default {
       return this.addedServices.reduce((total, service) => total + Number(service.price), 0)
     },
 
+    totalMaterialPrice(){
+        console.log("материалы: ", this.materials)
+        let sum = 0;
+        console.log()
+        for (let material of this.materials){
+            sum += material.price * material.amount
+        }
+        return sum
+    }
   },
 
     watch: {
@@ -429,6 +441,10 @@ export default {
             </div>
             <div class="tab-pane" id="addedServices">
                 <div id="addedServices">
+
+                    <div id="serviceLabel" class="d-flex justify-content-center">Работа: </div>
+
+
                     <div v-for="service in addedServices" :key="service.id" >
                         <div class="d-flex justify-content-between align-items-center">
                             <div>{{service.service}}</div>
@@ -439,6 +455,11 @@ export default {
                             </button>
                         </div>
                     </div>
+
+                    <div id="serviceTotalSum"> итого по работе: {{totalAddedServicesPrice}}</div>
+
+
+                    <div id="materialsLabel" class="d-flex justify-content-center">Материалы: </div>
 
                     <div v-for="material in materials" >
                         <div class="d-flex justify-content-between align-items-center">
@@ -451,6 +472,9 @@ export default {
                             </div>
                         </div>
                     </div>
+
+                    <div id="materialTotalSum">итого по материалам: {{totalMaterialPrice}}</div>
+                    <div id="totalSum"> Всего к оплате: {{totalMaterialPrice + totalAddedServicesPrice}}</div>
 
                     <br>
                     <div class="container">
@@ -496,16 +520,6 @@ export default {
                             </div>
                         </div>
                     </div>
-
-
-                    <br>
-
-                    <textarea id="materialsTextArea"
-                              v-model="this.materials"
-                              placeholder="нет материалов"
-                              rows="1"
-                              class="form-control form-control-sm"
-                    ></textarea>
 
                     <br>
 

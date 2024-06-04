@@ -45,6 +45,8 @@ export default {
       alertMessage: '',
 
       isNewServiceModalOpen: false,
+
+      materialsPrice: 0,
       }
   },
 
@@ -53,10 +55,21 @@ export default {
     totalAddedServicesPrice(){
       return this.addedServices.reduce((total, service) => total + Number(service.price), 0)
     },
-
+    //
     newMaterialSumPriceCalc(){
       return this.newMaterialPrice * this.newMaterialCounter
-    }
+    },
+    //
+      totalMaterialPrice(){
+          console.log("материалы: ", this.addedMaterials)
+          let sum = 0;
+          for (let material of this.addedMaterials){
+              sum += material.price * material.counter
+          }
+
+          this.materialsPrice = sum;
+          return sum
+      }
 
   },
 
@@ -416,6 +429,10 @@ export default {
               </div>
               <div class="tab-pane" id="addedServices">
                   <div id="addedServices">
+
+                      <div id="serviceLabel" class="d-flex justify-content-center">Работа: </div>
+
+
                       <div v-for="service in addedServices" :key="service.id" >
                           <div class="d-flex justify-content-between align-items-center">
                               <div>{{service.service}}</div>
@@ -429,6 +446,9 @@ export default {
                           </div>
                       </div>
 
+                      <div id="materialsLabel" class="d-flex justify-content-center">Материалы: </div>
+
+
                       <div v-for="material in addedMaterials" >
                           <div class="d-flex justify-content-between align-items-center">
                               <div> {{material.name}} </div>
@@ -440,6 +460,9 @@ export default {
                               </div>
                           </div>
                       </div>
+
+                      <div id="materialTotalSum">итого по материалам: {{totalMaterialPrice}}</div>
+                      <div id="totalSum"> Всего к оплате: {{materialsPrice + totalAddedServicesPrice}}</div>
 
                       <br>
                       <div class="container">
@@ -487,13 +510,6 @@ export default {
                       </div>
 
                       <br>
-                      <textarea id="materialsTextArea"
-                                v-model="materials"
-                                placeholder="нет материалов"
-                                rows="1"
-                                class="form-control form-control-sm"
-
-                      ></textarea>
 
                       <br>
 

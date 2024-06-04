@@ -238,7 +238,6 @@ export default {
         </div>
         <div id="serviceTotalSum"> итого по работе: {{totalServicePrice}}</div>
 
-
           <br>
           <div id="materialsLabel" class="d-flex justify-content-center">Материалы: </div>
 
@@ -253,20 +252,14 @@ export default {
                   </div>
               </div>
           </div>
-          <div id="materialTotalSum">итого материалам: {{totalMaterialPrice}}</div>
-          <div id="totalSum"> Всего: {{totalMaterialPrice + totalServicePrice}}</div>
+          <div id="materialTotalSum">итого по материалам: {{totalMaterialPrice}}</div>
+          <div id="totalSum"> Всего к оплате: {{totalMaterialPrice + totalServicePrice}}</div>
 
       </div>
     </div>
 
     <br>
     <div>
-<!--      <textarea id="materialsTextArea"-->
-<!--                       v-model="this.selectedOrder.materials"-->
-<!--                       placeholder="нет материалов"-->
-<!--                       readonly-->
-<!--                       class="form-control form-control-sm"-->
-<!--      ></textarea>-->
 
       <br>
 
