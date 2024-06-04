@@ -31,6 +31,7 @@ export default {
 
       totalServicePrice: 0,
       totalMaterialPrice: 0,
+      totalAmount: 0,
 
       newMaterialId: 0,
       newMaterialName: null,
@@ -62,7 +63,9 @@ export default {
     },
 
     totalAddedServicesPrice(){
-      return this.addedServices.reduce((total, service) => total + Number(service.price), 0)
+      let sum = this.addedServices.reduce((total, service) => total + Number(service.price), 0)
+      this.totalServicePrice = sum
+      return sum
     },
 
     totalMaterialPrice(){
@@ -72,11 +75,18 @@ export default {
         for (let material of this.materials){
             sum += material.price * material.amount
         }
+        this.totalMaterialPrice = sum
         return sum
-    }
+    },
+
+      totalPrice(){
+          let sum = this.totalMaterialPrice + this.totalServicePrice
+          this.totalAmount = sum
+          return sum
+      },
   },
 
-    watch: {
+  watch: {
         'orderToEdit.materials': function(newVal) {
             this.$nextTick(() => {
                 const materialsTextArea = document.getElementById('materialsTextArea');
@@ -283,12 +293,12 @@ export default {
     saveOrder() {
       console.log('создаем ордер')
       console.log('materials for send: ', this.materials)
-      const totalAmount = this.totalAddedServicesPrice
+      //const totalAmount = this.totalAddedServicesPrice
       const orderData = {
         id: this.orderToEdit.id,
         client_id: this.selectedClient,
         specialization_id: this.selectedSpecialization,
-        total_amount: totalAmount,
+        total_amount: this.totalAmount,
         materials: this.materials,
         comments: this.comments,
         services: this.addedServices.map(service => service.id)
@@ -397,11 +407,7 @@ export default {
 
               </select>
             </div>
-            <div>
-              <div>
-                Сумма: {{ totalAddedServicesPrice }}
-              </div>
-            </div>
+
       </div>
 
 
@@ -438,12 +444,13 @@ export default {
                     Добавить новую услугу
                 </div>
 
+                <div>Итого к оплате: {{totalAmount}}</div>
+
             </div>
             <div class="tab-pane" id="addedServices">
                 <div id="addedServices">
 
                     <div id="serviceLabel" class="d-flex justify-content-center">Работа: </div>
-
 
                     <div v-for="service in addedServices" :key="service.id" >
                         <div class="d-flex justify-content-between align-items-center">
@@ -474,7 +481,7 @@ export default {
                     </div>
 
                     <div id="materialTotalSum">итого по материалам: {{totalMaterialPrice}}</div>
-                    <div id="totalSum"> Всего к оплате: {{totalMaterialPrice + totalAddedServicesPrice}}</div>
+                    <div id="totalSum"> Всего к оплате: {{totalPrice}}</div>
 
                     <br>
                     <div class="container">

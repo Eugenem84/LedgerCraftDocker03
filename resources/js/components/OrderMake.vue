@@ -47,6 +47,8 @@ export default {
       isNewServiceModalOpen: false,
 
       materialsPrice: 0,
+      totalAmount: 0
+
       }
   },
 
@@ -55,7 +57,13 @@ export default {
     totalAddedServicesPrice(){
       return this.addedServices.reduce((total, service) => total + Number(service.price), 0)
     },
-    //
+
+    totalPrice(){
+        let sum = this.materialsPrice + this.totalAddedServicesPrice
+        this.totalAmount = sum
+        return sum
+    },
+
     newMaterialSumPriceCalc(){
       return this.newMaterialPrice * this.newMaterialCounter
     },
@@ -250,11 +258,11 @@ export default {
     //сохранение ордера
     saveOrder() {
       console.log('создаем ордер')
-      const totalAmount = this.totalAddedServicesPrice
+      // const totalAmount = this.totalAddedServicesPrice
       const orderData = {
         clientId: this.selectedClient,
         specializationId: this.selectedSpecialization,
-        totalAmount: totalAmount,
+        totalAmount: this.totalAmount,
         addedMaterials: this.addedMaterials,
         materials: this.materials,
         comments: this.comments,
@@ -426,6 +434,8 @@ export default {
                       Добавить новую услугу
                   </div>
 
+                  <div>Всего к оплате: {{totalAmount}}</div>
+
               </div>
               <div class="tab-pane" id="addedServices">
                   <div id="addedServices">
@@ -462,7 +472,7 @@ export default {
                       </div>
 
                       <div id="materialTotalSum">итого по материалам: {{totalMaterialPrice}}</div>
-                      <div id="totalSum"> Всего к оплате: {{materialsPrice + totalAddedServicesPrice}}</div>
+                      <div id="totalSum"> Всего к оплате: {{totalPrice}}</div>
 
                       <br>
                       <div class="container">
@@ -529,17 +539,18 @@ export default {
           </div>
       </div>
 
-      <div>
-        <div>
-          <div>
-            <div>
-              <div>
-                Сумма: {{ totalAddedServicesPrice }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+<!--      <div>-->
+<!--        <div>-->
+<!--          <div>-->
+<!--            <div>-->
+<!--              <div>-->
+<!--                Сумма: {{ totalAddedServicesPrice }}-->
+<!--              </div>-->
+<!--            </div>-->
+<!--          </div>-->
+<!--        </div>-->
+<!--      </div>-->
+
     </div>
 
 <!--    <BAlert v-model="alertVisible" :variant="alertVariant" dismissible fade class="fixed-top"  >-->
@@ -602,9 +613,5 @@ export default {
     color: white;
 }
 
-#serviceCounter {
-    color: #0a58ca;
-    font-size: x-large;
-}
 
 </style>
