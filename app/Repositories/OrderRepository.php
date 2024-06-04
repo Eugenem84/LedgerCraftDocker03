@@ -76,9 +76,24 @@ class OrderRepository extends Controller
         $order->client_id = $clientId;
         $order->specialization_id = $specializationId;
         $order->total_amount = $totalAmount;
-        $order->materials = $materials;
+        //$order->materials = $materials;
         $order->comments = $comments;
         $order->services()->sync($servicesData);
         $order->save();
+
+        if (isset($materials) && is_array($materials)) {
+            // Удаляем существующие материалы
+            Material::where('order_id', $order->id)->delete();
+
+            // Добавляем новые материалы
+            foreach ($materials as $materialData) {
+                $material = new Material();
+                $material->order_id = $order->id;
+                $material->name = $materialData['name'];
+                $material->price = $materialData['price'];
+                $material->amount = $materialData['amount'];
+                $material->save();
+            }
+        }
     }
 }

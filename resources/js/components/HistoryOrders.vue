@@ -261,12 +261,12 @@ export default {
 
     <br>
     <div>
-      <textarea id="materialsTextArea"
-                       v-model="this.selectedOrder.materials"
-                       placeholder="нет материалов"
-                       readonly
-                       class="form-control form-control-sm"
-      ></textarea>
+<!--      <textarea id="materialsTextArea"-->
+<!--                       v-model="this.selectedOrder.materials"-->
+<!--                       placeholder="нет материалов"-->
+<!--                       readonly-->
+<!--                       class="form-control form-control-sm"-->
+<!--      ></textarea>-->
 
       <br>
 
