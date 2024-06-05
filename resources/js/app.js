@@ -24,6 +24,8 @@ import TestModal from "./components/ModalWindows/TestModal.vue";
 import EditBase from "./components/EditBase.vue";
 import HistoryOrders from "./components/HistoryOrders.vue";
 import EditOrder from "./components/EditOrder.vue";
+import 'vue3-select/dist/vue3-select.css';
+import VSelect from 'vue3-select';
 
 app.component('example-component', ExampleComponent);
 app.component('statistic-component', StatisticComponent);
@@ -32,6 +34,8 @@ app.component('edit-base' , EditBase)
 app.component('test-order', TestModal)
 app.component('history-orders', HistoryOrders)
 app.component('edit-order', EditOrder)
+
+app.component('v-select', VSelect)
 
 //console.log(import.meta.env.VITE_URL)
 const URL = import.meta.env.VITE_URL

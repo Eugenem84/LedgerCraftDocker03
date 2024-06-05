@@ -1,18 +1,32 @@
 <script>
 import TestModal from "./ModalWindows/TestModal.vue";
+import VSelect from 'vue3-select'
 export default {
 
     components: {
         TestModal,
+        VSelect,
     },
 
     data(){
         return {
             someId: 5,
+            selectedOptions: null,
+            options: ['var1', 'var2']
         }
     },
 
     methods: {
+
+        async fetchData(query) {
+            const response = await axios.get('/api/data', { params: { query } });
+            const options = response.data.map((item) => ({
+                value: item.id,
+                label: item.name,
+            }));
+            this.options = options;
+        },
+
       openModal(){
           console.log('открываем модальное окно')
           this.$refs.TestModal.displayId(this.someId)
@@ -28,27 +42,9 @@ export default {
 
 <template>
 <div>
-    Тут будет статистика
+    <VSelect v-model="selectedOptions" :options="options">
 
-<!--&lt;!&ndash;    <button class="btn btn-primary" v-on:click="openModal" >open modal</button>&ndash;&gt;-->
-
-<!--    <TestModal ref="TestModal" ></TestModal>-->
-
-<!--    <button type="button"-->
-<!--            class="btn btn-primary"-->
-<!--            data-bs-toggle="modal"-->
-<!--            data-bs-target="#exampleModal"-->
-<!--    >-->
-<!--        Launch demo modal-->
-<!--    </button>-->
-
-<!--    <button v-on:click="openModal2" type="button"-->
-<!--            class="btn btn-primary"-->
-<!--            data-bs-toggle="modal"-->
-<!--            data-bs-target="#exampleModal2"-->
-<!--    >-->
-<!--        Launch demo modal 2-->
-<!--    </button>-->
+    </VSelect>
 
 </div>
 </template>

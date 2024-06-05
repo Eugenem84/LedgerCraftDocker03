@@ -8,12 +8,14 @@ import NewServiceModal from "./ModalWindows/NewServiceModal.vue";
 import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import NewClientModal from "./ModalWindows/NewClientModal.vue";
 import NewCategoryModal from "./ModalWindows/NewCategoryModal.vue";
+import VSelect from "vue3-select";
 export default {
    components: {
      NewClientModal,
      NewSpecializationModal,
      NewServiceModal,
      NewCategoryModal,
+     VSelect,
    //  BIconTrash,
    //  BAlert,
    },
@@ -21,7 +23,7 @@ export default {
   data(){
     return {
       specializations: [],
-      clients: [],
+      clients: [{ id: null, name: 'Добавить клиента'}],
       categories: [],
       services: [],
       addedServices: [],
@@ -78,7 +80,6 @@ export default {
           this.materialsPrice = sum;
           return sum
       }
-
   },
 
   methods: {
@@ -126,6 +127,18 @@ export default {
       console.log('выбрана категория: ', this.selectedCategory)
     },
 
+    handleSelectClientChange(value){
+      console.log('Выбрана опция: ', value)
+      if (value && value.isCreate){
+          console.log("открываем модальное окно создание клиента: ")
+          let modal = new bootstrap.Modal(document.getElementById('newClientModal'))
+          modal.show()
+      } else {
+          this.selectedClient = value
+          console.log("выбранный клитент", this.selectedClient)
+      }
+    },
+
     loadCategories(){
       axios.get(this.$Url + `/api/get_categories/${this.selectedSpecialization}`)
           .then(response => {
@@ -145,6 +158,7 @@ export default {
       axios.get(this.$Url + `/api/get_clients/${this.selectedSpecialization}`)
           .then(response => {
             this.clients = response.data
+            this.clients.push({ id: null, name: 'Добавить клиента', isCreate: true})
             console.log('список клиентов: ', this.clients)
           })
           .catch(error => {
@@ -260,7 +274,7 @@ export default {
       console.log('создаем ордер')
       // const totalAmount = this.totalAddedServicesPrice
       const orderData = {
-        clientId: this.selectedClient,
+        clientId: this.selectedClient.id,
         specializationId: this.selectedSpecialization,
         totalAmount: this.totalAmount,
         addedMaterials: this.addedMaterials,
@@ -365,23 +379,48 @@ export default {
                   +
               </button>
 
-              <label for="clientSelector">Клиент:</label>
-              <select id="clientSelector" v-model="selectedClient" class="form-select w-auto" @change="handleClientChange"  >
-                  <option v-for="client in clients"
-                          :key="client.id" :value="client.id">
-                      {{client.name}} - {{client.phone}}
-                  </option>
-              </select>
+<!--              <select id="clientSelector" v-model="selectedClient" class="form-select w-auto" @change="handleClientChange"  >-->
+<!--                  <option v-for="client in clients"-->
+<!--                          :key="client.id" :value="client.id">-->
+<!--                      {{client.name}} - {{client.phone}}-->
+<!--                  </option>-->
+<!--              </select>-->
 
-              <button type="button"
-                      class="btn btn-primary"
-                      data-bs-target="#newClientModal"
-                      data-bs-toggle="modal" >
-                  +
-              </button>
+<!--              <button type="button"-->
+<!--                      class="btn btn-primary"-->
+<!--                      data-bs-target="#newClientModal"-->
+<!--                      data-bs-toggle="modal" >-->
+<!--                  +-->
+<!--              </button>-->
 
           </div>
 
+
+          <VSelect :value="selectedClient"
+                   :options="clients"
+                   label="name"
+                   placeholder="выберите клиента..."
+                   @update:modelValue="handleSelectClientChange"
+          >
+            <template #singlLable="{option}">
+                <div>
+                    <span v-if="option.isCreate">{{option.name}}</span>
+                    <span v-else>{{option.name}}</span>
+                </div>
+            </template>
+              <template #no-options="{ search, noResults }">
+                  <div class="no-options">
+                      <span>Поиск не дал результато...</span>
+                      <span>
+                          <button type="button"
+                                    class="btn btn-primary"
+                                    data-bs-target="#newClientModal"
+                                    data-bs-toggle="modal" >
+                              Добавить клиента
+                          </button></span>
+                  </div>
+              </template>
+          </VSelect>
 
           <div>
               <select v-model="selectedCategory" @change="handleCategoriesChange" class="form-select w-auto" >

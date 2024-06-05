@@ -20,6 +20,8 @@
         "autosize": "^6.0.1",
         "jquery": "^3.7.1",
         "node": "^21.6.2",
-        "vue-textarea-autosize": "^1.1.1"
+        "vue-textarea-autosize": "^1.1.1",
+        "vue3-select": "^0.1.2",
+        "vuetify": "^3.6.8"
     }
 }
