@@ -161,6 +161,7 @@ export default {
       axios.get(this.$Url + `/api/get_clients/${this.selectedSpecializations}`)
           .then(response => {
             this.clients = response.data
+            this.clients.reverse()
           })
           .catch(error => {
             console.error('ошибка загрузки клиентов: ', error.message)
@@ -272,6 +273,7 @@ export default {
           if (this.specializations.length > 0) {
               this.selectedSpecializations = this.specializations[0].id
               this.loadCategories()
+              this.loadClients()
           }
         })
         .catch(eError => {
