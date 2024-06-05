@@ -116,6 +116,19 @@ export default {
       }
     },
 
+    lastClientAddedOn(){
+        this.selectedClient = this.clients[0]
+    },
+
+    async onClientAdded(){
+      await this.loadClients()
+      setTimeout(()  => { this.lastClientAddedOn()}, 1000)
+    },
+
+    handleClientAdded(newClient){
+      this.selectedClient = newClient
+    },
+
     handleCategoriesChange(){
       console.log('выбираем категорию')
       if (this.selectedCategory === 'create_new_category'){
@@ -158,8 +171,11 @@ export default {
       axios.get(this.$Url + `/api/get_clients/${this.selectedSpecialization}`)
           .then(response => {
             this.clients = response.data
+            this.clients.reverse()
             this.clients.push({ id: null, name: 'Добавить клиента', isCreate: true})
+            //this.selectedClient = this.clients[0]
             console.log('список клиентов: ', this.clients)
+            console.log('выбранный клиент: ', this.selectedClient)
           })
           .catch(error => {
             console.error('Ошибка загрузки клиентов: ', error.message)
@@ -397,6 +413,7 @@ export default {
 
 
           <VSelect :value="selectedClient"
+                   v-model="selectedClient"
                    :options="clients"
                    label="name"
                    placeholder="выберите клиента..."
@@ -616,7 +633,7 @@ export default {
 
       <NewClientModal :selected-specialization="selectedSpecialization"
                       ref="newClientModal"
-                      @client-added="loadClients"
+                      @client_added="onClientAdded"
       />
 
       <NewCategoryModal :selected-specialization="selectedSpecialization"
