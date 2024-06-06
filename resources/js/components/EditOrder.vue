@@ -523,7 +523,9 @@ export default {
                                  v-if="newMaterialName && newMaterialName.trim() !== ''">
                                 <button class="btn btn-primary"
                                         @click="addMaterial"
-                                        :disabled="!newMaterialPrice || newMaterialPrice.trim() === ''">добавить материал</button>
+                                >
+                                    добавить материал
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -77,6 +77,7 @@ export default {
       axios.get(this.$Url + '/get_orders_by_user')
           .then(response => {
               this.orders = response.data
+              this.orders.reverse()
               console.log(response.data)
           })
           .catch(err => {
