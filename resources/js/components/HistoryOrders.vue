@@ -58,7 +58,7 @@ export default {
       },
 
     formatDate(dateTime){
-      const options = { year: 'numeric', month: 'long', day: 'numeric'}
+      const options = { year: '2-digit', month: '2-digit', day: '2-digit'}
       return new Date(dateTime).toLocaleString('ru-RU', options)
     },
 
@@ -287,7 +287,7 @@ export default {
     <div>
       <div id="orderItem" v-for="order in orders" :key="order.id" @click="showOrder(order.id)">
         <div class="d-flex justify-content-between align-items-center">
-          <div> {{ formatDate(order.created_at) }}</div>
+          <div> {{ formatDate(order.created_at) }} | №{{order.user_order_number}}</div>
           <div> {{ order.specialization_name }} | "{{ order.client_name }}" </div>
           <div>{{ order.total_amount }}</div>
         </div>
