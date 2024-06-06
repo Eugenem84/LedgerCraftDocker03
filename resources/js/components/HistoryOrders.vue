@@ -77,7 +77,6 @@ export default {
       axios.get(this.$Url + '/get_orders_by_user')
           .then(response => {
               this.orders = response.data
-              this.orders.reverse()
               console.log(response.data)
           })
           .catch(err => {
@@ -177,6 +176,7 @@ export default {
   },
 
   computed: {
+
       totalServicePrice(){
           let sum = 0;
           for (let service of this.services){

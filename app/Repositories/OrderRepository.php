@@ -18,7 +18,7 @@ class OrderRepository extends Controller
 
     public function getByUser($userId)
     {
-        return Order::where('user_id', $userId)->get();
+        return Order::where('user_id', $userId)->orderBy('created_at', 'desc')->get();
     }
 
     public function getDetails($id)
