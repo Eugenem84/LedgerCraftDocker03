@@ -32,6 +32,7 @@ export default {
       selectedSpecialization: null,
       selectedClient: null,
       selectedCategory: null,
+      userOrderNumber: null,
 
       newMaterialId: 0,
       newMaterialName: null,
@@ -291,6 +292,7 @@ export default {
       // const totalAmount = this.totalAddedServicesPrice
       const orderData = {
         clientId: this.selectedClient.id,
+        userOrderNumber: this.userOrderNumber,
         specializationId: this.selectedSpecialization,
         totalAmount: this.totalAmount,
         addedMaterials: this.addedMaterials,
@@ -395,19 +397,7 @@ export default {
                   +
               </button>
 
-<!--              <select id="clientSelector" v-model="selectedClient" class="form-select w-auto" @change="handleClientChange"  >-->
-<!--                  <option v-for="client in clients"-->
-<!--                          :key="client.id" :value="client.id">-->
-<!--                      {{client.name}} - {{client.phone}}-->
-<!--                  </option>-->
-<!--              </select>-->
-
-<!--              <button type="button"-->
-<!--                      class="btn btn-primary"-->
-<!--                      data-bs-target="#newClientModal"-->
-<!--                      data-bs-toggle="modal" >-->
-<!--                  +-->
-<!--              </button>-->
+              <input v-model="userOrderNumber" id="orderIdUser" type="number" class="input-group-sm" placeholder="номер заказа">
 
           </div>
 

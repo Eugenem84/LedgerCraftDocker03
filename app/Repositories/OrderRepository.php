@@ -39,6 +39,7 @@ class OrderRepository extends Controller
         $userId = optional($user)->getAuthIdentifier();
         $order = new Order();
         $order->client_id = $data['clientId'];
+        $order->user_order_number = $data['userOrderNumber'];
         $order->specialization_id = $data['specializationId'];
         $order->user_id = $userId;
         $order->total_amount = (int)$data['totalAmount'];
