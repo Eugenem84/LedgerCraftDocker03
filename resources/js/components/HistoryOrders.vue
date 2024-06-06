@@ -286,11 +286,12 @@ export default {
   <div id="ordersDiv" v-if="isOrdersListVisible">
     <div>
       <div id="orderItem" v-for="order in orders" :key="order.id" @click="showOrder(order.id)">
-        <div class="d-flex justify-content-between align-items-center">
-          <div> {{ formatDate(order.created_at) }} | №{{order.user_order_number}}</div>
-          <div> {{ order.specialization_name }} | "{{ order.client_name }}" </div>
-          <div>{{ order.total_amount }}</div>
-        </div>
+          <div class="d-flex justify-content-between align-items-center" style="width: 100%;">
+              <div style="width: 35%;">{{ formatDate(order.created_at) }} | №{{order.user_order_number}}</div>
+              <div style="width: 25%;">{{ order.specialization_name }}</div>
+              <div style="width: 30%;">{{ order.client_name }}</div>
+              <div style="width: 10%; text-align: right">{{ order.total_amount }}</div>
+          </div>
       </div>
     </div>
   </div>
