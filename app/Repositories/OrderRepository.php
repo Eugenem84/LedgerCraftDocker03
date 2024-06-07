@@ -71,12 +71,20 @@ class OrderRepository extends Controller
         $order->delete();
     }
 
-    public function updateOrder($orderId, $clientId, $specializationId, $materials, $comments, $servicesData, $totalAmount)
+    public function updateOrder($orderId,
+                                $clientId,
+                                $specializationId,
+                                $user_order_number,
+                                $materials,
+                                $comments,
+                                $servicesData,
+                                $total_amount)
     {
         $order = Order::find($orderId);
         $order->client_id = $clientId;
         $order->specialization_id = $specializationId;
-        $order->total_amount = $totalAmount;
+        $order->total_amount = (int)$total_amount;
+        $order->user_order_number = $user_order_number;
         //$order->materials = $materials;
         $order->comments = $comments;
         $order->services()->sync($servicesData);

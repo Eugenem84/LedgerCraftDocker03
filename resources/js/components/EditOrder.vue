@@ -29,6 +29,7 @@ export default {
       addedServices: [],
       materials: [],
 
+      userOrderNumber: '',
       totalServicePrice: 0,
       totalMaterialPrice: 0,
       totalAmount: 0,
@@ -105,7 +106,7 @@ export default {
       onlyNumbers(event) {
           if (!/[0-9]/.test(event.key)) {
               event.preventDefault();
-          }
+          }список
       },
 
       autoResize(event){
@@ -298,6 +299,7 @@ export default {
         id: this.orderToEdit.id,
         client_id: this.selectedClient,
         specialization_id: this.selectedSpecialization,
+        user_order_number: this.userOrderNumber,
         total_amount: this.totalAmount,
         materials: this.materials,
         comments: this.comments,
@@ -332,7 +334,7 @@ export default {
               this.showAlert('danger', 'Ошибка сохроанения ордера')
             })
       }
-      location.reload()
+      //location.reload()
     }
   },
 
@@ -362,12 +364,14 @@ export default {
     await this.loadClients()
     this.loadCategories()
     this.loadMaterialsByOrder()
+    this.userOrderNumber = this.orderToEdit.user_order_number
   }
 }
 
 </script>
 
 <template>
+  <h5> редактор ордера</h5>
   <div>
     <div>
 <!--      <select v-model="selectedSpecialization" @change="handleSpecializationChange" class="w-auto">-->
@@ -381,6 +385,8 @@ export default {
 <!--        </option>-->
 <!--      </select>-->
 
+      <input id="orderNumber" type="number" v-model="this.userOrderNumber">
+      <br>
       <select v-model="selectedClient" class="w-auto" @change="handleClientChange"  >
         <option v-for="client in clients"
                               :key="client.id" :value="client.id">

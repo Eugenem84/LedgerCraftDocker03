@@ -297,7 +297,6 @@ export default {
   </div>
 
   <div id="editOrderDiv" v-if="isEditOrderDivVisible">
-    редактор ордера
 
     <EditOrder :orderToEdit="selectedOrder" :already-added-services="services"/>
 

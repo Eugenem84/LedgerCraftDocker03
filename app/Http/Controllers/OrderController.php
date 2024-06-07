@@ -145,6 +145,7 @@ class OrderController extends Controller
             $request->input('id'),
             $request->input('client_id'),
             $request->input('specialization_id'),
+            $request->input('user_order_number'),
             $request->input('materials'),
             $request->input('comments'),
             $request->input('services'),
