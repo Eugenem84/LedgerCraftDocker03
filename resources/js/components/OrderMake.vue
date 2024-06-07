@@ -33,6 +33,13 @@ export default {
       selectedClient: null,
       selectedCategory: null,
       userOrderNumber: null,
+      selectedStatus: {name: 'выполнено', value: 'done', color:'green'},
+
+      statusOptions: [
+          {name: 'выполнено', value: 'done', color: 'green'},
+          {name: 'в работе', value: 'process', color: 'red'},
+          {name: 'в ожидании', value: 'waiting', color: 'orange'},
+      ],
 
       newMaterialId: 0,
       newMaterialName: null,
@@ -294,6 +301,7 @@ export default {
         clientId: this.selectedClient.id,
         userOrderNumber: this.userOrderNumber,
         specializationId: this.selectedSpecialization,
+        status: this.selectedStatus,
         totalAmount: this.totalAmount,
         addedMaterials: this.addedMaterials,
         materials: this.materials,
@@ -425,6 +433,18 @@ export default {
                                     data-bs-toggle="modal" >
                               Добавить клиента
                           </button></span>
+                  </div>
+              </template>
+          </VSelect>
+          <VSelect :options="statusOptions"
+                   v-model="selectedStatus"
+                   label="name"
+                   :searchable="false"
+                   :clearable="false"
+          >
+              <template #selected-option="option">
+                  <div :style="{color: option.color,}">
+                      {{option.name}}
                   </div>
               </template>
           </VSelect>

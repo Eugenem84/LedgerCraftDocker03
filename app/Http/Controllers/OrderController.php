@@ -72,6 +72,8 @@ class OrderController extends Controller
             $clientId = $order->client_id;
             $specializationId = $order->specialization_id;
 
+            $order->status = json_decode($order->status, true);
+
             $clientName = $this->clientReposutory->getName($clientId);
             $clientPhone = $this->clientReposutory->getPhone($clientId);
             $specializationName = $this->specializationRepository->getName($specializationId);
@@ -85,7 +87,7 @@ class OrderController extends Controller
             if ($clientName){
                 $order->client_name = $clientName;
             } else {
-                $order->specialization_name = 'no name';
+                $order->client_name = 'no name';
             }
 
             if ($clientPhone){
@@ -124,7 +126,7 @@ class OrderController extends Controller
 
     public function saveOrder(Request $request)
     {
-        $data = $request->only(['clientId', 'userOrderNumber', 'specializationId', 'totalAmount', 'materials', 'comments', 'addedMaterials']);
+        $data = $request->only(['clientId', 'userOrderNumber', 'specializationId', 'status', 'totalAmount', 'materials', 'comments', 'addedMaterials']);
         $data['servicesId'] = $request->input('servicesId');
         $order = $this->orderRepository->saveOrder($data);
         if ($order){

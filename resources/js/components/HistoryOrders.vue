@@ -3,6 +3,7 @@
 import axios from "axios";
 //import OrderMake from "@/components/OrderMake.vue";
 import EditOrder from "./EditOrder.vue";
+import {red} from "vuetify/util/colors";
 //import TextareaAutosize from "vue-textarea-autosize";
 //import VueTextareaAutosizeEsm from "vue-textarea-autosize";
 
@@ -176,6 +177,16 @@ export default {
   },
 
   computed: {
+      red() {
+          return red
+      },
+
+      orderStatusColor(){
+        switch (this.order.status) {
+            case 'done': return 'green'
+            case 'process': return 'orange'
+        }
+      },
 
       totalServicePrice(){
           let sum = 0;
@@ -204,6 +215,9 @@ export default {
   <div id="openOrderDiv" v-if="isOrderOpened">
     <div >
       <div>
+        <div class="col-md-4" :style="{ color: selectedOrder.status.color }">
+            {{this.selectedOrder.status.name}}
+        </div>
         <div class="col-md-4">
           номер заказ-наряда:
           {{ this.selectedOrder.user_order_number }}
@@ -286,7 +300,7 @@ export default {
   <div id="ordersDiv" v-if="isOrdersListVisible">
     <div>
       <div id="orderItem" v-for="order in orders" :key="order.id" @click="showOrder(order.id)">
-          <div class="d-flex justify-content-between align-items-center" style="width: 100%;">
+          <div class="d-flex justify-content-between align-items-center" :style="{ width: '100%', backgroundColor: 'black'}">
               <div style="width: 35%;">{{ formatDate(order.created_at) }} | №{{order.user_order_number}}</div>
               <div style="width: 25%;">{{ order.specialization_name }}</div>
               <div style="width: 30%;">{{ order.client_name }}</div>
