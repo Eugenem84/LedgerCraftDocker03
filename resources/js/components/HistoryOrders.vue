@@ -210,7 +210,7 @@ export default {
         </div>
         <div class="col-md-4">
           клиент:
-          {{ this.selectedOrder.client_name }}
+          {{ this.selectedOrder.client_name }} Телефон: {{this.selectedOrder.client_phone}}
         </div>
         <div class="col-md-4">
           специализация:

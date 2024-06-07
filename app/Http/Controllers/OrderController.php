@@ -73,6 +73,7 @@ class OrderController extends Controller
             $specializationId = $order->specialization_id;
 
             $clientName = $this->clientReposutory->getName($clientId);
+            $clientPhone = $this->clientReposutory->getPhone($clientId);
             $specializationName = $this->specializationRepository->getName($specializationId);
 
             if($specializationName){
@@ -85,6 +86,12 @@ class OrderController extends Controller
                 $order->client_name = $clientName;
             } else {
                 $order->specialization_name = 'no name';
+            }
+
+            if ($clientPhone){
+                $order->client_phone = $clientPhone;
+            }else{
+                $order->client_phone = 'no phone';
             }
         }
         if ($orders) {

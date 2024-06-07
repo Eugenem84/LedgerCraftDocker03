@@ -29,6 +29,18 @@ class ClientRepository extends Controller
         return 'клиент неизвестен';
     }
 
+    public function getPhone($id)
+    {
+        $clint = Client::find($id);
+        if ($clint){
+            $clintPhone = $clint->phone;
+            if ($clintPhone){
+                return $clintPhone;
+            }
+        }
+    }
+
+
     public function addNew($name, $phone, $specializationId )
     {
         $client = new Client();
