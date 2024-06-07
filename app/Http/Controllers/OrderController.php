@@ -72,7 +72,7 @@ class OrderController extends Controller
             $clientId = $order->client_id;
             $specializationId = $order->specialization_id;
 
-            $order->status = json_decode($order->status, true);
+            //$order->status = json_decode($order->status, true);
 
             $clientName = $this->clientReposutory->getName($clientId);
             $clientPhone = $this->clientReposutory->getPhone($clientId);

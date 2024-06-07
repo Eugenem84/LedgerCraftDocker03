@@ -33,9 +33,10 @@ export default {
       selectedClient: null,
       selectedCategory: null,
       userOrderNumber: null,
-      selectedStatus: {name: 'выполнено', value: 'done', color:'green'},
+      selectedStatus: {name: 'выполнено', value: 'done', color: 'green'},
 
-      statusOptions: [
+
+        statusOptions: [
           {name: 'выполнено', value: 'done', color: 'green'},
           {name: 'в работе', value: 'process', color: 'red'},
           {name: 'в ожидании', value: 'waiting', color: 'orange'},
@@ -301,7 +302,7 @@ export default {
         clientId: this.selectedClient.id,
         userOrderNumber: this.userOrderNumber,
         specializationId: this.selectedSpecialization,
-        status: this.selectedStatus,
+        status: this.selectedStatus.value,
         totalAmount: this.totalAmount,
         addedMaterials: this.addedMaterials,
         materials: this.materials,
