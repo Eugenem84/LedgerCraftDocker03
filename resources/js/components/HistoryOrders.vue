@@ -4,6 +4,9 @@ import axios from "axios";
 //import OrderMake from "@/components/OrderMake.vue";
 import EditOrder from "./EditOrder.vue";
 import {red} from "vuetify/util/colors";
+import DeleteClientModal from "./ModalWindows/DeleteClientModal.vue";
+import DeleteOrderModal from "./ModalWindows/DeleteOrderModal.vue";
+import {th} from "vuetify/locale";
 //import TextareaAutosize from "vue-textarea-autosize";
 //import VueTextareaAutosizeEsm from "vue-textarea-autosize";
 
@@ -11,6 +14,8 @@ import {red} from "vuetify/util/colors";
 //Vue.use(VueTextareaAutosize)
 export default {
   components: {
+      DeleteClientModal,
+      DeleteOrderModal,
     EditOrder,
     //Autosize,
     //TextareaAutosize,
@@ -57,6 +62,12 @@ export default {
     },
 
   methods: {
+
+      handleOrderDeleted(){
+          //this.showAlert('success', 'ордер удален')
+          this.closeOrderDetailsDiv()
+          location.reload()
+      },
 
       translateStatus(status) {
           return this.statusTranslations[status] || status
@@ -159,12 +170,18 @@ export default {
       this.isEditOrderDivVisible = false
     },
     deleteOrder(){
-      axios.delete(this.$Url + `/api/delete_order/${this.selectedOrder.id}`)
-          .then(response => {
-            console.log(response.data)
-          })
-      location.reload()
+        console.log("Удаляем ордер с id: ", this.selectedOrder)
+        this.$refs.deleteOrderModal.open(this.selectedOrder)
+        // axios.delete(this.$Url + `/api/delete_order/${this.selectedOrder.id}`)
+      //     .then(response => {
+      //       console.log(response.data)
+      //     })
+      // location.reload()
     },
+
+      openDeleteOrderModal(orderId){
+          this.$refs.deleteOrderModal.open(orderId)
+      },
 
     getSpecializationName(specializationId){
       const specialization = this.specializations.find((specialization) => specialization.id === specializationId)
@@ -291,7 +308,6 @@ export default {
 
       </div>
     </div>
-
     <br>
     <div>
 
@@ -308,7 +324,13 @@ export default {
     <div class="fixed-bottom">
       <div class="justify-content-end">
         <div class="md auto">
-          <button class="btn btn-danger" @click="deleteOrder">удалить</button>
+          <button class="btn btn-danger"
+                  v-on:click="openDeleteOrderModal(this.selectedOrder.id)"
+                  data-bs-target="#deleteOrderModal"
+                  data-bs-toggle="modal"
+          >
+              удалить
+          </button>
           <button class="btn btn-secondary" @click="closeOrderDetailsDiv">закрыть</button>
           <button class="btn btn-primary" @click="openEditOrder">редактировать</button>
         </div>
@@ -334,6 +356,10 @@ export default {
       </div>
     </div>
   </div>
+
+    <DeleteOrderModal ref="deleteOrderModal"
+                      @order-deleted="handleOrderDeleted"
+    />
 
   <div id="editOrderDiv" v-if="isEditOrderDivVisible">
 
