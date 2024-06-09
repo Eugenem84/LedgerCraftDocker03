@@ -713,5 +713,4 @@ export default {
     transition: background-color 1s;
 }
 
-
 </style>

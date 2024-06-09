@@ -405,6 +405,7 @@ export default {
                  v-if="selectedCategory"
                  v-on:click="openNewServiceModal"
                  class="d-flex justify-content-center align-items-center"
+                 style="background-color: #2C6EFC; color: white; text-align: center"
             >
                 добавить новую услугу
             </div>
@@ -448,7 +449,9 @@ export default {
                  data-bs-target="#newClientModal"
                  v-if="selectedSpecializations"
                  v-on:click="openNewClientModal"
-                 class="d-flex justify-content-center align-items-center">
+                 class="d-flex justify-content-center align-items-center"
+                 style="background-color: #2C6EFC; color: white; text-align: center"
+            >
                 добавить нового клиента
             </div>
 
