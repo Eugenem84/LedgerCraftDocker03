@@ -539,10 +539,15 @@ export default {
 
 .nav-link {
     color: black;
+    font-size: 95%;
+    padding: max(3px);
 }
 
 .nav-link.active {
     background: #2c6efc;
     color: white;
+    font-size: 95%;
+    font-weight: bold;
+    transition: background-color 1s;
 }
 </style>
