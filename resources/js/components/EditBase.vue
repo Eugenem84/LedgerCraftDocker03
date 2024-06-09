@@ -536,4 +536,13 @@ export default {
   background-color: red;
   color: white;
 }
+
+.nav-link {
+    color: black;
+}
+
+.nav-link.active {
+    background: #2c6efc;
+    color: white;
+}
 </style>
