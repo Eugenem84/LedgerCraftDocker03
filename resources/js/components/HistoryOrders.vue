@@ -318,10 +318,16 @@ export default {
 
   <div id="ordersDiv" v-if="isOrdersListVisible">
     <div>
-      <div id="orderItem" v-for="order in orders" :key="order.id" @click="showOrder(order.id)">
-          <div class="d-flex justify-content-between align-items-center" :style="{ width: '100%', color: getStatusColors(order.status)}">
-              <div style="width: 35%;">{{ formatDate(order.created_at) }} | №{{order.user_order_number}}</div>
-              <div style="width: 25%;">{{ order.specialization_name }}</div>
+      <div id="orderItem"
+           v-for="order in orders"
+           :key="order.id"
+           @click="showOrder(order.id)"
+      >
+          <div class="d-flex justify-content-between align-items-center"
+               :style="{ width: '100%', color: getStatusColors(order.status)}"
+          >
+              <div style="width: 30%;">{{ formatDate(order.created_at) }} | №{{order.user_order_number}}</div>
+              <div style="width: 30%;">{{ order.specialization_name }}</div>
               <div style="width: 30%;">{{ order.client_name }}</div>
               <div style="width: 10%; text-align: right">{{ order.total_amount }}</div>
           </div>
@@ -342,9 +348,11 @@ export default {
 <style>
 
 #orderItem:hover {
-  background-color: #6c757d;
   color: white;
   cursor: pointer;
+  transition: border 0.5s ease;
+  border: 1px solid rgba(0, 0, 0, 1);
+
 }
 
 #orderItem:active {
@@ -354,6 +362,12 @@ export default {
 
 textarea {
     width: 100%;
+}
+
+#orderItem {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 1px;
+    padding: 1px; /* Optional for spacing between border and content */
 }
 
 </style>
