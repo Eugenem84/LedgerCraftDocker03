@@ -22,8 +22,9 @@ export default {
 
   data(){
     return {
+      //searchQuery: '',
       specializations: [],
-      clients: [{ id: null, name: 'Добавить клиента'}],
+      clients: '',
       categories: [],
       services: [],
       addedServices: [],
@@ -33,7 +34,7 @@ export default {
       selectedClient: null,
       selectedCategory: null,
       userOrderNumber: null,
-      selectedStatus: {name: 'выполнено', value: 'done', color: 'green'},
+      selectedStatus: '',
 
 
         statusOptions: [
@@ -92,6 +93,16 @@ export default {
   },
 
   methods: {
+
+      // onSearch(searchQuery) {
+      //     this.searchQuery = searchQuery;
+      //     this.filteredClients = this.clients.filter(client =>
+      //         client.name.toLowerCase().includes(searchQuery.toLowerCase())
+      //     );
+      //
+      //     // Добавление опции "Добавить нового клиента" в конец списка
+      //     this.filteredClients.push({ name: 'Добавить нового клиента', isCreate: true });
+      // },
 
       onlyNumbers(event) {
           if (!/[0-9]/.test(event.key)) {
@@ -344,6 +355,7 @@ export default {
   },
 
   mounted() {
+       this.selectedStatus = this.statusOptions[2]
        console.log(this.$Url)
       //console.log('cookie: ', document.cookie)
       //console.log('laravel-session cookie: ',document.cookie.includes('laravel_session'));
@@ -418,24 +430,38 @@ export default {
                    placeholder="выберите клиента..."
                    @update:modelValue="handleSelectClientChange"
           >
-            <template #singlLable="{option}">
-                <div>
-                    <span v-if="option.isCreate">{{option.name}}</span>
-                    <span v-else>{{option.name}}</span>
-                </div>
-            </template>
+<!--              <template #singlLable="{option}">-->
+<!--                <div>-->
+<!--                    <span v-if="option.isCreate">{{option.name}}</span>-->
+<!--                    <span v-else>{{option.name}}</span>-->
+<!--                </div>-->
+<!--              </template>-->
               <template #no-options="{ search, noResults }">
                   <div class="no-options">
-                      <span>Поиск не дал результато...</span>
+                      <span>нет результатов...</span>
                       <span>
                           <button type="button"
                                     class="btn btn-primary"
                                     data-bs-target="#newClientModal"
                                     data-bs-toggle="modal" >
                               Добавить клиента
-                          </button></span>
+                          </button>
+                      </span>
                   </div>
               </template>
+              <template #append-item-custom>
+                  <div class="v-select__append-item">
+                      <span>Этот шаблон всегда виден</span>
+                  </div>
+              </template>
+<!--              <template #append-item>-->
+<!--                  <div>-->
+<!--                      <button>Добавит  <button type="button" class="btn btn-primary" @click="handleAddNewClient">-->
+<!--                          Добавить нового клиента-->
+<!--                      </button>ь нового клиента</button>-->
+<!--                  </div>-->
+<!--              </template>-->
+
           </VSelect>
           <VSelect :options="statusOptions"
                    v-model="selectedStatus"
@@ -492,11 +518,11 @@ export default {
                   </div>
 
                   <div id="serviceItem"
-                       class=""
                        data-bs-toggle="modal"
                        data-bs-target="#newServiceModal"
                        v-if="selectedCategory"
                        v-on:click="openNewServiceModal"
+                       style="background-color: #2C6EFC; color: white; text-align: center"
                   >
                       Добавить новую услугу
                   </div>
