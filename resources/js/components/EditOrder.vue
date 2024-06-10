@@ -334,7 +334,7 @@ export default {
               this.showAlert('danger', 'Ошибка сохроанения ордера')
             })
       }
-      //location.reload()
+      location.reload()
     }
   },
 
