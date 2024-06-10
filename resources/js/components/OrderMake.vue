@@ -657,11 +657,11 @@ export default {
 <!--    </BAlert>-->
 
     <div class="fixed-bottom">
-      <div class="justify-content-between">
-          <button @click="saveOrder()" class="btn btn-primary" >
+      <div class="d-flex justify-content-center">
+          <button @click="saveOrder()" class="btn btn-primary mx-3" >
             сохранить
           </button>
-          <button onclick="window.location.href='/'" class="btn btn-danger">
+          <button onclick="window.location.href='/'" class="btn btn-danger mx-3">
               отмена
           </button>
       </div>
