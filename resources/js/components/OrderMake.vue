@@ -24,7 +24,7 @@ export default {
     return {
       //searchQuery: '',
       specializations: [],
-      clients: '',
+      clients: [],
       categories: [],
       services: [],
       addedServices: [],
@@ -182,7 +182,8 @@ export default {
             this.categories = response.data
             console.log('список категорий: ', this.categories)
             if (this.categories.length > 0) {
-                this.selectedCategory = this.categories[0].id
+                this.selectedCategory = this.categories[0]
+                console.log("выбрана категория: ", this.selectedCategory)
                 this.loadServicesByCategory()
             }
           })
@@ -207,7 +208,7 @@ export default {
     },
 
     loadServicesByCategory(){
-      axios.get(this.$Url + `/api/get_service/${this.selectedCategory}`)
+      axios.get(this.$Url + `/api/get_service/${this.selectedCategory.id}`)
           .then(response => {
             this.services = response.data
             console.log('Список услуг: ', this.services)
@@ -434,12 +435,6 @@ export default {
                    placeholder="выберите клиента..."
                    @update:modelValue="handleSelectClientChange"
           >
-<!--              <template #singlLable="{option}">-->
-<!--                <div>-->
-<!--                    <span v-if="option.isCreate">{{option.name}}</span>-->
-<!--                    <span v-else>{{option.name}}</span>-->
-<!--                </div>-->
-<!--              </template>-->
               <template #no-options="{ search, noResults }">
                   <div class="no-options">
                       <span>нет результатов...</span>
@@ -458,13 +453,6 @@ export default {
                       <span>Этот шаблон всегда виден</span>
                   </div>
               </template>
-<!--              <template #append-item>-->
-<!--                  <div>-->
-<!--                      <button>Добавит  <button type="button" class="btn btn-primary" @click="handleAddNewClient">-->
-<!--                          Добавить нового клиента-->
-<!--                      </button>ь нового клиента</button>-->
-<!--                  </div>-->
-<!--              </template>-->
 
           </VSelect>
           <VSelect :options="statusOptions"
@@ -480,24 +468,24 @@ export default {
               </template>
           </VSelect>
 
-          <div>
-              <select v-model="selectedCategory" @change="handleCategoriesChange" class="form-select w-auto" >
-                  <option v-for="category in categories"
-                          :key="category.id" :value="category.id">
-                      {{category.category_name}}
-                  </option>
-              </select>
+<!--          <div>-->
+<!--              <select v-model="selectedCategory" @change="handleCategoriesChange" class="form-select w-auto" >-->
+<!--                  <option v-for="category in categories"-->
+<!--                          :key="category.id" :value="category.id">-->
+<!--                      {{category.category_name}}-->
+<!--                  </option>-->
+<!--              </select>-->
 
-              <button type="button"
-                      class="btn btn-primary"
-                      data-bs-target="#newCategoryModal"
-                      data-bs-toggle="modal"
-                      v-on:click="openNewCategoryModal"
-              >
-                  +
-              </button>
+<!--              <button type="button"-->
+<!--                      class="btn btn-primary"-->
+<!--                      data-bs-target="#newCategoryModal"-->
+<!--                      data-bs-toggle="modal"-->
+<!--                      v-on:click="openNewCategoryModal"-->
+<!--              >-->
+<!--                  +-->
+<!--              </button>-->
 
-          </div>
+<!--          </div>-->
 
           <div id="tabsTest">
           <div class="container">
@@ -513,6 +501,29 @@ export default {
 
           <div class="tab-content">
               <div class="tab-pane show active" id="serviceChoice">
+
+
+                  <VSelect v-model="selectedCategory"
+                           :options="categories"
+                           label="category_name"
+                           placeholder="выберите категорию..."
+                           @update:modelValue="handleCategoriesChange"
+                  >
+                      <template #no-options="{ search, noResults }">
+                          <div class="no-options">
+                              <span>нет результатов...</span>
+                              <span>
+                                  <button type="button"
+                                          class="btn btn-primary"
+                                          data-bs-target="#newCategoryModal"
+                                          data-bs-toggle="modal" >
+                                      Добавить категорию
+                                  </button>
+                              </span>
+                          </div>
+                      </template>
+                  </VSelect>
+
 
                   <div id="serviceItem" v-for="service in services" :key="service.id" @click="addServiceToOrder(service)">
                       <div class="d-flex justify-content-between align-items-center">
