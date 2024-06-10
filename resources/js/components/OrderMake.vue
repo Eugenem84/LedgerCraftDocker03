@@ -66,6 +66,10 @@ export default {
 
   computed: {
 
+    cansel(){
+
+    },
+
     totalAddedServicesPrice(){
       return this.addedServices.reduce((total, service) => total + Number(service.price), 0)
     },
@@ -654,8 +658,11 @@ export default {
 
     <div class="fixed-bottom">
       <div class="justify-content-between">
-          <button @click="saveOrder()" class="btn btn-primary m-3" >
+          <button @click="saveOrder()" class="btn btn-primary" >
             сохранить
+          </button>
+          <button onclick="window.location.href='/'" class="btn btn-danger">
+              отмена
           </button>
       </div>
 
