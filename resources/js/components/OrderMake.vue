@@ -305,7 +305,7 @@ export default {
     openNewServiceModal(){
       console.log('создаем новую услугу')
       console.log('selectedCategory: ', this.selectedCategory)
-      this.$refs.newServiceModal.selectedCategory = this.selectedCategory
+      this.$refs.newServiceModal.selectedCategory = this.selectedCategory.id
       console.log('открываем модальное окно')
       this.$refs.newServiceModal.open()
     },
