@@ -6,6 +6,7 @@ import EditOrder from "./EditOrder.vue";
 import {red} from "vuetify/util/colors";
 import DeleteClientModal from "./ModalWindows/DeleteClientModal.vue";
 import DeleteOrderModal from "./ModalWindows/DeleteOrderModal.vue";
+import VSelect from "vue3-select";
 import {th} from "vuetify/locale";
 //import TextareaAutosize from "vue-textarea-autosize";
 //import VueTextareaAutosizeEsm from "vue-textarea-autosize";
@@ -17,6 +18,7 @@ export default {
       DeleteClientModal,
       DeleteOrderModal,
     EditOrder,
+      VSelect,
     //Autosize,
     //TextareaAutosize,
     //OrderMake
@@ -30,6 +32,12 @@ export default {
       services:[],
       materials: [],
 
+        statusOptions: [
+            {name: 'выполнено', value: 'done', color: 'green'},
+            {name: 'в работе', value: 'process', color: 'red'},
+            {name: 'в ожидании', value: 'waiting', color: 'orange'},
+        ],
+
       statusTranslations: {
         done: 'Выполнено',
         waiting: 'Ожидание',
@@ -37,6 +45,7 @@ export default {
       },
 
       selectedOrder: '',
+      selectedStatus: '',
 
       orderDetails: '',
 
@@ -47,6 +56,10 @@ export default {
   },
 
     watch: {
+      selectedStatus(newStatus){
+        this.updateOrderStatus(newStatus.value)
+      },
+
         'selectedOrder.materials': function(newVal) {
             this.$nextTick(() => {
                 const materialsTextArea = document.getElementById('materialsTextArea');
@@ -62,6 +75,16 @@ export default {
     },
 
   methods: {
+      updateOrderStatus(status){
+        console.log("отправляем статус: ",status, "ордера: ", this.selectedOrder.id)
+        axios.put(this.$Url + `/api/update_order_status/${this.selectedOrder.id}`, {status})
+            .then(response => {
+                console.log('статус обновлен.', response.data)
+            })
+            .catch(err => {
+                console.error('Error updating status: ', err)
+            })
+      },
 
       handleOrderDeleted(){
           //this.showAlert('success', 'ордер удален')
@@ -137,6 +160,7 @@ export default {
             console.error(err.message)
           })
     },
+
     loadSpecializations() {
       axios.get('http://localhost:8000/api/get_all_specializations')
           .then(response => {
@@ -146,6 +170,13 @@ export default {
 
     showOrder(orderId){
       this.selectedOrder = this.orders.find(order => order.id === orderId)
+      //this.selectedStatus = this.selectedOrder.status
+      if(this.selectedOrder.status) {
+          this.selectedStatus = this.translateStatus(this.selectedOrder.status)
+      }
+      //this.getStatusColors(this.selectedStatus)
+      console.log("selectedStatus", this.selectedStatus)
+
       console.log('открытие ордера с id: ', orderId)
       this.isOrderOpened = true
       this.isOrdersListVisible = false
@@ -160,6 +191,7 @@ export default {
     closeOrderDetailsDiv(){
       this.isOrderOpened = false
       this.isOrdersListVisible = true
+      location.reload()
     },
     openEditOrder(){
       this.isOrderOpened = false
@@ -251,9 +283,23 @@ export default {
   <div id="openOrderDiv" v-if="isOrderOpened">
     <div >
       <div>
-        <div class="col-md-4" :style="{ color: getStatusColors(selectedOrder.status) }">
-            {{ translateStatus(selectedOrder.status) }}
-        </div>
+<!--        <div class="col-md-4" :style="{ color: getStatusColors(selectedOrder.status) }">-->
+<!--            {{ translateStatus(selectedOrder.status) }}-->
+<!--        </div>-->
+
+          <VSelect :options="statusOptions" v-model="selectedStatus"
+                   label="name"
+                   :searchable="false"
+                   :clearable="false"
+                   placeholder="без статуса"
+          >
+              <template #selected-option="option">
+                  <div :style="{color: selectedStatus.color}">
+                      {{option.name}}
+                  </div>
+              </template>
+          </VSelect>
+
         <div class="col-md-4">
           номер заказ-наряда:
           {{ this.selectedOrder.user_order_number }}

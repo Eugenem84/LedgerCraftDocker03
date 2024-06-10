@@ -11,6 +11,17 @@ use Illuminate\Support\Facades\Auth;
 
 class OrderRepository extends Controller
 {
+
+    public function updateStatus($orderId, $status)
+    {
+        $order = Order::find($orderId);
+        if ($order){
+            $order->status = $status;
+            $order->save();
+            return $order;
+        }
+        return false;
+    }
     public function getAll()
     {
         return Order::all();

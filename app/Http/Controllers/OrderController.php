@@ -33,6 +33,18 @@ class OrderController extends Controller
         $this->serviceRepository = $serviceRepository;
     }
 
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|string',
+        ]);
+        $order = $this->orderRepository->updateStatus($id, $request->status);
+        if($order){
+            return response()->json(['message' => 'Order status updated successfully.'], 200);
+        }
+        return response()->json(['message' => 'Unable to update order status.'], 500);
+    }
+
     public function getAll()
     {
         $orders = $this->orderRepository->getAll();
