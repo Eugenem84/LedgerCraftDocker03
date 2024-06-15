@@ -452,33 +452,46 @@ export default {
           </div>
 
 
-          <VSelect :value="selectedClient"
-                   v-model="selectedClient"
-                   :options="clients"
-                   label="name"
-                   placeholder="выберите клиента..."
-                   @update:modelValue="handleSelectClientChange"
-          >
-              <template #no-options="{ search, noResults }">
-                  <div class="no-options">
-                      <span>нет результатов...</span>
-                      <span>
+          <div class="d-flex">
+              <div class="col-11">
+                  <VSelect :value="selectedClient"
+                           v-model="selectedClient"
+                           :options="clients"
+                           label="name"
+                           placeholder="выберите клиента..."
+                           @update:modelValue="handleSelectClientChange"
+                  >
+                      <template #no-options="{ search, noResults }">
+                          <div class="no-options">
+                              <span>нет результатов...</span>
+                              <span>
                           <button type="button"
-                                    class="btn btn-primary"
-                                    data-bs-target="#newClientModal"
-                                    data-bs-toggle="modal" >
+                                  class="btn btn-primary"
+                                  data-bs-target="#newClientModal"
+                                  data-bs-toggle="modal" >
                               Добавить клиента
                           </button>
                       </span>
-                  </div>
-              </template>
-              <template #append-item-custom>
-                  <div class="v-select__append-item">
-                      <span>Этот шаблон всегда виден</span>
-                  </div>
-              </template>
+                          </div>
+                      </template>
+                      <template #append-item-custom>
+                          <div class="v-select__append-item">
+                              <span>Этот шаблон всегда виден</span>
+                          </div>
+                      </template>
+                  </VSelect>
+              </div>
 
-          </VSelect>
+              <button class="btn btn-primary"
+                      type="button"
+                      data-bs-target="#newClientModal"
+                      data-bs-toggle="modal"
+              >
+                  +
+              </button>
+
+          </div>
+
           <VSelect :options="statusOptions"
                    v-model="selectedStatus"
                    label="name"
