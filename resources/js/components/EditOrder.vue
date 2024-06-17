@@ -108,6 +108,20 @@ export default {
 
   methods: {
 
+      adjustDropdownHeight() {
+          this.$nextTick(() => {
+              const selectElement = this.$refs.vSelect.$el;
+              const dropdownMenu = selectElement.querySelector('.vs__dropdown-menu');
+              if (dropdownMenu) {
+                  const optionHeight = 32; // Примерная высота одной опции в пикселях
+                  const visibleOptions = 6; // Количество видимых опций
+                  const maxHeight = optionHeight * visibleOptions;
+                  dropdownMenu.style.maxHeight = `${maxHeight}px`;
+                  dropdownMenu.style.overflowY = 'auto';
+              }
+          })
+      },
+
       updateMaterialTotal(material){
           console.log("материалы для расчета общей суммы", material)
           material.total = material.price * material.amount
@@ -457,6 +471,9 @@ export default {
                          :options="clients"
                          label="name"
                          @update:modelValue="handleClientChange"
+                         @open="adjustDropdownHeight"
+                         ref="vSelect"
+                         class="limited-height"
                 >
                     <template #no-options="{ search, noResults }">
                         <div class="no-options">
@@ -631,6 +648,9 @@ export default {
                          label="category_name"
                          placeholder="выберите категорию..."
                          @update:modelValue="handleCategoriesChange"
+                         @open="adjustDropdownHeight"
+                         ref="vSelect"
+                         class="limited-height"
                 >
                     <template #no-options="{ search, noResults }">
                         <div class="no-options">
@@ -894,5 +914,10 @@ export default {
 }
 .custom-width-10 {
     width: 10%;
+}
+
+.limited-height .vs__dropdown-menu {
+    max-height: 280px; /* Примерное значение для 7 опций по 40px каждая */
+    overflow-y: auto;
 }
 </style>

@@ -94,6 +94,21 @@ export default {
 
   methods: {
 
+      //ограничение выпадающего списка
+      adjustDropdownHeight() {
+          this.$nextTick(() => {
+              const selectElement = this.$refs.vSelect.$el;
+              const dropdownMenu = selectElement.querySelector('.vs__dropdown-menu');
+              if (dropdownMenu) {
+                  const optionHeight = 32; // Примерная высота одной опции в пикселях
+                  const visibleOptions = 6; // Количество видимых опций
+                  const maxHeight = optionHeight * visibleOptions;
+                  dropdownMenu.style.maxHeight = `${maxHeight}px`;
+                  dropdownMenu.style.overflowY = 'auto';
+              }
+          })
+      },
+
       // onSearch(searchQuery) {
       //     this.searchQuery = searchQuery;
       //     this.filteredClients = this.clients.filter(client =>
@@ -460,6 +475,9 @@ export default {
                            label="name"
                            placeholder="выберите клиента..."
                            @update:modelValue="handleSelectClientChange"
+                           @open="adjustDropdownHeight"
+                           ref="vSelect"
+                           class="limited-height"
                   >
                       <template #no-options="{ search, noResults }">
                           <div class="no-options">
@@ -633,6 +651,9 @@ export default {
                            label="category_name"
                            placeholder="выберите категорию..."
                            @update:modelValue="handleCategoriesChange"
+                           @open="adjustDropdownHeight"
+                           ref="vSelect"
+                           class="limited-height"
                   >
                       <template #no-options="{ search, noResults }">
                           <div class="no-options">
@@ -916,5 +937,11 @@ export default {
 .custom-width-10 {
     width: 10%;
 }
+
+.limited-height .vs__dropdown-menu {
+    max-height: 280px; /* Примерное значение для 7 опций по 40px каждая */
+    overflow-y: auto;
+}
+
 
 </style>
