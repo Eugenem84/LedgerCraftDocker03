@@ -497,6 +497,7 @@ export default {
     />
 
     <NewCategoryModal ref="newCategoryModal"
+                      :selectedSpecialization="selectedSpecializations"
                       @category-added="handleCategoryAdded"
     />
 

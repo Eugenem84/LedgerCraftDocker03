@@ -20,7 +20,7 @@ export default {
       console.log('specializationID: ', this.specializationId)
       const requestData = {
         category_name: this.newCategoryNameInput,
-        specialization_id: this.specializationId,
+        specialization_id: this.selectedSpecialization,
       }
       console.log(requestData)
       axios.post(this.$Url + '/api/add_category', requestData)

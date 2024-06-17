@@ -336,8 +336,9 @@ export default {
 
     openNewCategoryModal() {
         console.log('открытие модального окна новой категории')
-        console.log('выбрана специализацияя: ', this.selectedSpecialization)
-        this.$refs.newCategoryModal.open(this.selectedSpecialization)
+        console.log('выбрана специализацияя: ', this.selectedSpecializations)
+        this.$refs.newCategoryModal.open(this.selectedSpecializations)
+
     },
 
     // открытие модального окна для добавления новой услуги
@@ -888,7 +889,7 @@ export default {
                       @client_added="onClientAdded"
       />
 
-      <NewCategoryModal :selected-specialization="selectedSpecialization"
+      <NewCategoryModal :selectedSpecialization="selectedSpecialization"
                         ref="newCategoryModal"
                         @category-added="loadCategories"
       />
