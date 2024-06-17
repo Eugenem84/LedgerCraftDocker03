@@ -773,7 +773,7 @@ export default {
     <div class="fixed-bottom">
       <div class="container-fluid">
         <div class="row justify-content-end">
-          <button @click="saveOrder()" class="btn btn-primary col-6" >
+          <button @click="saveOrder()" class="btn btn-primary col-6" style="position: relative" >
             сохранить
           </button>
         </div>
@@ -792,5 +792,31 @@ export default {
 #serviceItem:active {
   background-color: red;
   color: white;
+}
+
+.nav-link {
+    color: black;
+    font-size: 95%;
+    padding: max(3px);
+}
+
+.nav-link.active {
+    background: #2c6efc;
+    color: white;
+    font-size: 95%;
+    font-weight: bold;
+    transition: background-color 1s;
+}
+.custom-width-150 {
+    width: 150%;
+}
+.custom-width-40 {
+    width: 40%;
+}
+.custom-width-25 {
+    width: 25%;
+}
+.custom-width-10 {
+    width: 10%;
 }
 </style>
