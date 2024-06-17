@@ -28,6 +28,7 @@ export default {
       services: [],
       addedServices: [],
       materials: [],
+      addedMaterials: [],
 
       userOrderNumber: '',
       totalServicePrice: 0,
@@ -103,10 +104,41 @@ export default {
     },
 
   methods: {
+
+      updateMaterialTotal(material){
+          console.log("материалы для расчета общей суммы", material)
+          material.total = material.price * material.amount
+      },
+
+      updateMaterialCounter(materialId, newCounter) {
+          console.log("добавленные материалы: ", this.addedMaterials)
+          const material = this.addedMaterials.find(material => material.id === materialId)
+          if (material){
+              material.amount = newCounter
+          }
+          this.updateMaterialTotal(material)
+      },
+
+      updateMaterialPrice(materialId, newPrice){
+          const material = this.addedMaterials.find(material => material.id === materialId)
+          if (material){
+              material.price = newPrice
+          }
+          this.updateMaterialTotal(material)
+      },
+
+      updateMaterialName(materialId, newName){
+          const material = this.addedMaterials.find(material => material.id === materialId)
+          if (material){
+              material.name = newName
+          }
+          console.log("material is update")
+      },
+
       onlyNumbers(event) {
           if (!/[0-9]/.test(event.key)) {
               event.preventDefault();
-          }список
+          }
       },
 
       autoResize(event){
@@ -186,7 +218,12 @@ export default {
     loadMaterialsByOrder(){
       axios.get(this.$Url + `/api/get_materials_by_order/${this.orderToEdit.id}`)
           .then(response => {
-              this.materials = response.data
+              this.materials = response.data.map(material => {
+                  material.total = material.amount * material.price
+                  this.addedMaterials.push(material)
+                  return material
+
+              })
               console.log("materials: ", this.materials)
           })
           .catch(error => {
@@ -423,12 +460,112 @@ export default {
 <!--      {{ alertMessage }}-->
 <!--    </BAlert>-->
 
-    <div id="tabsTest">
+    <div id="tabs">
+<!--        <div class="container">-->
+<!--            <ul class="nav nav-tabs" role="tablist">-->
+<!--                <li class="nav-item"><a class="nav-link active" href="#serviceChoice" role="tab" data-bs-toggle="tab"> ВЫБОР УСЛУГ </a></li>-->
+<!--                <li class="nav-item"><a class="nav-link" href="#addedServices" role="tab" data-bs-toggle="tab"> ДОБАВЛЕННЫХ УСЛУГ: {{this.addedServices.length}} </a></li>-->
+<!--            </ul>-->
+<!--        </div>-->
+
         <div class="container">
             <ul class="nav nav-tabs" role="tablist">
-                <li class="nav-item"><a class="nav-link active" href="#serviceChoice" role="tab" data-bs-toggle="tab"> ВЫБОР УСЛУГ </a></li>
-                <li class="nav-item"><a class="nav-link" href="#addedServices" role="tab" data-bs-toggle="tab"> ДОБАВЛЕННЫХ УСЛУГ: {{this.addedServices.length}} </a></li>
+                <li class="nav-item"><a class="nav-link active" href="#serviceChoice" role="tab" data-bs-toggle="tab"> РАБОТА</a></li>
+                <li class="nav-item"><a class="nav-link" href="#materialChoice" role="tab" data-bs-toggle="tab"> МАТЕРИАЛЫ</a></li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="#addedServices" role="tab" data-bs-toggle="tab"> работ: {{this.addedServices.length}}  материалов: {{this.materials.length}}</a>
+                </li>
             </ul>
+        </div>
+
+        <div class="tab-content">
+            <div class="tab-pane" id="materialChoice">
+
+                <div style="text-align: center">Выбор материалов: </div>
+
+                <div v-for="material in materials" >
+                    <div class="d-flex justify-content-between align-items-center">
+                        <input type="text"
+                               v-model="material.name"
+                               @input="updateMaterialName(material.id, material.name)"
+                               class="form-control form-control-sm custom-width-150"
+                        >
+                        <div class="d-flex align-items-center">
+
+                            <input v-on:keypress="onlyNumbers"
+                                   class="form-control form-control-sm custom-width-40"
+                                   v-model="material.price"
+                                   @input="updateMaterialPrice(material.id, material.price)"
+                            >
+                            x
+                            <input v-on:keypress="onlyNumbers"
+                                   class="form-control form-control-sm custom-width-25"
+                                   v-model="material.amount"
+                                   @input="updateMaterialCounter(material.id, material.amount)"
+                            >
+                            =
+                            <input
+                                class="form-control form-control-sm custom-width-40"
+                                :readonly="true"
+                                disabled
+                                v-model="material.total"
+                            >
+                            <button class="btn btn-danger" @click="deleteMaterial(material.id)"> - </button>
+                        </div>
+                    </div>
+                </div>
+
+                <a id="materialTotalSum">итого по материалам: </a>
+                <a class="mb-0">{{totalMaterialPrice}}</a>
+                <br>
+
+                <div class="container">
+                    <div class="row" style="margin-right: -15px; margin-left: -15px">
+                        <div class="col-md-6" style="flex-basis: 52%; padding-right: 0; padding-left: 0;">
+                            <input id="newMaterialName"
+                                   v-model="newMaterialName"
+                                   placeholder="название материала"
+                                   class="form-control"
+                            >
+                        </div>
+                        <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">
+                            <input id="newMaterialPrice"
+                                   v-model="newMaterialPrice"
+                                   placeholder="цена"
+                                   class="form-control"
+                                   v-on:keypress="onlyNumbers"
+                            >
+                        </div>
+                        <div class="col-md-1" style="flex-basis: 12%; padding-right: 0; padding-left: 0;" >
+                            <input id="newMaterialCounter"
+                                   v-model="newMaterialCounter"
+                                   placeholder="шт"
+                                   class="form-control"
+                                   v-on:keypress="onlyNumbers"
+                            >
+                        </div>
+                        <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">
+                            <input id="newMaterialSumPrice"
+                                   v-model="newMaterialSumPriceCalc"
+                                   placeholder="всего"
+                                   class="form-control"
+                                   disabled
+                            >
+                        </div>
+                    </div>
+                    <div class="row justify-content-end mt-3">
+                        <div class="col-auto"
+                             v-if="newMaterialName && newMaterialName.trim() !== ''">
+                            <button class="btn btn-primary"
+                                    @click="addMaterial"
+                            >
+                                добавить материал
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="tab-content">
