@@ -2,6 +2,7 @@
 
 <script>
 import axios from "axios"
+import VSelect from "vue3-select";
 //import {BIconTrash} from 'bootstrap-vue'
 //import {BAlert} from "bootstrap-vue";
 //import alert from "bootstrap/js/src/alert";
@@ -9,9 +10,11 @@ import NewServiceModal from "./ModalWindows/NewServiceModal.vue";
 import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import NewClientModal from "./ModalWindows/NewClientModal.vue";
 import NewCategoryModal from "./ModalWindows/NewCategoryModal.vue";
+import {th} from "vuetify/locale";
 export default {
   props: ['orderToEdit' , 'alreadyAddedServices'],
   components: {
+    VSelect,
     NewClientModal,
     NewSpecializationModal,
     NewServiceModal,
@@ -160,13 +163,12 @@ export default {
 
     handleClientChange(){
       //this.selectedClient = this.orderToEdit.
-      console.log('selectedClient!!!', this.selectedClient)
       console.log('handleClientChange')
       if (this.selectedClient === 'create-new-client'){
         console.log('открываем модальное окно нового клиента')
         this.openNewClientModal()
       } else {
-        console.log('selectedClient!!!!', this.selectedClient)
+        console.log('selectedClient: ', this.selectedClient)
       }
     },
 
@@ -178,7 +180,7 @@ export default {
       } else {
         this.loadServicesByCategory()
       }
-      console.log('выбрана категория: ', this.selectedCategory)
+      console.log('выбрана категория: ', this.selectedCategory.id)
     },
 
     loadCategories(){
@@ -198,6 +200,7 @@ export default {
           .then(response => {
             this.clients = response.data
             console.log('список клиентов: ', this.clients)
+            this.selectedClient = this.clients.find(client => client.id === this.orderToEdit.client_id)
           })
           .catch(error => {
             console.error('Ошибка загрузки клиентов: ', error.message)
@@ -205,7 +208,7 @@ export default {
     },
 
     loadServicesByCategory(){
-      axios.get(this.$Url + `/api/get_service/${this.selectedCategory}`)
+      axios.get(this.$Url + `/api/get_service/${this.selectedCategory.id}`)
           .then(response => {
             this.services = response.data
             console.log('Список услуг: ', this.services)
@@ -323,7 +326,7 @@ export default {
 
     // открытие модального окна для добавления новой услуги
     openNewServiceModal(){
-      this.$refs.newServiceModal.selectedCategory = this.selectedCategory
+      this.$refs.newServiceModal.selectedCategory = this.selectedCategory.id
       this.$refs.newServiceModal.open()
     },
 
@@ -334,7 +337,7 @@ export default {
       //const totalAmount = this.totalAddedServicesPrice
       const orderData = {
         id: this.orderToEdit.id,
-        client_id: this.selectedClient,
+        client_id: this.selectedClient.id,
         specialization_id: this.selectedSpecialization,
         user_order_number: this.userOrderNumber,
         total_amount: this.totalAmount,
@@ -375,7 +378,13 @@ export default {
     }
   },
 
-   async mounted() {
+    async getNameClient(){
+        await this.wait(3000)
+        this.selectedClient = this.clients.find(client => client.id === this.orderToEdit.client_id)
+        console.log("selectedClient: ", this.selectedClient)
+    },
+
+    async mounted() {
 
     //события для ресайза текстогого поля
     document.querySelectorAll('textarea').forEach((element) => {
@@ -384,7 +393,7 @@ export default {
 
     this.addedServices = this.alreadyAddedServices
     this.selectedSpecialization = this.orderToEdit.specialization_id
-    this.selectedClient = this.orderToEdit.client_id
+    //this.selectedClient = this.orderToEdit
     this.materials = this.orderToEdit.materials
     this.comments = this.orderToEdit.comments
     //this.selectedClient = this.orderToEdit.client_id
@@ -396,12 +405,17 @@ export default {
         .catch(eError => {
           console.error(eError.message)
         })
-    this.selectedClient = this.orderToEdit.client_id
-    console.log('orderToEdit: ', this.orderToEdit)
-    await this.loadClients()
+    //this.selectedClient = this.orderToEdit.client_id
+    //console.log('orderToEdit: ', this.orderToEdit)
+    this.loadClients()
+    console.log('clients: ', this.clients)
+    //console.log("client_id: ", this.orderToEdit)
+    //await this.selectedClient = this.clients.find(client => client.id === this.orderToEdit.client_id)
     this.loadCategories()
     this.loadMaterialsByOrder()
     this.userOrderNumber = this.orderToEdit.user_order_number
+    console.log("выбранный клиент: ", this.selectedClient)
+    //this.getNameClient()
   }
 }
 
@@ -424,34 +438,74 @@ export default {
 
       <input id="orderNumber" type="number" v-model="this.userOrderNumber">
       <br>
-      <select v-model="selectedClient" class="w-auto" @change="handleClientChange"  >
-        <option v-for="client in clients"
-                              :key="client.id" :value="client.id">
-          {{client.name}} - {{client.phone}}
-        </option>
+<!--      <select v-model="selectedClient" class="w-auto" @change="handleClientChange"  >-->
+<!--        <option v-for="client in clients"-->
+<!--                              :key="client.id" :value="client.id">-->
+<!--          {{client.name}} - {{client.phone}}-->
+<!--        </option>-->
 
-        <option value="create-new-client" v-if="selectedSpecialization">
-          создать нового клиента
-        </option>
-      </select>
-    </div>
+<!--        <option value="create-new-client" v-if="selectedSpecialization">-->
+<!--          создать нового клиента-->
+<!--        </option>-->
+<!--      </select>-->
 
-      <div>
-            <div>
-              <select v-model="selectedCategory" @change="handleCategoriesChange" class="w-auto" >
-                <option v-for="category in categories"
-                                      :key="category.id" :value="category.id">
-                  {{category.category_name}}
-                </option>
 
-                <option v-if="selectedSpecialization" value="create_new_category">
-                  создать новую категорию
-                </option>
-
-              </select>
+        <div class="d-flex">
+            <div class="col-11">
+                <VSelect :value="selectedClient"
+                         v-model="selectedClient"
+                         :options="clients"
+                         label="name"
+                         @update:modelValue="handleClientChange"
+                >
+                    <template #no-options="{ search, noResults }">
+                        <div class="no-options">
+                            <span>нет результатов...</span>
+                            <span>
+                          <button type="button"
+                                  class="btn btn-primary"
+                                  data-bs-target="#newClientModal"
+                                  data-bs-toggle="modal" >
+                              Добавить клиента
+                          </button>
+                      </span>
+                        </div>
+                    </template>
+                    <template #append-item-custom>
+                        <div class="v-select__append-item">
+                            <span>Этот шаблон всегда виден</span>
+                        </div>
+                    </template>
+                </VSelect>
             </div>
 
-      </div>
+            <button class="btn btn-primary"
+                    type="button"
+                    data-bs-target="#newClientModal"
+                    data-bs-toggle="modal"
+            >
+                +
+            </button>
+        </div>
+
+    </div>
+
+<!--      <div>-->
+<!--            <div>-->
+<!--              <select v-model="selectedCategory" @change="handleCategoriesChange" class="w-auto" >-->
+<!--                <option v-for="category in categories"-->
+<!--                                      :key="category.id" :value="category.id">-->
+<!--                  {{category.category_name}}-->
+<!--                </option>-->
+
+<!--                <option v-if="selectedSpecialization" value="create_new_category">-->
+<!--                  создать новую категорию-->
+<!--                </option>-->
+
+<!--              </select>-->
+<!--            </div>-->
+
+<!--      </div>-->
 
 
     </div>
@@ -570,6 +624,28 @@ export default {
 
         <div class="tab-content">
             <div class="tab-pane show active" id="serviceChoice">
+
+
+                <VSelect v-model="selectedCategory"
+                         :options="categories"
+                         label="category_name"
+                         placeholder="выберите категорию..."
+                         @update:modelValue="handleCategoriesChange"
+                >
+                    <template #no-options="{ search, noResults }">
+                        <div class="no-options">
+                            <span>нет результатов...</span>
+                            <span>
+                                  <button type="button"
+                                          class="btn btn-primary"
+                                          data-bs-target="#newCategoryModal"
+                                          data-bs-toggle="modal" >
+                                      Добавить категорию
+                                  </button>
+                              </span>
+                        </div>
+                    </template>
+                </VSelect>
 
                 <div id="serviceItem" v-for="service in services" :key="service.id" @click="addServiceToOrder(service)">
                     <div class="d-flex justify-content-between align-items-center">
