@@ -9,6 +9,7 @@ import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import NewClientModal from "./ModalWindows/NewClientModal.vue";
 import NewCategoryModal from "./ModalWindows/NewCategoryModal.vue";
 import VSelect from "vue3-select";
+//import {isVisible} from "bootstrap/js/src/util/index.js";
 export default {
    components: {
      NewClientModal,
@@ -36,6 +37,8 @@ export default {
       userOrderNumber: null,
       selectedStatus: '',
 
+      isVisible:false,
+      message: '',
 
         statusOptions: [
           {name: 'выполнено', value: 'done', color: 'green'},
@@ -294,11 +297,14 @@ export default {
       console.log("добавленные материалы: ",this.addedMaterials)
     },
 
-    deleteMaterial(materialId){
-        console.log("удаляем материал с id: ", materialId)
-        const materialIndex = this.addedMaterials.findIndex(material => material.id === materialId)
+    deleteMaterial(materialName){
+        console.log("удаляем материал с именем: ", materialName);
+        const materialIndex = this.addedMaterials.findIndex(material => material.name === materialName);
         if (materialIndex !== -1) {
-            this.addedMaterials.splice(materialIndex, 1)
+            this.addedMaterials.splice(materialIndex, 1);
+            console.log("Материал успешно удален", this.addedMaterials);
+        } else {
+            console.log("Материал не найден");
         }
     },
 
@@ -587,7 +593,7 @@ export default {
                                      disabled
                                      v-model="material.total"
                               >
-                              <button class="btn btn-danger" @click="deleteMaterial(material.id)"> - </button>
+                              <button class="btn btn-danger" @click="deleteMaterial(material.name)"> - </button>
                           </div>
                       </div>
                   </div>
@@ -772,7 +778,7 @@ export default {
                                   <div id="price">{{material.price}}р</div>
                                   <div id="counter">X{{material.counter}} =</div>
                                   <div id="total">  {{material.total}}р</div>
-                                  <button class="btn btn-danger" @click="deleteMaterial(material.id)"> - </button>
+                                  <button class="btn btn-danger" @click="deleteMaterial(material.name)"> - </button>
                               </div>
                           </div>
                       </div>
@@ -895,6 +901,8 @@ export default {
       />
 
     </div>
+
+    <div v-if="isVisible" class="alert">{{alertMessage}}</div>
 
 </template>
 

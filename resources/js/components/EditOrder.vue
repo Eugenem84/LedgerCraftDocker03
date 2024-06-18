@@ -278,13 +278,24 @@ export default {
       console.log(this.addedServices)
     },
 
-    deleteMaterial(materialId){
-        console.log("удаляем материал с id: ", materialId)
-        const materialIndex = this.materials.findIndex(material => material.id === materialId)
-        if (materialIndex !== -1) {
-            this.materials.splice(materialIndex, 1)
-        }
-    },
+    // deleteMaterial(materialId){
+    //     console.log("удаляем материал с id: ", materialId)
+    //     const materialIndex = this.materials.findIndex(material => material.id === materialId)
+    //     if (materialIndex !== -1) {
+    //         this.materials.splice(materialIndex, 1)
+    //     }
+    // },
+
+      deleteMaterial(materialName){
+          console.log("удаляем материал с именем: ", materialName);
+          const materialIndex = this.materials.findIndex(material => material.name === materialName);
+          if (materialIndex !== -1) {
+              this.materials.splice(materialIndex, 1);
+              console.log("Материал успешно удален", this.materials);
+          } else {
+              console.log("Материал не найден");
+          }
+      },
 
       //добавление материала в ордер
       addMaterial(){
@@ -582,7 +593,7 @@ export default {
                                 disabled
                                 v-model="material.total"
                             >
-                            <button class="btn btn-danger" @click="deleteMaterial(material.id)"> - </button>
+                            <button class="btn btn-danger" @click="deleteMaterial(material.name)"> - </button>
                         </div>
                     </div>
                 </div>
@@ -714,7 +725,7 @@ export default {
                                 <div id="price">{{material.price}}р</div>
                                 <div id="counter">X{{material.amount}} =</div>
                                 <div id="total">  {{material.price * material.amount}}р</div>
-                                <button class="btn btn-danger" @click="deleteMaterial(material.id)"> - </button>
+                                <button class="btn btn-danger" @click="deleteMaterial(material.name)"> - </button>
                             </div>
                         </div>
                     </div>
