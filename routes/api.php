@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\StatisticController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OrderController;
@@ -67,3 +68,5 @@ Route::get('/get_services/{orderId}', [OrderController::class, 'getServices']);
 Route::put('update_order_status/{id}', [OrderController::class, 'updateStatus']);
 
 Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'getMaterialsByOrder']);
+
+Route::get('/get_total_DWYM/{specializationId}', [StatisticController::class, 'getTotalDWMY']);
