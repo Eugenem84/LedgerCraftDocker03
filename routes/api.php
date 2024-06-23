@@ -69,4 +69,6 @@ Route::put('update_order_status/{id}', [OrderController::class, 'updateStatus'])
 
 Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'getMaterialsByOrder']);
 
+
 Route::get('/get_total_DWYM/{specializationId}', [StatisticController::class, 'getTotalDWMY']);
+Route::get('/get_top_services/{specializationId}', [StatisticController::class, 'getTopServicesBySpecialization']);

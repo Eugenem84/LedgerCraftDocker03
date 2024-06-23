@@ -26,8 +26,25 @@ class StatisticRepository
             FROM orders
             WHERE
                 specialization_id = :specialization_id
-        ", [
-            'specialization_id' => $specializationId
-        ]);
+        ", ['specialization_id' => $specializationId]);
+    }
+
+    public function getTopServicesBySpecialization($specializationId)
+    {
+        return DB::select("
+            select
+                services.service,
+                count(*) as service_count,
+                services.price,
+                count(*) * cast(services.price as numeric ) as total
+            from order_service
+            join services on order_service.service_id = services.id
+            where order_id in (select orders.id
+                   from orders
+                   where specialization_id = :specialization_id)
+            group by order_service.service_id, services.price, services.service
+            order by service_count desc
+            limit 10
+        ", ['specialization_id' => $specializationId]);
     }
 }

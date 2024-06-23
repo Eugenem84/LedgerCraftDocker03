@@ -412,8 +412,6 @@ export default {
     <EditOrder :orderToEdit="selectedOrder" :already-added-services="services"/>
 
 
-
-
                   <div class="fixed-bottom col-6 mx-0"> <!-- Используем mx-auto для центрирования блока -->
                       <button class="btn btn-danger w-100" @click="closeEditOrderDiv">отмена</button>
                   </div>

@@ -15,6 +15,7 @@ export default {
             selectedOptions: null,
             options: ['var1', 'var2'],
             totalDWMY: '',
+            topServices: '',
             specializations: [],
             selectedSpecialization: ''
         }
@@ -26,6 +27,7 @@ export default {
        await new Promise(resolve => setTimeout(resolve, 1000))
        await this.getTotalDWMY()
        console.log('загрузка статистики завершена')
+       this.getTopServicesBySpecialization()
     },
 
     methods: {
@@ -88,6 +90,16 @@ export default {
                   console.error('ошибка получения статистики: ', err)
               })
       },
+        getTopServicesBySpecialization(){
+          axios.get(this.$Url + `/api/get_top_services/${this.selectedSpecialization.id}`)
+              .then(response => {
+                  this.topServices = response.data
+                  console.log('топ 10 сервисов: ', response.data)
+              })
+              .catch(err => {
+                  console.error('ошибка получения топ сервисов: ', err)
+              })
+        },
 
         handleSelectedSpecializationChange(){
             if (this.selectedSpecialization === 'create_new_specialization'){
@@ -95,6 +107,7 @@ export default {
             } else {
                 console.log('выбрана специализация: ', this.selectedSpecialization )
                 this.getTotalDWMY()
+                this.getTopServicesBySpecialization()
                 //this.loadClients()
                 //this.loadCategories()
             }
@@ -124,10 +137,28 @@ export default {
     <div v-else>
         Загрузка данных...
     </div>
+    <br>
+    <div style="text-align: center;">Самые популярные работы: </div>
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="underline">название</div>
+        <div class="underline">количество</div>
+        <div class="underline">цена</div>
+        <div class="underline">общая сумма</div>
+    </div>
+    <div id="serviceItem" v-for="service in topServices" >
+        <div class="d-flex justify-content-between align-items-center">
+            <div>{{service.service }}</div>
+            <div>{{service.service_count}}</div>
+            <div>{{service.price}}</div>
+            <div>{{service.total}}</div>
+        </div>
+    </div>
 
 </div>
 </template>
 
 <style scoped>
-
+.underline {
+    text-decoration: underline;
+}
 </style>
