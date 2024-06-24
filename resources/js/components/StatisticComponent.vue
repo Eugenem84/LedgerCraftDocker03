@@ -122,6 +122,7 @@ export default {
                 console.log('выбрана специализация: ', this.selectedSpecialization )
                 this.getTotalDWMY()
                 this.getTopServicesBySpecialization()
+                this.getTopProfitClients()
                 //this.loadClients()
                 //this.loadCategories()
             }
