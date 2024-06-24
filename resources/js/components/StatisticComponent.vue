@@ -2,6 +2,7 @@
 import TestModal from "./ModalWindows/TestModal.vue";
 import VSelect from 'vue3-select'
 import axios from "axios";
+import {th} from "vuetify/locale";
 export default {
 
     components: {
@@ -16,6 +17,7 @@ export default {
             options: ['var1', 'var2'],
             totalDWMY: '',
             topServices: '',
+            topProfitClients: '',
             specializations: [],
             selectedSpecialization: ''
         }
@@ -28,6 +30,7 @@ export default {
        await this.getTotalDWMY()
        console.log('загрузка статистики завершена')
        this.getTopServicesBySpecialization()
+       this.getTopProfitClients()
     },
 
     methods: {
@@ -101,6 +104,17 @@ export default {
               })
         },
 
+        getTopProfitClients(){
+          axios.get(this.$Url + `/api/get_top_profit_clients/${this.selectedSpecialization.id}`)
+              .then(response => {
+                  this.topProfitClients = response.data
+                  console.log('топ 10 доходных клиентов: ', response.data)
+              })
+              .catch(err => {
+                  console.error('ошибка получения топ доходных клиентов: ', err)
+              })
+        },
+
         handleSelectedSpecializationChange(){
             if (this.selectedSpecialization === 'create_new_specialization'){
                 this.openNewSpecializationModal()
@@ -151,6 +165,20 @@ export default {
             <div>{{service.service_count}}</div>
             <div>{{service.price}}</div>
             <div>{{service.total}}</div>
+        </div>
+    </div>
+    <br>
+    <div style="text-align: center;">Самые доходные клиенты: </div>
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="underline">клиент</div>
+        <div class="underline">количество заказов</div>
+        <div class="underline">общая сумма</div>
+    </div>
+    <div id="clientItem" v-for="client in topProfitClients" >
+        <div class="d-flex justify-content-between align-items-center">
+            <div>{{client.name }}</div>
+            <div>{{client.num_ord}}</div>
+            <div>{{client.total_amount}}</div>
         </div>
     </div>
 

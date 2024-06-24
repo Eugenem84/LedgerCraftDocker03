@@ -23,4 +23,9 @@ class StatisticController extends Controller
     {
         return response()->json($this->statisticRepository->getTopServicesBySpecialization($specializationId));
     }
+
+    public function getTopProfitClients(Request $request, $specializationId)
+    {
+        return response()->json($this->statisticRepository->getTopProfitClients($specializationId));
+    }
 }

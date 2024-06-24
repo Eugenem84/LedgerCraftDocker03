@@ -72,3 +72,4 @@ Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'get
 
 Route::get('/get_total_DWYM/{specializationId}', [StatisticController::class, 'getTotalDWMY']);
 Route::get('/get_top_services/{specializationId}', [StatisticController::class, 'getTopServicesBySpecialization']);
+Route::get('/get_top_profit_clients/{specializationId}', [StatisticController::class, 'getTopProfitClients']);

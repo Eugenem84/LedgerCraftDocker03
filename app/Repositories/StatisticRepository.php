@@ -47,4 +47,18 @@ class StatisticRepository
             limit 10
         ", ['specialization_id' => $specializationId]);
     }
+
+    public function getTopProfitClients($specializationId)
+    {
+        return DB::select("
+            SELECT clients.name,
+            COUNT(orders.id) as num_ord,
+            SUM(orders.total_amount) as total_amount
+            FROM clients JOIN orders ON clients.id = orders.client_id
+            WHERE orders.specialization_id = :specialization_id
+            GROUP BY clients.name
+            ORDER BY total_amount DESC
+            LIMIT 10
+        ", ['specialization_id' => $specializationId]);
+    }
 }
