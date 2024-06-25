@@ -45,6 +45,15 @@ class OrderController extends Controller
         return response()->json(['message' => 'Unable to update order status.'], 500);
     }
 
+    public function updatePadeStatus(Request $request, $id)
+    {
+        $order = $this->orderRepository->updatePaidStatus($id, $request->paid);
+        if ($order){
+            return response()->json(['message' => 'статус оплаты изменен'], 200);
+        }
+        return response()->json(['message' => 'ошибка обновления статуса'], 500);
+    }
+
     public function getAll()
     {
         $orders = $this->orderRepository->getAll();

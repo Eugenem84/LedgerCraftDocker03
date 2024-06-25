@@ -11,6 +11,15 @@ use Illuminate\Support\Facades\Auth;
 
 class OrderRepository extends Controller
 {
+    public function updatePaidStatus($orderId, $paidStatus)
+    {
+        $order = Order::find($orderId);
+        if ($order){
+            $order->paid = $paidStatus;
+            $order->save();
+            return $order;
+        }
+    }
 
     public function updateStatus($orderId, $status)
     {

@@ -31,6 +31,7 @@ export default {
       specializations: [],
       services:[],
       materials: [],
+      paidStatus: '',
 
         statusOptions: [
             {name: 'выполнено', value: 'done', color: 'green'},
@@ -75,8 +76,21 @@ export default {
     },
 
   methods: {
+
+      updatePaidStatus(){
+        this.paidStatus = !this.paidStatus
+        let paid = this.paidStatus
+        axios.put(this.$Url + `/api/update_paid_status/${this.selectedOrder.id}`, {paid})
+            .then(response => {
+                console.log('статус обновлен', response.data)
+            })
+            .catch(err => {
+                console.error('ошибка обновления статуса')
+            })
+      },
+
       updateOrderStatus(status){
-        console.log("отправляем статус: ",status, "ордера: ", this.selectedOrder.id)
+        console.log("отправляем статус: ",this.paidStatus, "ордера: ", this.selectedOrder.id)
         axios.put(this.$Url + `/api/update_order_status/${this.selectedOrder.id}`, {status})
             .then(response => {
                 console.log('статус обновлен.', response.data)
@@ -187,6 +201,8 @@ export default {
             console.error(err.message)
       })
       this.loadMaterialsByOrder(orderId)
+      console.log("статус оплаты: ", this.selectedOrder.paid)
+      this.paidStatus = this.selectedStatus.paid
     },
     closeOrderDetailsDiv(){
       this.isOrderOpened = false
@@ -299,6 +315,19 @@ export default {
                   </div>
               </template>
           </VSelect>
+
+          <div class="form-check form-switch">
+              <input class="form-check-input"
+                     type="checkbox"
+                     role="switch"
+                     id="flexSwitchCheckChecked"
+                     v-model="selectedOrder.paid"
+                     @change="updatePaidStatus"
+              >
+              <label class="form-check-label" for="flexSwitchCheckChecked">
+                  {{ selectedOrder.paid ? 'Оплачено' : 'Не оплачено' }}
+              </label>
+          </div>
 
         <div class="col-md-4">
           номер заказ-наряда:
