@@ -695,6 +695,7 @@ export default {
                 </div>
 
                 <div>Итого к оплате: {{totalAmount}}</div>
+                <br>
 
             </div>
             <div class="tab-pane" id="addedServices">

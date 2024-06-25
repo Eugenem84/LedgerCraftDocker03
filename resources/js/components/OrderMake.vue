@@ -693,7 +693,7 @@ export default {
                        data-bs-target="#newServiceModal"
                        v-if="selectedCategory"
                        v-on:click="openNewServiceModal"
-                       style="background-color: #2C6EFC; color: white; text-align: center"
+                       style="background-color: #2C6EFC; color: white; text-align: center; margin-bottom: 5%"
                   >
                       Добавить новую работу
                   </div>
