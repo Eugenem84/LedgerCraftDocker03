@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderService;
 use App\Models\Service;
 use App\Models\Specialization;
+use http\Env\Response;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use App\Repositories\OrderRepository;
@@ -33,6 +34,14 @@ class OrderController extends Controller
         $this->serviceRepository = $serviceRepository;
     }
 
+    public function switchPaidStatus(Request $request, $id)
+    {
+        $order = $this->orderRepository->switchPaidStatus($id);
+        if ($order){
+            return response()->json(['message' => 'статус оплаты изменен']);
+        }
+        return response(['message' => 'невозможно изменить статус оплаты']);
+    }
     public function updateStatus(Request $request, $id)
     {
         $request->validate([

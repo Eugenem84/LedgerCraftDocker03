@@ -77,6 +77,16 @@ export default {
 
   methods: {
 
+      switchPaidStatus(){
+        axios.put(this.$Url + `/api/switch_paid_status/${this.selectedOrder.id}`)
+        .then((response) => {
+            console.log(response)
+        })
+            .catch(err => {
+                console.log('ошибка изменения статуса',err)
+            })
+      },
+
       updatePaidStatus(){
         this.paidStatus = !this.paidStatus
         let paid = this.paidStatus
@@ -322,7 +332,7 @@ export default {
                      role="switch"
                      id="flexSwitchCheckChecked"
                      v-model="selectedOrder.paid"
-                     @change="updatePaidStatus"
+                     @change="switchPaidStatus"
               >
               <label class="form-check-label" for="flexSwitchCheckChecked">
                   {{ selectedOrder.paid ? 'Оплачено' : 'Не оплачено' }}

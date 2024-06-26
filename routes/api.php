@@ -67,6 +67,7 @@ Route::post('/update_order', [OrderController::class, 'updateOrder']);
 Route::get('/get_services/{orderId}', [OrderController::class, 'getServices']);
 Route::put('update_order_status/{id}', [OrderController::class, 'updateStatus']);
 Route::put('update_paid_status/{id}', [OrderController::class, 'updatePadeStatus']);
+Route::put('switch_paid_status/{id}', [OrderController::class, 'switchPaidStatus']);
 
 Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'getMaterialsByOrder']);
 
