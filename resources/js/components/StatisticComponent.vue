@@ -158,7 +158,7 @@ export default {
         <div class="underline">название</div>
         <div class="underline">количество</div>
         <div class="underline">цена</div>
-        <div class="underline">общая сумма</div>
+        <div class="underline">сумма</div>
     </div>
     <div id="serviceItem" v-for="service in topServices" >
         <div class="d-flex justify-content-between align-items-center">
@@ -172,8 +172,8 @@ export default {
     <div style="text-align: center;">Самые доходные клиенты: </div>
     <div class="d-flex justify-content-between align-items-center">
         <div class="underline">клиент</div>
-        <div class="underline">количество заказов</div>
-        <div class="underline">общая сумма</div>
+        <div class="underline">заказов</div>
+        <div class="underline">сумма</div>
     </div>
     <div id="clientItem" v-for="client in topProfitClients" >
         <div class="d-flex justify-content-between align-items-center">

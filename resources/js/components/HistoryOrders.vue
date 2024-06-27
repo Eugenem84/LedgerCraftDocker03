@@ -434,12 +434,9 @@ export default {
                :style="{ width: '100%', color: getStatusColors(order.status)}"
           >
               <div style="width: 30%;">{{ formatDate(order.created_at) }} | №{{order.user_order_number}}</div>
-              <div style="width: 30%;">{{ order.specialization_name }}</div>
+              <div style="width: 25%;">{{ order.specialization_name }}</div>
               <div style="width: 30%;">{{ order.client_name }}</div>
-<!--              <div style="width: 10%;">-->
-<!--                  <span style="color: green;">✔</span>-->
-<!--              </div>-->
-              <div style="width: 10%; text-align: right"> <span v-if="order.paid" style="color: green;">✔</span>
+              <div style="width: 15%; text-align: right"> <span v-if="order.paid" style="color: green;">✔</span>
                   {{ order.total_amount }}</div>
           </div>
       </div>
