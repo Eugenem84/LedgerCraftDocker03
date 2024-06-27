@@ -12,26 +12,28 @@ class StatisticRepository
     {
         return DB::select("
             SELECT
-                sum(orders.total_amount)
-                    FILTER ( WHERE date_trunc('day', updated_at) = date_trunc('day', current_date)
+                sum(CAST(services.price as numeric))
+                    FILTER ( WHERE date_trunc('day', orders.updated_at) = date_trunc('day', current_date)
                                 AND status = 'done'
                                 AND paid = true)
                     as total_day,
-                sum(orders.total_amount)
-                    FILTER ( WHERE date_trunc('week', updated_at) = date_trunc('week', current_date)
+                sum(CAST(services.price as numeric))
+                    FILTER ( WHERE date_trunc('week', orders.updated_at) = date_trunc('week', current_date)
                                 AND status = 'done'
                                 AND paid = true)
                     as total_week,
-                sum(orders.total_amount)
-                    FILTER ( WHERE date_trunc('month', updated_at) = date_trunc('month', current_date)
+                sum(CAST(services.price as numeric))
+                    FILTER ( WHERE date_trunc('month', orders.updated_at) = date_trunc('month', current_date)
                                 AND status = 'done'
                                 AND paid = true)
                     as total_month,
-                sum(orders.total_amount) FILTER ( WHERE date_trunc('year', updated_at) = date_trunc('year', current_date)
+                sum(CAST(services.price as numeric)) FILTER ( WHERE date_trunc('year', orders.updated_at) = date_trunc('year', current_date)
                                 AND status = 'done'
                                 AND paid = true)
                     as total_year
             FROM orders
+            JOIN order_service ON orders.id = order_service.order_id
+            JOIN services ON order_service.service_id = services.id
             WHERE
                 specialization_id = :specialization_id
         ", ['specialization_id' => $specializationId]);
