@@ -433,10 +433,10 @@ export default {
           <div class="d-flex justify-content-between align-items-center"
                :style="{ width: '100%', color: getStatusColors(order.status)}"
           >
-              <div style="width: 30%;">{{ formatDate(order.created_at) }} | №{{order.user_order_number}}</div>
+              <div style="width: 25%;">{{ formatDate(order.created_at) }} | №{{order.user_order_number}}</div>
               <div style="width: 25%;">{{ order.specialization_name }}</div>
               <div style="width: 30%;">{{ order.client_name }}</div>
-              <div style="width: 15%; text-align: right"> <span v-if="order.paid" style="color: green;">✔</span>
+              <div style="width: 20%; text-align: right"> <span v-if="order.paid" style="color: green;">✔</span>
                   {{ order.total_amount }}</div>
           </div>
       </div>
