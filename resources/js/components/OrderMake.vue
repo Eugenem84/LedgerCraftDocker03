@@ -164,6 +164,12 @@ export default {
      },
 
     handleSpecializationChange(){
+      this.services = []
+      this.selectedCategory = ''
+      this.selectedClient = ''
+      this.categories = []
+      this.clients = []
+      console.log("services", this.services)
       if (this.selectedSpecialization === 'create_new_specialization'){
         this.openNewSpecializationModal()
       } else {
@@ -225,7 +231,7 @@ export default {
             this.categories = response.data
             console.log('список категорий: ', this.categories)
             if (this.categories.length > 0) {
-                this.selectedCategory = this.categories[0]
+                //this.selectedCategory = this.categories[0]
                 console.log("выбрана категория: ", this.selectedCategory)
                 this.loadServicesByCategory()
             }
@@ -433,7 +439,7 @@ export default {
               console.log('выбрана специализация: ' , this.selectedSpecialization)
               this.loadClients()
               this.loadCategories()
-              this.loadServicesByCategory()
+              //this.loadServicesByCategory()
           }
 
         })
@@ -469,7 +475,7 @@ export default {
 
           <div class="d-flex">
               <select v-model="selectedSpecialization" @change="handleSpecializationChange" class="form-select w-auto" >
-<!--                  <option value="" class="select-option&#45;&#45;placeholder" selected>Выберите специализацию</option>-->
+<!--                  <option value="" class="select-option--placeholder" selected>Выберите специализацию</option>-->
                   <option v-for="specialization in specializations"
                           :key="specialization.id" :value="specialization.id" >
                       {{ specialization.specializationName }}
