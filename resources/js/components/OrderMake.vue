@@ -36,6 +36,7 @@ export default {
       selectedCategory: null,
       userOrderNumber: null,
       selectedStatus: '',
+      paid: false,
 
       isVisible:false,
       message: '',
@@ -369,6 +370,7 @@ export default {
         addedMaterials: this.addedMaterials,
         materials: this.materials,
         comments: this.comments,
+        paid: this.paid,
         servicesId: this.addedServices.map(service => service.id)
       }
       console.log('данные для сохранения: ', orderData)
@@ -452,6 +454,19 @@ export default {
   <div>
 
       <div>
+
+          <div class="form-check form-switch">
+              <input class="form-check-input"
+                     type="checkbox"
+                     role="switch"
+                     id="flexSwitchCheckChecked"
+                     v-model="paid"
+              >
+              <label class="form-check-label" for="flexSwitchCheckChecked">
+                  {{ paid ? 'Оплачено' : 'Не оплачено' }}
+              </label>
+          </div>
+
           <div class="d-flex">
               <select v-model="selectedSpecialization" @change="handleSpecializationChange" class="form-select w-auto" >
 <!--                  <option value="" class="select-option&#45;&#45;placeholder" selected>Выберите специализацию</option>-->

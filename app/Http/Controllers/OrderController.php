@@ -156,7 +156,7 @@ class OrderController extends Controller
 
     public function saveOrder(Request $request)
     {
-        $data = $request->only(['clientId', 'userOrderNumber', 'specializationId', 'status', 'totalAmount', 'materials', 'comments', 'addedMaterials']);
+        $data = $request->only(['clientId', 'userOrderNumber', 'specializationId', 'status', 'totalAmount', 'materials', 'comments', 'addedMaterials', 'paid']);
         $data['servicesId'] = $request->input('servicesId');
         $order = $this->orderRepository->saveOrder($data);
         if ($order){
@@ -181,7 +181,8 @@ class OrderController extends Controller
             $request->input('materials'),
             $request->input('comments'),
             $request->input('services'),
-            $request->input('total_amount')
+            $request->input('total_amount'),
+            $request->input('paid')
         );
         return response()->json(['message' => 'Ордер успешно обновился']);
     }

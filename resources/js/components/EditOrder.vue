@@ -33,6 +33,7 @@ export default {
       materials: [],
       addedMaterials: [],
 
+      paid: '',
       userOrderNumber: '',
       totalServicePrice: 0,
       totalMaterialPrice: 0,
@@ -368,7 +369,8 @@ export default {
         total_amount: this.totalAmount,
         materials: this.materials,
         comments: this.comments,
-        services: this.addedServices.map(service => service.id)
+        services: this.addedServices.map(service => service.id),
+        paid: this.paid
       }
       console.log('данные для сохранения: ', orderData)
       const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -410,44 +412,56 @@ export default {
     },
 
     async mounted() {
+        this.paid = this.orderToEdit.paid
+        //события для ресайза текстогого поля
+        document.querySelectorAll('textarea').forEach((element) => {
+            element.addEventListener('input', this.autoResize);
+        });
 
-    //события для ресайза текстогого поля
-    document.querySelectorAll('textarea').forEach((element) => {
-        element.addEventListener('input', this.autoResize);
-    });
-
-    this.addedServices = this.alreadyAddedServices
-    this.selectedSpecialization = this.orderToEdit.specialization_id
-    //this.selectedClient = this.orderToEdit
-    this.materials = this.orderToEdit.materials
-    this.comments = this.orderToEdit.comments
-    //this.selectedClient = this.orderToEdit.client_id
-     await axios.get(this.$Url + '/api/getSpecialization')
-        .then(response => {
-          this.specializations = response.data
-          console.log('список специализаций: ', this.specializations )
-        })
-        .catch(eError => {
-          console.error(eError.message)
-        })
-    //this.selectedClient = this.orderToEdit.client_id
-    //console.log('orderToEdit: ', this.orderToEdit)
-    this.loadClients()
-    console.log('clients: ', this.clients)
-    //console.log("client_id: ", this.orderToEdit)
-    //await this.selectedClient = this.clients.find(client => client.id === this.orderToEdit.client_id)
-    this.loadCategories()
-    this.loadMaterialsByOrder()
-    this.userOrderNumber = this.orderToEdit.user_order_number
-    console.log("выбранный клиент: ", this.selectedClient)
-    //this.getNameClient()
-  }
+        this.addedServices = this.alreadyAddedServices
+        this.selectedSpecialization = this.orderToEdit.specialization_id
+        //this.selectedClient = this.orderToEdit
+        this.materials = this.orderToEdit.materials
+        this.comments = this.orderToEdit.comments
+        //this.selectedClient = this.orderToEdit.client_id
+        await axios.get(this.$Url + '/api/getSpecialization')
+            .then(response => {
+            this.specializations = response.data
+            console.log('список специализаций: ', this.specializations )
+            })
+            .catch(eError => {
+                console.error(eError.message)
+            })
+        //this.selectedClient = this.orderToEdit.client_id
+        //console.log('orderToEdit: ', this.orderToEdit)
+        this.loadClients()
+        console.log('clients: ', this.clients)
+        //console.log("client_id: ", this.orderToEdit)
+        //await this.selectedClient = this.clients.find(client => client.id === this.orderToEdit.client_id)
+        this.loadCategories()
+        this.loadMaterialsByOrder()
+        this.userOrderNumber = this.orderToEdit.user_order_number
+        console.log("выбранный клиент: ", this.selectedClient)
+    }
 }
 
 </script>
 
 <template>
   <h5> редактор ордера</h5>
+
+    <div class="form-check form-switch">
+        <input class="form-check-input"
+               type="checkbox"
+               role="switch"
+               id="flexSwitchCheckChecked"
+               v-model="paid"
+        >
+        <label class="form-check-label" for="flexSwitchCheckChecked">
+            {{ paid ? 'Оплачено' : 'Не оплачено' }}
+        </label>
+    </div>
+
   <div>
     <div>
 <!--      <select v-model="selectedSpecialization" @change="handleSpecializationChange" class="w-auto">-->

@@ -75,6 +75,7 @@ class OrderRepository extends Controller
         $order->total_amount = (int)$data['totalAmount'];
         $order->materials = $data['materials'];
         $order->comments = $data['comments'];
+        $order->paid = $data['paid'];
         $order->save();
 
         if (isset($data['servicesId']) && is_array($data['servicesId'])) {
@@ -108,7 +109,9 @@ class OrderRepository extends Controller
                                 $materials,
                                 $comments,
                                 $servicesData,
-                                $total_amount)
+                                $total_amount,
+                                $paid,
+                        )
     {
         $order = Order::find($orderId);
         $order->client_id = $clientId;
@@ -117,6 +120,7 @@ class OrderRepository extends Controller
         $order->user_order_number = $user_order_number;
         //$order->materials = $materials;
         $order->comments = $comments;
+        $order->paid = $paid;
         $order->services()->sync($servicesData);
         $order->save();
 
