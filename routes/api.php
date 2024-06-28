@@ -9,6 +9,7 @@ use App\Http\Controllers\SpecializationController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MaterialController;
+use App\Http\Controllers\EquipmentModelController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -52,6 +53,10 @@ Route::post('/add_client', [ClientController::class, 'addNew']);
 Route::post('/edit_client', [ClientController::class, 'edit']);
 Route::post('/delete_client', [ClientController::class, 'delete']);
 
+Route::get('get_equipment_models/{specializationId}', [EquipmentModelController::class, 'getBySpecialization']);
+Route::post('/add_equipment_model', [EquipmentModelController::class, 'addNew']);
+Route::post('/delete_equipment_model', [EquipmentModelController::class, 'delete']);
+Route::post('/edit_equipment_model', [EquipmentModelController::class, 'edit']);
 
 Route::get('/get_categories/{specializationId}', [CategoryController::class, 'getBySpecialization']);
 Route::post('/add_category', [CategoryController::class, 'addNew']);

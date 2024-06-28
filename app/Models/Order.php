@@ -23,6 +23,10 @@ class Order extends Model
         return $this->belongsTo(Client::class);
     }
 
+    public function equipmentModels(){
+        return $this->belongsTo(EquipmentModel::class);
+    }
+
     //связь с таблицей услуг (многие ко многим)
     public function services()
     {

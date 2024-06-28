@@ -19,6 +19,11 @@ class Specialization extends Model
         return $this->hasMany(Client::class, 'specialization_id');
     }
 
+    public function equipmentModels()
+    {
+        return $this->hasMany(EquipmentModel::class, 'specialization_id');
+    }
+
     public function categories()
     {
         return $this->hasMany(Category::class, 'specialization_id');

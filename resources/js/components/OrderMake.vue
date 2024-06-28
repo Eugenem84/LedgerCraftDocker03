@@ -9,9 +9,11 @@ import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import NewClientModal from "./ModalWindows/NewClientModal.vue";
 import NewCategoryModal from "./ModalWindows/NewCategoryModal.vue";
 import VSelect from "vue3-select";
+import NewEquipmentModelModal from "./ModalWindows/NewEquipmentModelModal.vue";
 //import {isVisible} from "bootstrap/js/src/util/index.js";
 export default {
    components: {
+       NewEquipmentModelModal,
      NewClientModal,
      NewSpecializationModal,
      NewServiceModal,
@@ -26,6 +28,7 @@ export default {
       //searchQuery: '',
       specializations: [],
       clients: [],
+      equipmentModels: [],
       categories: [],
       services: [],
       addedServices: [],
@@ -33,6 +36,7 @@ export default {
 
       selectedSpecialization: null,
       selectedClient: null,
+      selectedEquipmentModel: null,
       selectedCategory: null,
       userOrderNumber: null,
       selectedStatus: '',
@@ -169,11 +173,13 @@ export default {
       this.selectedClient = ''
       this.categories = []
       this.clients = []
+      this.selectedEquipmentModel = []
       console.log("services", this.services)
       if (this.selectedSpecialization === 'create_new_specialization'){
         this.openNewSpecializationModal()
       } else {
         this.loadClients()
+        this.loadEquipmentModels()
         this.loadCategories()
       }
       //this.loadCategories()
@@ -194,9 +200,18 @@ export default {
         this.selectedClient = this.clients[0]
     },
 
+      lastEquipmentModelAddedOn(){
+          this.selectedEquipmentModel = this.equipmentModels[0]
+      },
+
     async onClientAdded(){
       await this.loadClients()
       setTimeout(()  => { this.lastClientAddedOn()}, 1000)
+    },
+
+    async onEquipmentModelAdded(){
+       await this.loadEquipmentModels()
+       setTimeout(() => { this.lastEquipmentModelAddedOn()}, 1000)
     },
 
     handleClientAdded(newClient){
@@ -226,6 +241,18 @@ export default {
       }
     },
 
+      handleSelectEquipmentModelChange(value){
+          console.log('Выбрана опция: ', value)
+          if (value && value.isCreate){
+              console.log("открываем модальное окно создание модели: ")
+              let modal = new bootstrap.Modal(document.getElementById('newEquipmentModelModal'))
+              modal.show()
+          } else {
+              this.selectedEquipmentModel = value
+              console.log("выбранная модель", this.selectedEquipmentModel)
+          }
+      },
+
     loadCategories(){
       axios.get(this.$Url + `/api/get_categories/${this.selectedSpecialization}`)
           .then(response => {
@@ -250,9 +277,9 @@ export default {
             this.clients = response.data
             console.log("клиенты: ", this.clients)
             if (this.clients.length > 1) {
-                //this.clients.reverse()
+                this.clients.reverse()
             }
-            //this.clients.push({ id: null, name: 'Добавить клиента', isCreate: true})
+            this.clients.push({ id: null, name: 'Добавить клиента', isCreate: true})
             //this.selectedClient = this.clients[0]
             //console.log('список клиентов: ', this.clients)
             //console.log('выбранный клиент: ', this.selectedClient)
@@ -261,6 +288,26 @@ export default {
             console.error('Ошибка загрузки клиентов: ', error.message)
           })
     },
+
+
+      loadEquipmentModels(){
+          axios.get(this.$Url + `/api/get_equipment_models/${this.selectedSpecialization}`)
+              .then(response => {
+                  this.equipmentModels = response.data
+                  console.log("ответ по моделям", response.data)
+                  console.log("модели: ", this.equipmentModels)
+                  if (this.equipmentModels.length > 1) {
+                      this.equipmentModels.reverse()
+                  }
+                  this.equipmentModels.push({ id: null, name: 'Добавить модель', isCreate: true})
+                  //this.selectedClient = this.clients[0]
+                  //console.log('список клиентов: ', this.clients)
+                  //console.log('выбранный клиент: ', this.selectedClient)
+              })
+              .catch(error => {
+                  console.error('Ошибка загрузки моделей: ', error.message)
+              })
+      },
 
     loadServicesByCategory(){
       axios.get(this.$Url + `/api/get_service/${this.selectedCategory.id}`)
@@ -444,6 +491,7 @@ export default {
               this.selectedSpecialization = this.specializations[0].id
               console.log('выбрана специализация: ' , this.selectedSpecialization)
               this.loadClients()
+              this.loadEquipmentModels()
               this.loadCategories()
               //this.loadServicesByCategory()
           }
@@ -543,6 +591,50 @@ export default {
               </button>
 
           </div>
+
+          <div class="d-flex">
+              <div class="col-11">
+                  <VSelect :value="selectedEquipmentModel"
+                           v-model="selectedEquipmentModel"
+                           :options="equipmentModels"
+                           label="name"
+                           placeholder="выберите модель..."
+                           @update:modelValue="handleSelectEquipmentModelChange"
+                           @open="adjustDropdownHeight"
+                           ref="vSelect"
+                           class="limited-height"
+                  >
+                      <template #no-options="{ search, noResults }">
+                          <div class="no-options">
+                              <span>нет результатов...</span>
+                              <span>
+                          <button type="button"
+                                  class="btn btn-primary"
+                                  data-bs-target="#newEquipmentModelModal"
+                                  data-bs-toggle="modal" >
+                              Добавить модель
+                          </button>
+                      </span>
+                          </div>
+                      </template>
+                      <template #append-item-custom>
+                          <div class="v-select__append-item">
+                              <span>Этот шаблон всегда виден</span>
+                          </div>
+                      </template>
+                  </VSelect>
+              </div>
+
+              <button class="btn btn-primary"
+                      type="button"
+                      data-bs-target="#newEquipmentModelModal"
+                      data-bs-toggle="modal"
+              >
+                  +
+              </button>
+
+          </div>
+
 
           <VSelect :options="statusOptions"
                    v-model="selectedStatus"
@@ -920,6 +1012,11 @@ export default {
       <NewClientModal :selected-specialization="selectedSpecialization"
                       ref="newClientModal"
                       @client_added="onClientAdded"
+      />
+
+      <NewEquipmentModelModal :selected-specialization="selectedSpecialization"
+                              ref="newEquipmentModelModal"
+                              @equipment_model_added="onEquipmentModelAdded"
       />
 
       <NewCategoryModal :selectedSpecialization="selectedSpecialization"
