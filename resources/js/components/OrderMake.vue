@@ -176,6 +176,7 @@ export default {
         this.loadClients()
         this.loadCategories()
       }
+      //this.loadCategories()
       console.log('выбрана специализация: ', this.selectedSpecialization)
     },
 
@@ -232,8 +233,10 @@ export default {
             console.log('список категорий: ', this.categories)
             if (this.categories.length > 0) {
                 //this.selectedCategory = this.categories[0]
-                console.log("выбрана категория: ", this.selectedCategory)
-                this.loadServicesByCategory()
+                //console.log("выбрана категория: ", this.selectedCategory)
+                //this.loadServicesByCategory()
+            } else {
+                console.log("нет категорий")
             }
           })
           .catch(error => {
@@ -245,11 +248,14 @@ export default {
       axios.get(this.$Url + `/api/get_clients/${this.selectedSpecialization}`)
           .then(response => {
             this.clients = response.data
-            this.clients.reverse()
-            this.clients.push({ id: null, name: 'Добавить клиента', isCreate: true})
+            console.log("клиенты: ", this.clients)
+            if (this.clients.length > 1) {
+                //this.clients.reverse()
+            }
+            //this.clients.push({ id: null, name: 'Добавить клиента', isCreate: true})
             //this.selectedClient = this.clients[0]
-            console.log('список клиентов: ', this.clients)
-            console.log('выбранный клиент: ', this.selectedClient)
+            //console.log('список клиентов: ', this.clients)
+            //console.log('выбранный клиент: ', this.selectedClient)
           })
           .catch(error => {
             console.error('Ошибка загрузки клиентов: ', error.message)

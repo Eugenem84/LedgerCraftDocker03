@@ -28,11 +28,11 @@ class ClientController extends Controller
     public function getBySpecialization($specializationId)
     {
         $clients = $this->clientRepository->getBySpecialization($specializationId);
-        if ($clients->isEmpty()){
-            return response()->json(['message' => 'У данной специализации нет клиентов']);
-        } else {
+//        if ($clients->isEmpty()){
+//            //return response()->json(['message' => 'У данной специализации нет клиентов']);
+//        } else {
             return response()->json($clients);
-        }
+//        }
     }
     public function addNew(Request $request)
     {
