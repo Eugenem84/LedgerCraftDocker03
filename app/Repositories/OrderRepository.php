@@ -72,6 +72,7 @@ class OrderRepository extends Controller
         $order->specialization_id = $data['specializationId'];
         $order->status = $data['status'];
         $order->user_id = $userId;
+        $order->model_id = $data['modelId'];
         $order->total_amount = (int)$data['totalAmount'];
         $order->materials = $data['materials'];
         $order->comments = $data['comments'];

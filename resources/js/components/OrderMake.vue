@@ -425,6 +425,7 @@ export default {
         userOrderNumber: this.userOrderNumber,
         specializationId: this.selectedSpecialization,
         status: this.selectedStatus.value,
+        modelId: this.selectedEquipmentModel.id,
         totalAmount: this.totalAmount,
         addedMaterials: this.addedMaterials,
         materials: this.materials,

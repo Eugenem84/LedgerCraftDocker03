@@ -355,6 +355,10 @@ export default {
           дата:
           {{ formatDate(this.selectedOrder.created_at) }}
         </div>
+        <div v-if="this.selectedOrder.model_id" class="col-md-4">
+            модель:
+            {{ this.selectedOrder.model_name }}
+        </div>
           <br>
 
       </div>

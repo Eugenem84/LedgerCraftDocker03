@@ -15,6 +15,8 @@ use function Laravel\Prompts\error;
 use App\Repositories\SpecializationRepository;
 use App\Repositories\ClientRepository;
 use App\Repositories\ServiceRepository;
+use App\Repositories\EquipmentModelRepository;
+
 
 class OrderController extends Controller
 {
@@ -23,15 +25,19 @@ class OrderController extends Controller
     protected $clientReposutory;
     protected $serviceRepository;
 
+    protected $equipmentModelRepository;
+
     public function __construct(OrderRepository $orderRepository,
                                 SpecializationRepository $specializationRepository,
                                 ClientRepository $clientRepository,
-                                ServiceRepository $serviceRepository)
+                                ServiceRepository $serviceRepository,
+                                EquipmentModelRepository $equipmentModelRepository)
     {
         $this->orderRepository = $orderRepository;
         $this->specializationRepository = $specializationRepository;
         $this->clientReposutory = $clientRepository;
         $this->serviceRepository = $serviceRepository;
+        $this->equipmentModelRepository = $equipmentModelRepository;
     }
 
     public function switchPaidStatus(Request $request, $id)
@@ -101,12 +107,14 @@ class OrderController extends Controller
         foreach ($orders as $order) {
             $clientId = $order->client_id;
             $specializationId = $order->specialization_id;
+            $modelId = $order->model_id;
 
             //$order->status = json_decode($order->status, true);
 
             $clientName = $this->clientReposutory->getName($clientId);
             $clientPhone = $this->clientReposutory->getPhone($clientId);
             $specializationName = $this->specializationRepository->getName($specializationId);
+            $modelName = $this->equipmentModelRepository->getName($modelId);
 
             if($specializationName){
                 $order->specialization_name = $specializationName;
@@ -125,6 +133,13 @@ class OrderController extends Controller
             }else{
                 $order->client_phone = 'no phone';
             }
+
+            if($modelName){
+                $order->model_name = $modelName;
+            }else{
+                $order->model_name = 'no name';
+            }
+
         }
         if ($orders) {
             return response()->json($orders);
@@ -156,7 +171,7 @@ class OrderController extends Controller
 
     public function saveOrder(Request $request)
     {
-        $data = $request->only(['clientId', 'userOrderNumber', 'specializationId', 'status', 'totalAmount', 'materials', 'comments', 'addedMaterials', 'paid']);
+        $data = $request->only(['clientId', 'userOrderNumber', 'specializationId', 'status', 'totalAmount', 'modelId' , 'materials', 'comments', 'addedMaterials', 'paid']);
         $data['servicesId'] = $request->input('servicesId');
         $order = $this->orderRepository->saveOrder($data);
         if ($order){
