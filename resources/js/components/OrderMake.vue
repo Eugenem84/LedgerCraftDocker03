@@ -13,7 +13,7 @@ import NewEquipmentModelModal from "./ModalWindows/NewEquipmentModelModal.vue";
 //import {isVisible} from "bootstrap/js/src/util/index.js";
 export default {
    components: {
-       NewEquipmentModelModal,
+     NewEquipmentModelModal,
      NewClientModal,
      NewSpecializationModal,
      NewServiceModal,

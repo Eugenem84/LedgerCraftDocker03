@@ -10,10 +10,13 @@ import NewServiceModal from "./ModalWindows/NewServiceModal.vue";
 import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import NewClientModal from "./ModalWindows/NewClientModal.vue";
 import NewCategoryModal from "./ModalWindows/NewCategoryModal.vue";
+import NewEquipmentModelModal from "./ModalWindows/NewEquipmentModelModal.vue";
+
 import {th} from "vuetify/locale";
 export default {
   props: ['orderToEdit' , 'alreadyAddedServices'],
   components: {
+    NewEquipmentModelModal,
     VSelect,
     NewClientModal,
     NewSpecializationModal,
@@ -32,8 +35,10 @@ export default {
       addedServices: [],
       materials: [],
       addedMaterials: [],
+      equipmentModels: [],
 
-      paid: '',
+
+        paid: '',
       userOrderNumber: '',
       totalServicePrice: 0,
       totalMaterialPrice: 0,
@@ -49,6 +54,8 @@ export default {
       selectedClient: null,
       selectedCategory: null,
       comments: null,
+      selectedEquipmentModel: null,
+
 
       alertVisible: false,
       alertVariant: 'success',
@@ -210,7 +217,7 @@ export default {
     },
 
     loadClients(){
-      console.log('loadClients')
+      console.log('loading clients...')
       axios.get(this.$Url + `/api/get_clients/${this.selectedSpecialization}`)
           .then(response => {
             this.clients = response.data
@@ -219,6 +226,19 @@ export default {
           })
           .catch(error => {
             console.error('Ошибка загрузки клиентов: ', error.message)
+          })
+    },
+
+    loadEquipmentModels(){
+      console.log('loading equipment models...')
+      axios.get(this.$Url + `/api/get_equipment_models/${this.selectedSpecialization}`)
+          .then(response => {
+              this.equipmentModels = response.data
+              console.log('список моделей: ', this.equipmentModels)
+              this.selectedEquipmentModel = this.equipmentModels.find(equipmentModel => equipmentModel.id === this.orderToEdit.model_id)
+          })
+          .catch(error => {
+              console.log('Ошибка загрузки моделей: ', error.message)
           })
     },
 
@@ -364,6 +384,7 @@ export default {
       const orderData = {
         id: this.orderToEdit.id,
         client_id: this.selectedClient.id,
+        model_id: this.selectedEquipmentModel.id,
         specialization_id: this.selectedSpecialization,
         user_order_number: this.userOrderNumber,
         total_amount: this.totalAmount,
@@ -435,7 +456,9 @@ export default {
         //this.selectedClient = this.orderToEdit.client_id
         //console.log('orderToEdit: ', this.orderToEdit)
         this.loadClients()
+        this.loadEquipmentModels()
         console.log('clients: ', this.clients)
+        console.log('equipmentModels:', this.equipmentModels)
         //console.log("client_id: ", this.orderToEdit)
         //await this.selectedClient = this.clients.find(client => client.id === this.orderToEdit.client_id)
         this.loadCategories()
@@ -529,26 +552,50 @@ export default {
                 +
             </button>
         </div>
-
     </div>
 
-<!--      <div>-->
-<!--            <div>-->
-<!--              <select v-model="selectedCategory" @change="handleCategoriesChange" class="w-auto" >-->
-<!--                <option v-for="category in categories"-->
-<!--                                      :key="category.id" :value="category.id">-->
-<!--                  {{category.category_name}}-->
-<!--                </option>-->
+        <div class="d-flex">
+            <div class="col-11">
+                <VSelect :value="selectedEquipmentModel"
+                         v-model="selectedEquipmentModel"
+                         :options="equipmentModels"
+                         label="name"
+                         placeholder="выберите модель..."
+                         @update:modelValue="handleSelectEquipmentModelChange"
+                         @open="adjustDropdownHeight"
+                         ref="vSelect"
+                         class="limited-height"
+                >
+                    <template #no-options="{ search, noResults }">
+                        <div class="no-options">
+                            <span>нет результатов...</span>
+                            <span>
+                          <button type="button"
+                                  class="btn btn-primary"
+                                  data-bs-target="#newEquipmentModelModal"
+                                  data-bs-toggle="modal" >
+                              Добавить модель
+                          </button>
+                      </span>
+                        </div>
+                    </template>
+                    <template #append-item-custom>
+                        <div class="v-select__append-item">
+                            <span>Этот шаблон всегда виден</span>
+                        </div>
+                    </template>
+                </VSelect>
+            </div>
 
-<!--                <option v-if="selectedSpecialization" value="create_new_category">-->
-<!--                  создать новую категорию-->
-<!--                </option>-->
+            <button class="btn btn-primary"
+                    type="button"
+                    data-bs-target="#newEquipmentModelModal"
+                    data-bs-toggle="modal"
+            >
+                +
+            </button>
 
-<!--              </select>-->
-<!--            </div>-->
-
-<!--      </div>-->
-
+    </div>
 
     </div>
 
@@ -847,6 +894,11 @@ export default {
         <NewClientModal :selected-specialization="selectedSpecialization"
                         ref="newClientModal"
                         @client-added="loadClients"
+        />
+
+        <NewEquipmentModelModal :selected-specialization="selectedSpecialization"
+                                ref="newEquipmentModelModal"
+                                @equipmentModel-added="loadEquipmentModels"
         />
 
         <NewCategoryModal :selected-specialization="selectedSpecialization"

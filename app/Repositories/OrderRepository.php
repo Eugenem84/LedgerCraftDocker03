@@ -105,6 +105,7 @@ class OrderRepository extends Controller
 
     public function updateOrder($orderId,
                                 $clientId,
+                                $modelId,
                                 $specializationId,
                                 $user_order_number,
                                 $materials,
@@ -116,6 +117,7 @@ class OrderRepository extends Controller
     {
         $order = Order::find($orderId);
         $order->client_id = $clientId;
+        $order->model_id = $modelId;
         $order->specialization_id = $specializationId;
         $order->total_amount = (int)$total_amount;
         $order->user_order_number = $user_order_number;

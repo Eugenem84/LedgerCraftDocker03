@@ -191,6 +191,7 @@ class OrderController extends Controller
         $this->orderRepository->updateOrder(
             $request->input('id'),
             $request->input('client_id'),
+            $request->input('model_id'),
             $request->input('specialization_id'),
             $request->input('user_order_number'),
             $request->input('materials'),
