@@ -42,4 +42,12 @@ class Order extends Model
     {
         return $this->hasMany(Material::class);
     }
+
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'order_product')
+                    ->withPivot('sale_price','quantity')
+                    ->using(OrderProduct::class)
+                    ->withTimestamps();
+    }
 }
