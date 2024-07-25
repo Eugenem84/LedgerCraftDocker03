@@ -321,38 +321,37 @@ export default {
           -
       </button>
     </div>
-    <br>
-    <div class="d-flex">
-      <select v-model="selectedCategory" class="form-select w-auto" @change="handleCategoryChange">
+<!--    <div class="d-flex">-->
 
-        <option v-for="category in categories"
-                              :key="category.id" :value="category.id">
-          {{ category.category_name }}
-        </option>
+<!--      <select v-model="selectedCategory" class="form-select w-auto" @change="handleCategoryChange">-->
+<!--        <option v-for="category in categories"-->
+<!--                              :key="category.id" :value="category.id">-->
+<!--          {{ category.category_name }}-->
+<!--        </option>-->
+<!--      </select>-->
+<!--      <button class="btn btn-primary"-->
+<!--              @click="openNewCategoryModal()"-->
+<!--              data-bs-toggle="modal"-->
+<!--              data-bs-target="#newCategoryModal"-->
+<!--      >-->
+<!--          +-->
+<!--      </button>-->
+<!--      <button class="btn btn-secondary"-->
+<!--              @click="openEditCategoryModal(selectedCategory.id, selectedCategory.category_name)"-->
+<!--              data-bs-toggle="modal"-->
+<!--              data-bs-target="#editCategoryModal"-->
+<!--      >-->
+<!--          редактировать-->
+<!--      </button>-->
+<!--      <button class="btn btn-danger"-->
+<!--              @click="openDeleteCategoryModal()"-->
+<!--              data-bs-toggle="modal"-->
+<!--              data-bs-target="#deleteCategoryModal"-->
+<!--      >-->
+<!--          - -->
+<!--      </button>-->
 
-      </select>
-      <button class="btn btn-primary"
-              @click="openNewCategoryModal()"
-              data-bs-toggle="modal"
-              data-bs-target="#newCategoryModal"
-      >
-          +
-      </button>
-      <button class="btn btn-secondary"
-              @click="openEditCategoryModal(selectedCategory.id, selectedCategory.category_name)"
-              data-bs-toggle="modal"
-              data-bs-target="#editCategoryModal"
-      >
-          редактировать
-      </button>
-      <button class="btn btn-danger"
-              @click="openDeleteCategoryModal()"
-              data-bs-toggle="modal"
-              data-bs-target="#deleteCategoryModal"
-      >
-          -
-      </button>
-    </div>
+<!--    </div>-->
 
     <div class="container">
         <ul class="nav nav-tabs" role="tablist">
@@ -362,11 +361,45 @@ export default {
             <li class="nav-item">
                 <a class="nav-link" href="#clientChoice" role="tab" data-bs-toggle="tab">КЛИЕНТЫ</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#store" role="tab" data-bs-toggle="tab">СКЛАД</a>
+            </li>
         </ul>
     </div>
 
     <div class="tab-content">
         <div class="tab-pane show active" id="serviceChoice">
+
+            <div class="d-flex" style="margin: 5px">
+                <select v-model="selectedCategory" class="form-select w-auto" @change="handleCategoryChange">
+                    <option v-for="category in categories"
+                            :key="category.id" :value="category.id">
+                        {{ category.category_name }}
+                    </option>
+                </select>
+                <button class="btn btn-primary"
+                        @click="openNewCategoryModal()"
+                        data-bs-toggle="modal"
+                        data-bs-target="#newCategoryModal"
+                >
+                    +
+                </button>
+                <button class="btn btn-secondary"
+                        @click="openEditCategoryModal(selectedCategory.id, selectedCategory.category_name)"
+                        data-bs-toggle="modal"
+                        data-bs-target="#editCategoryModal"
+                >
+                    редактировать
+                </button>
+                <button class="btn btn-danger"
+                        @click="openDeleteCategoryModal()"
+                        data-bs-toggle="modal"
+                        data-bs-target="#deleteCategoryModal"
+                >
+                    -
+                </button>
+            </div>
+
             <div id="serviceItem"
                  v-for="service in services"
                  :key="service.id"

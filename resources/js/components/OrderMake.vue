@@ -469,7 +469,7 @@ export default {
 
   mounted() {
        this.selectedStatus = this.statusOptions[2]
-       console.log(this.$Url)
+       console.log("URL: ", this.$Url)
       //console.log('cookie: ', document.cookie)
       //console.log('laravel-session cookie: ',document.cookie.includes('laravel_session'));
       const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
