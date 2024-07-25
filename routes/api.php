@@ -8,6 +8,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SpecializationController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\EquipmentModelController;
 /*
@@ -62,6 +63,11 @@ Route::get('/get_categories/{specializationId}', [CategoryController::class, 'ge
 Route::post('/add_category', [CategoryController::class, 'addNew']);
 Route::post('/delete_category', [CategoryController::class, 'delete']);
 Route::post('/edit_category', [CategoryController::class, 'edit']);
+
+Route::get('/get_product_categories/{specializationId}', [ProductCategoryController::class, 'getBySpecialization']);
+Route::post('/add__product_category', [ProductCategoryController::class, 'addNew']);
+Route::post('/delete_product_category', [ProductCategoryController::class, 'delete']);
+Route::post('/edit_product_category', [ProductCategoryController::class, 'edit']);
 
 
 //Route::get('/get_all_orders', [OrderController::class, 'getAll']);

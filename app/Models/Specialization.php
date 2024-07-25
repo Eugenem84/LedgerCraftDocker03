@@ -33,4 +33,9 @@ class Specialization extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function storeCategories()
+    {
+        return $this->hasMany(ProductCategory::class, 'specialization_id');
+    }
 }
