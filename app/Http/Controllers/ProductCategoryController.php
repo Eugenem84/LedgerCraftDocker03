@@ -12,7 +12,7 @@ class ProductCategoryController extends Controller
 
     public function __construct(ProductCategoryRepository $productCategoryRepository)
     {
-        $this->storeCategoryRepository = $productCategoryRepository;
+        $this->productCategoryRepository = $productCategoryRepository;
     }
 
     public function getBySpecialization($specializationId)
@@ -45,7 +45,7 @@ class ProductCategoryController extends Controller
     }
 
     public function delete(Request $request){
-        $id = $request->input('categoryId');
+        $id = $request->input('productCategoryId');
         $result = $this->productCategoryRepository->delete($id);
         if ($result) {
             return response()->json(['message' => 'Категория удалена'], 200);

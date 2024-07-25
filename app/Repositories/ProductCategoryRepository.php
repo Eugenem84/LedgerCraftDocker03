@@ -16,18 +16,19 @@ class ProductCategoryRepository extends Controller
 
     public function addNew($newName, $specializationId)
     {
-        $storeCategory = new ProductCategory();
-        $storeCategory->category_name = $newName;
-        $storeCategory->specialization_id = $specializationId;
-        $storeCategory->save();
+        $productCategory = new ProductCategory();
+        $productCategory->name = $newName;
+        $productCategory->specialization_id = $specializationId;
+        $productCategory->save();
+        return $productCategory;
     }
 
     public function delete($id)
     {
-        $storeCategory = ProductCategory::find($id);
-        if ($storeCategory){
-            $storeCategory->products()->delete();
-            $storeCategory->delete();
+        $productCategory = ProductCategory::find($id);
+        if ($productCategory){
+            //$productCategory->products()->delete();
+            $productCategory->delete();
             return true;
         } else {
             return false;

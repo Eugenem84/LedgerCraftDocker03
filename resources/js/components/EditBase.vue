@@ -12,6 +12,11 @@ import DeleteCategoryModal from "./ModalWindows/DeleteCategoryModal.vue";
 import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import EditSpecializationModal from "./ModalWindows/EditSpecializationModal.vue";
 import DeleteSpecializationModal from "./ModalWindows/DeleteSpecializationModal.vue";
+
+import NewProductCategoryModal from "./ModalWindows/NewProductCategoryModal.vue";
+import DeleteProductCategoryModal from "./ModalWindows/DeleteProductCategoryModal.vue";
+import EditProductCategoryModal from "./ModalWindows/EditProductCategoryModal.vue";
+
 //import {BIconTrash} from "bootstrap-vue"
 //import {BIconPencilSquare} from "bootstrap-vue";
 //import {BAlert} from "bootstrap-vue";
@@ -34,6 +39,10 @@ export default {
     EditCategoryModal,
     DeleteCategoryModal,
 
+    NewProductCategoryModal,
+    EditProductCategoryModal,
+    DeleteProductCategoryModal,
+
     NewSpecializationModal,
     EditSpecializationModal,
     DeleteSpecializationModal,
@@ -44,14 +53,14 @@ export default {
       specializations: [],
       clients: [],
       categories: [],
-      storeCategories: [],
+      productCategories: [],
       services: [],
 
       selectedSpecializations: '',
       selectedSpecializationName: '',
       selectedClients: '',
       selectedCategory: '',
-      selectedStoreCategory: '',
+      selectedProductCategory: '',
 
       isDeleteClientModalOpen: true,
       currentClientId: null,
@@ -127,6 +136,16 @@ export default {
       this.showAlert('success', 'категория удалена')
     },
 
+    handleProductCategoryAdded(){
+        this.loadProductCategories()
+        this.showAlert('success', 'категория добавлена')
+    },
+
+    handleProductCategoryDeleted(){
+      this.loadProductCategories()
+      this.showAlert('success', 'категория удалена')
+    },
+
     handleSpecializationAdded(){
       //тут нужна перезагрузка страницы
     },
@@ -184,6 +203,20 @@ export default {
           })
     },
 
+    loadProductCategories(){
+        axios.get(this.$Url + `/api/get_product_categories/${this.selectedSpecializations}`)
+            .then(response => {
+                this.productCategories = response.data
+                if (this.productCategories.length > 0){
+                    this.selectedProductCategory = this.productCategories[0].id
+                    //this.loadProductsByCategory()
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка загрузки категорий: ', error.message)
+            })
+    },
+
     loadServicesByCategory() {
       axios.get(this.$Url + `/api/get_service/${this.selectedCategory}`)
           .then(response => {
@@ -225,6 +258,7 @@ export default {
       this.$refs.newCategoryModal.open(this.selectedSpecializations)
     },
 
+
     openEditCategoryModal(){
       const currentCategory = this.categories.find(cat => cat.id === this.selectedCategory)
       this.$refs.editCategoryModal.open(this.selectedCategory, currentCategory.category_name)
@@ -233,6 +267,21 @@ export default {
     openDeleteCategoryModal(){
       console.log(this.selectedCategory)
       this.$refs.deleteCategoryModal.open(this.selectedCategory)
+    },
+
+    openNewProductCategoryModal() {
+        console.log('выбрана специализация: ', this.selectedSpecializations)
+        this.$refs.newProductCategoryModal.open(this.selectedSpecializations)
+    },
+
+    openEditProductCategoryModal(){
+        const currentProductCategory = this.productCategories.find(cat => cat.id === this.selectedProductCategory)
+        this.$refs.editProductCategoryModal.open(this.selectedProductCategory, currentProductCategory.name)
+    },
+
+    openDeleteProductCategoryModal(){
+        console.log('удаляем категорию: ',this.selectedProductCategory)
+        this.$refs.deleteProductCategoryModal.open(this.selectedProductCategory)
     },
 
     toggleClientsButtons(client){
@@ -275,6 +324,7 @@ export default {
           if (this.specializations.length > 0) {
               this.selectedSpecializations = this.specializations[0].id
               this.loadCategories()
+              this.loadProductCategories()
               this.loadClients()
           }
         })
@@ -420,30 +470,30 @@ export default {
         <div class="tab-pane show active" id="store">
 
             <div class="d-flex" style="margin: 5px">
-                <select v-model="selectedStoreCategory" class="form-select w-auto" @change="">
-                    <option v-for="storeCategory in storeCategories"
-                            :key="storeCategory.id" :value="storeCategory.id">
-                        {{ storeCategory.category_name }}
+                <select v-model="selectedProductCategory" class="form-select w-auto" @change="">
+                    <option v-for="productCategory in productCategories"
+                            :key="productCategory.id" :value="productCategory.id">
+                        {{ productCategory.name }}
                     </option>
                 </select>
                 <button class="btn btn-primary"
-                        @click="openNewCategoryModal()"
+                        @click="openNewProductCategoryModal()"
                         data-bs-toggle="modal"
-                        data-bs-target="#newCategoryModal"
+                        data-bs-target="#newProductCategoryModal"
                 >
                     +
                 </button>
                 <button class="btn btn-secondary"
-                        @click="openEditCategoryModal(selectedCategory.id, selectedCategory.category_name)"
+                        @click="openEditProductCategoryModal(selectedProductCategory.id, selectedProductCategory.name)"
                         data-bs-toggle="modal"
-                        data-bs-target="#editCategoryModal"
+                        data-bs-target="#editProductCategoryModal"
                 >
                     редактировать
                 </button>
                 <button class="btn btn-danger"
-                        @click="openDeleteCategoryModal()"
+                        @click="openDeleteProductCategoryModal()"
                         data-bs-toggle="modal"
-                        data-bs-target="#deleteCategoryModal"
+                        data-bs-target="#deleteProductCategoryModal"
                 >
                     -
                 </button>
@@ -549,6 +599,18 @@ export default {
                          @category-deleted="handleCategoryDeleted"
     />
 
+    <NewProductCategoryModal ref="newProductCategoryModal"
+                             :selectedSpecialization="selectedSpecializations"
+                             @product-category-added="handleProductCategoryAdded"
+    />
+
+    <EditProductCategoryModal ref="editProductCategoryModal"
+                              @prodact-category-edited="handleProductCategoryEdited"
+    />
+
+    <DeleteProductCategoryModal ref="deleteProductCategoryModal"
+                                @product-category-deleted="handleProductCategoryDeleted"
+    />
     <BAlert v-model="alertVisible" :variant="alertVariant" dismissible fade class="fixed-top">
       {{alertMessage}}
     </BAlert>

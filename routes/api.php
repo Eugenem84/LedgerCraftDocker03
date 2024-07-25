@@ -64,8 +64,9 @@ Route::post('/add_category', [CategoryController::class, 'addNew']);
 Route::post('/delete_category', [CategoryController::class, 'delete']);
 Route::post('/edit_category', [CategoryController::class, 'edit']);
 
+
 Route::get('/get_product_categories/{specializationId}', [ProductCategoryController::class, 'getBySpecialization']);
-Route::post('/add__product_category', [ProductCategoryController::class, 'addNew']);
+Route::post('/add_product_category', [ProductCategoryController::class, 'addNew']);
 Route::post('/delete_product_category', [ProductCategoryController::class, 'delete']);
 Route::post('/edit_product_category', [ProductCategoryController::class, 'edit']);
 
@@ -81,7 +82,6 @@ Route::put('update_paid_status/{id}', [OrderController::class, 'updatePadeStatus
 Route::put('switch_paid_status/{id}', [OrderController::class, 'switchPaidStatus']);
 
 Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'getMaterialsByOrder']);
-
 
 Route::get('/get_total_DWYM/{specializationId}', [StatisticController::class, 'getTotalDWMY']);
 Route::get('/get_top_services/{specializationId}', [StatisticController::class, 'getTopServicesBySpecialization']);
