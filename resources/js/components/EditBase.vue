@@ -55,6 +55,7 @@ export default {
       categories: [],
       productCategories: [],
       services: [],
+      productStocks: [],
 
       selectedSpecializations: '',
       selectedSpecializationName: '',
@@ -168,6 +169,14 @@ export default {
       }
     },
 
+    openNewStoreProductModal(){
+        //
+    },
+
+    openEditStoreProductModal(productId, currentProductName, currentServicePrice){
+      //
+    },
+
     openDeleteServiceModal(serviceId){
       console.log(serviceId)
       this.$refs.deleteServiceModal.open(serviceId)
@@ -177,6 +186,8 @@ export default {
       console.log('редактирование сервиса')
       this.$refs.editServiceModal.open(serviceId, currentServiceName, currentServicePrice)
     },
+
+
 
     loadClients() {
       axios.get(this.$Url + `/api/get_clients/${this.selectedSpecializations}`)
@@ -233,6 +244,10 @@ export default {
 
     openDeleteClientModal(clientId){
       this.$refs.deleteClientModal.open(clientId)
+    },
+
+    openDeleteStoreProductModal(productId){
+      this.$refs.deleteStoreProductModal.open(productId)
     },
 
     openEditClientModal(clientId, currentClientName, currentClientPhone){
@@ -296,6 +311,13 @@ export default {
           elem.isClicked = false
       })
       service.isClicked = !service.isClicked
+    },
+
+    toggleProductButtons(product){
+      this.products.forEach((elem) => {
+          elem.isClicked = false
+      })
+      product.isClicked = false
     },
 
     showAlert(variant, message){
@@ -497,6 +519,50 @@ export default {
                 >
                     -
                 </button>
+            </div>
+
+            <div id="productStocksItem"
+                 v-for="product in productStocks"
+                 :key="product.id"
+                 @click="toggleProductButtons(product)"
+                 :style="{border: product.isClicked ? '2px solid black' : 'white'}"
+            >
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>{{product.name }}</div>
+                    <div>{{product.buy_price}}</div>
+                    <div>{{product.base_sale_price}}</div>
+                </div>
+
+                <div id="productStocksEditButtons" v-if="product.isClicked">
+                    <button @click="openDeleteStoreProductModal(product.id)"
+                            class="btn btn-danger"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteStoreProductModal"
+                    >
+                        удалить
+                        <BIconTrash icon="trash"></BIconTrash>
+                    </button>
+                    <button @click="openEditStoreProductModal(product.id, product.name, product.price)"
+                            class="btn btn-secondary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editStoreProductModal"
+                    >
+                        редактировать
+                        <BIconPencilSquare icon="pencil-square"></BIconPencilSquare>
+                    </button>
+                </div>
+
+            </div>
+
+            <div id="productItem"
+                 data-bs-toggle="modal"
+                 data-bs-target="#newStoreProductModal"
+                 v-if="selectedProductCategory"
+                 v-on:click="openNewStoreProductModal"
+                 class="d-flex justify-content-center align-items-center"
+                 style="background-color: #2C6EFC; color: white; text-align: center"
+            >
+                добавить новый товар
             </div>
 
         </div>
