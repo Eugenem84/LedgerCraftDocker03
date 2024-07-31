@@ -228,6 +228,16 @@ export default {
             })
     },
 
+    loadProductsByCategory(){
+        axios.get(this.$Url + `/api/get_products/${this.selectedProductCategory.id}`)
+            .then(response => {
+                this.productStocks = response.data
+            })
+            .catch(error => {
+                console.log('ошибка загрузки товаров: ', error)
+            })
+    },
+
     loadServicesByCategory() {
       axios.get(this.$Url + `/api/get_service/${this.selectedCategory}`)
           .then(response => {

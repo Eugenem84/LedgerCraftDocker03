@@ -71,6 +71,9 @@ Route::post('/delete_product_category', [ProductCategoryController::class, 'dele
 Route::post('/edit_product_category', [ProductCategoryController::class, 'edit']);
 
 
+Route::get('/get_products/{productCategoryId}', [\App\Models\ProductStock::class, 'getBySpecialization']);
+
+
 //Route::get('/get_all_orders', [OrderController::class, 'getAll']);
 Route::get('/order/{orderId}', [OrderController::class, 'getDetails']);
 //Route::post('/save_order', [OrderController::class, 'saveOrder']);
