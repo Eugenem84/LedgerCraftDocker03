@@ -9,21 +9,18 @@ use App\Repositories\ProductStockRepository;
 use App\Repositories\ProductRepository;
 use Illuminate\Http\Request;
 
-class ProductStockController extends Controller
+class ProductController extends Controller
 {
-    protected $productStockRepository;
     protected $productRepository;
 
-    public function __construct(ProductStockRepository $productStockRepository, ProductRepository $productRepository)
+    public function __construct(ProductRepository $productRepository)
     {
-        $this->productStockRepository = $productStockRepository;
         $this->productRepository = $productRepository;
-
     }
 
     public function getByProductCategory($categoryId)
     {
-        $products = $this->productStockRepository->getByProductCategory($categoryId);
+        $products = $this->productRepository->getByProductCategory($categoryId);
         if ($products){
             return response()->json($products);
         } else {
@@ -37,11 +34,7 @@ class ProductStockController extends Controller
         $baseSalePrice= $request->input('base_sale_price');
         $productCategoryId= $request->input('product_category_id');
         $this->productRepository->addNew($name,$baseSalePrice,$productCategoryId);
-
-        $quantity= $request->input('quantity');
-        $supplier= $request->input('supplier');
-        $productCategoriesId= $request->input('product_category_id');
-        
+        return response()->json(['message' => $request]);
     }
 
 //    public function addNew(Request $request)

@@ -11,6 +11,8 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\EquipmentModelController;
+use App\Http\Controllers\ProductStockController;
+use App\Http\Controllers\ProductController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -64,14 +66,14 @@ Route::post('/add_category', [CategoryController::class, 'addNew']);
 Route::post('/delete_category', [CategoryController::class, 'delete']);
 Route::post('/edit_category', [CategoryController::class, 'edit']);
 
-
 Route::get('/get_product_categories/{specializationId}', [ProductCategoryController::class, 'getBySpecialization']);
 Route::post('/add_product_category', [ProductCategoryController::class, 'addNew']);
 Route::post('/delete_product_category', [ProductCategoryController::class, 'delete']);
 Route::post('/edit_product_category', [ProductCategoryController::class, 'edit']);
 
 
-Route::get('/get_products/{productCategoryId}', [\App\Models\ProductStock::class, 'getBySpecialization']);
+Route::get('/get_products/{productCategoryId}', [ProductStockController::class, 'getByProductCategory']);
+Route::post('/add_product', [ProductController::class, 'addNew']);
 
 
 //Route::get('/get_all_orders', [OrderController::class, 'getAll']);

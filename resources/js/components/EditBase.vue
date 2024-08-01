@@ -17,6 +17,8 @@ import NewProductCategoryModal from "./ModalWindows/NewProductCategoryModal.vue"
 import DeleteProductCategoryModal from "./ModalWindows/DeleteProductCategoryModal.vue";
 import EditProductCategoryModal from "./ModalWindows/EditProductCategoryModal.vue";
 
+import NewProductModal from "./ModalWindows/NewProductModal.vue";
+
 //import {BIconTrash} from "bootstrap-vue"
 //import {BIconPencilSquare} from "bootstrap-vue";
 //import {BAlert} from "bootstrap-vue";
@@ -42,6 +44,8 @@ export default {
     NewProductCategoryModal,
     EditProductCategoryModal,
     DeleteProductCategoryModal,
+
+    NewProductModal,
 
     NewSpecializationModal,
     EditSpecializationModal,
@@ -79,6 +83,7 @@ export default {
       } else {
         this.loadClients()
         this.loadCategories()
+        //this.loadProductsByCategory()
       }
     },
 
@@ -147,6 +152,10 @@ export default {
       this.showAlert('success', 'категория удалена')
     },
 
+    handleProductAdded(){
+      this.loadProductsByCategory()
+    },
+
     handleSpecializationAdded(){
       //тут нужна перезагрузка страницы
     },
@@ -170,7 +179,13 @@ export default {
     },
 
     openNewStoreProductModal(){
-        //
+        console.log('открываем модальное окно создания продукта, категории: ', this.selectedProductCategory)
+        if (this.$refs.newStoreProductModal) {
+            this.$refs.newStoreProductModal.selectedProductCategory = this.selectedProductCategory
+            this.$refs.newStoreProductModal.open(this.selectedProductCategory)
+        } else {
+            console.log('модальное окно еще не доступно')
+        }
     },
 
     openEditStoreProductModal(productId, currentProductName, currentServicePrice){
@@ -196,7 +211,7 @@ export default {
             this.clients.reverse()
           })
           .catch(error => {
-            console.error('ошибка загрузки клиентов: ', error.message)
+            console.error('ошибка загрузки клиентов: ', error.message.response.data.message)
           })
     },
 
@@ -229,8 +244,9 @@ export default {
     },
 
     loadProductsByCategory(){
-        axios.get(this.$Url + `/api/get_products/${this.selectedProductCategory.id}`)
+        axios.get(this.$Url + `/api/get_products/${this.selectedProductCategory}`)
             .then(response => {
+                console.log('товары: ', response.data)
                 this.productStocks = response.data
             })
             .catch(error => {
@@ -502,7 +518,7 @@ export default {
         <div class="tab-pane show active" id="store">
 
             <div class="d-flex" style="margin: 5px">
-                <select v-model="selectedProductCategory" class="form-select w-auto" @change="">
+                <select v-model="selectedProductCategory" class="form-select w-auto" @change="loadProductsByCategory">
                     <option v-for="productCategory in productCategories"
                             :key="productCategory.id" :value="productCategory.id">
                         {{ productCategory.name }}
@@ -566,13 +582,13 @@ export default {
 
             <div id="productItem"
                  data-bs-toggle="modal"
-                 data-bs-target="#newStoreProductModal"
+                 data-bs-target="#newProductModal"
                  v-if="selectedProductCategory"
-                 v-on:click="openNewStoreProductModal"
+                 v-on:click=""
                  class="d-flex justify-content-center align-items-center"
                  style="background-color: #2C6EFC; color: white; text-align: center"
             >
-                добавить новый товар
+                приходный ордер
             </div>
 
         </div>
@@ -687,6 +703,12 @@ export default {
     <DeleteProductCategoryModal ref="deleteProductCategoryModal"
                                 @product-category-deleted="handleProductCategoryDeleted"
     />
+
+    <NewProductModal ref="newProductModal"
+                          :selectedProductCategory="selectedProductCategory"
+                          @prodact_added="handleProductAdded"
+    />
+
     <BAlert v-model="alertVisible" :variant="alertVariant" dismissible fade class="fixed-top">
       {{alertMessage}}
     </BAlert>
