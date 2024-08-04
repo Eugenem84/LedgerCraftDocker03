@@ -1,4 +1,4 @@
-<script>
+<script xmlns="http://www.w3.org/1999/html">
 import axios from "axios"
 import NewServiceModal from "./ModalWindows/NewServiceModal.vue";
 import DeleteServiceModal from "./ModalWindows/DeleteServiceModal.vue";
@@ -340,10 +340,10 @@ export default {
     },
 
     toggleProductButtons(product){
-      this.products.forEach((elem) => {
+      this.productStocks.forEach((elem) => {
           elem.isClicked = false
       })
-      product.isClicked = false
+      product.isClicked = !product.isClicked
     },
 
     showAlert(variant, message){
@@ -556,7 +556,7 @@ export default {
                 <div class="d-flex justify-content-between align-items-center">
                     <div>{{product.name }}</div>
                     <div>{{product.buy_price}}</div>
-                    <div>{{product.base_sale_price}}</div>
+                    <div>{{product.base_sale_price}}р</div>
                 </div>
 
                 <div id="productStocksEditButtons" v-if="product.isClicked">
@@ -576,6 +576,13 @@ export default {
                         редактировать
                         <BIconPencilSquare icon="pencil-square"></BIconPencilSquare>
                     </button>
+                    <button @click="openArrivalProductModal(product.id, product.name, product.price)"
+                            class="btn btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#arrivalProductModal"
+                    >
+                        поступление
+                    </button>
                 </div>
 
             </div>
@@ -588,7 +595,7 @@ export default {
                  class="d-flex justify-content-center align-items-center"
                  style="background-color: #2C6EFC; color: white; text-align: center"
             >
-                приходный ордер
+                добавить товар
             </div>
 
         </div>

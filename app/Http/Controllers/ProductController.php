@@ -20,7 +20,7 @@ class ProductController extends Controller
 
     public function getByProductCategory($categoryId)
     {
-        $products = $this->productRepository->getByProductCategory($categoryId);
+        $products = $this->productRepository->getByCategory($categoryId);
         if ($products){
             return response()->json($products);
         } else {
