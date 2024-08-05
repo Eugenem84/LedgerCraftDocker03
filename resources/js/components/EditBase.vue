@@ -244,7 +244,7 @@ export default {
     },
 
     loadProductsByCategory(){
-        axios.get(this.$Url + `/api/get_products/${this.selectedProductCategory}`)
+        axios.get(this.$Url + `/api/get_product_stocks/${this.selectedProductCategory}`)
             .then(response => {
                 console.log('товары: ', response.data)
                 this.productStocks = response.data
@@ -555,7 +555,7 @@ export default {
             >
                 <div class="d-flex justify-content-between align-items-center">
                     <div>{{product.name }}</div>
-                    <div>{{product.buy_price}}</div>
+                    <div>x{{product.quantity}}</div>
                     <div>{{product.base_sale_price}}р</div>
                 </div>
 
