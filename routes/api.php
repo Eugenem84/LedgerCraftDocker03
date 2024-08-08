@@ -72,8 +72,12 @@ Route::post('/delete_product_category', [ProductCategoryController::class, 'dele
 Route::post('/edit_product_category', [ProductCategoryController::class, 'edit']);
 
 
-Route::get('/get_products/{productCategoryId}', [ProductStockController::class, 'getByProductCategory']);
+Route::get('/get_product_stocks/{productCategoryId}', [ProductStockController::class, 'getByProductCategory']);
+
+Route::get('/get_products/{productCategoryId}', [ProductController::class, 'getByProductCategory']);
 Route::post('/add_product', [ProductController::class, 'addNew']);
+Route::post('/delete_product', [ProductController::class, 'delete']);
+Route::post('/arrival_product', [ProductController::class, 'arrival']);
 
 
 //Route::get('/get_all_orders', [OrderController::class, 'getAll']);

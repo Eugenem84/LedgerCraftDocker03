@@ -39,9 +39,8 @@ class ProductStockController extends Controller
         $this->productRepository->addNew($name,$baseSalePrice,$productCategoryId);
 
         $quantity= $request->input('quantity');
-        $supplier= $request->input('supplier');
         $productCategoriesId= $request->input('product_category_id');
-        
+
     }
 
 //    public function addNew(Request $request)

@@ -18,6 +18,11 @@ import DeleteProductCategoryModal from "./ModalWindows/DeleteProductCategoryModa
 import EditProductCategoryModal from "./ModalWindows/EditProductCategoryModal.vue";
 
 import NewProductModal from "./ModalWindows/NewProductModal.vue";
+import DeleteStoreProductModal from "./ModalWindows/DeleteStoreProductModal.vue";
+
+
+import ArrivalProductModal from "./ModalWindows/ArrivalProductModal.vue";
+
 
 //import {BIconTrash} from "bootstrap-vue"
 //import {BIconPencilSquare} from "bootstrap-vue";
@@ -46,6 +51,11 @@ export default {
     DeleteProductCategoryModal,
 
     NewProductModal,
+    DeleteStoreProductModal,
+
+
+    ArrivalProductModal,
+
 
     NewSpecializationModal,
     EditSpecializationModal,
@@ -315,6 +325,11 @@ export default {
         this.$refs.newProductCategoryModal.open(this.selectedSpecializations)
     },
 
+    openArrivalProductModal(productId, productName, baseSalePrice, quantity){
+        console.log('поступление: ', productId, productName, baseSalePrice, quantity)
+        this.$refs.arrivalProductModal.open(productId, productName, baseSalePrice, quantity)
+    },
+
     openEditProductCategoryModal(){
         const currentProductCategory = this.productCategories.find(cat => cat.id === this.selectedProductCategory)
         this.$refs.editProductCategoryModal.open(this.selectedProductCategory, currentProductCategory.name)
@@ -576,7 +591,7 @@ export default {
                         редактировать
                         <BIconPencilSquare icon="pencil-square"></BIconPencilSquare>
                     </button>
-                    <button @click="openArrivalProductModal(product.id, product.name, product.price)"
+                    <button @click="openArrivalProductModal(product.id, product.name, product.base_sale_price, product.quantity)"
                             class="btn btn-primary"
                             data-bs-toggle="modal"
                             data-bs-target="#arrivalProductModal"
@@ -714,6 +729,14 @@ export default {
     <NewProductModal ref="newProductModal"
                           :selectedProductCategory="selectedProductCategory"
                           @prodact_added="handleProductAdded"
+    />
+
+    <DeleteStoreProductModal ref="deleteStoreProductModal"
+                             @product_deleted="handleProductDeleted"
+    />
+
+    <ArrivalProductModal ref="arrivalProductModal"
+                         @product_arrival_added="handleProductArrivalAdded"
     />
 
     <BAlert v-model="alertVisible" :variant="alertVariant" dismissible fade class="fixed-top">

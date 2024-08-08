@@ -6,7 +6,7 @@ export default {
   data(){
     return {
       isVisible: false,
-      serviceId: '',
+      productId: '',
     }
   },
   methods: {
@@ -45,7 +45,7 @@ export default {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="закрыть"></button>
                 </div>
                 <div class="modal-body">
-                    <div> Удалить товар? </div>
+                    <div> Удалить товар {{this.productId}}? </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>

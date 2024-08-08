@@ -25,6 +25,14 @@ class ProductRepository extends Controller
         $product->base_sale_price = $base_sale_price;
         $product->product_category_id = $productCategoryId;
         $product->save();
+        return $product->id;
+    }
+
+    public function arrivalUpdate($productId, $baseSalePrice)
+    {
+        $product = Product::find($productId);
+        $product->base_sale_price = $baseSalePrice;
+        $product->save();
     }
 
 //    public function delete($id)

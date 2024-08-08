@@ -21,6 +21,22 @@ class ProductStockRepository extends Controller
         ", ['product_categories_id' => $categoryId]);
     }
 
+    public function addNew($productId, $categoryCategoryId)
+    {
+        $productStock = new ProductStock();
+        $productStock->product_id = $productId;
+        $productStock->product_categories_id = $categoryCategoryId;
+        $productStock->quantity = 0;
+        $productStock->save();
+        return $productStock;
+    }
+
+    public function arrival($productId, $arrivalQuantity)
+    {
+        $productStock = ProductStock::where($productId);
+        $productStock->quantity += $arrivalQuantity;
+        $productStock->save();
+    }
 //    public function addNew($newName, $specializationId)
 //    {
 //        $productCategory = new ProductCategory();
