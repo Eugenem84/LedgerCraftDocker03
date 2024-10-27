@@ -51,9 +51,9 @@ class ProductController extends Controller
         $baseSalePrice = $request->input('base_sale_price');
         $byPrice = $request->input('by_price');
         $arrivalQuantity = $request->input('arrival_quantity');
-        $supplier = $request->input('supplier');
+        $supplier = $request->input('supplier', '');
 
-        $this->productRepository->arrivalUpdate($productId, $baseSalePrice);
+        //$this->productRepository->arrivalUpdate($productId, $baseSalePrice);
         $this->productStockRepository->arrival($productId, $arrivalQuantity);
         $this->incomingProductRepository->newIncome($productId, $arrivalQuantity, $byPrice, $supplier);
     }

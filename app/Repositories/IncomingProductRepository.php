@@ -16,14 +16,16 @@ class IncomingProductRepository extends Controller
         $this->incoming = $incomingProduct;
     }
 
-    public function newIncome($product_id, $supplier, $quantity, $buy_price)
+    public function newIncome($productId, $arrivalQuantity, $byPrice, $supplier)
     {
         $income = new IncomingProduct();
-        $income->product_id = $product_id;
+        $income->product_id = $productId;
         $income->supplier = $supplier;
-        $income->quantity = $quantity;
-        $income->by_price = $buy_price;
+        $income->quantity = $arrivalQuantity;
+        $income->by_price = $byPrice;
         $income->save();
+
+        return $income;
     }
 
 }

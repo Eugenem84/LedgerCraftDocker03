@@ -59,12 +59,14 @@ export default {
                     <form @submit.stop.prevent="arrivalProduct">
                                 <input class="form-control"
                                        v-model="byPrice"
+                                       type="number"
                                        placeholder="цена закупки"
                                        required
                                 >
                                 <input id="baseSalePriceInput"
                                        class="form-control"
                                        v-model="baseSalePrice"
+                                       type="number"
                                        placeholder="цена продажи"
                                        required
                                 >
