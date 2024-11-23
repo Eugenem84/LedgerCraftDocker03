@@ -33,9 +33,15 @@ class ProductStockRepository extends Controller
 
     public function arrival($productId, $arrivalQuantity)
     {
-        $productStock = ProductStock::where($productId);
+
+        $productStock = ProductStock::where('product_id', $productId)->first();
+        if (!$productStock) {
+            throw new \Exception("Product stock $productId not found");
+        }
+
         $productStock->quantity += $arrivalQuantity;
         $productStock->save();
+        return $productStock;
     }
 //    public function addNew($newName, $specializationId)
 //    {

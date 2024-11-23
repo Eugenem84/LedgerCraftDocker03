@@ -47,7 +47,14 @@ class ProductController extends Controller
 
     public function arrival(Request $request)
     {
+        \Log::info($request->all());
+
+        $validatedData = $request->validate([
+          'product_id' => 'required|integer|exists:product_stocks,product_id',
+        ]);
+
         $productId = $request->input('product_id');
+        \Log::info($productId);
         $baseSalePrice = $request->input('base_sale_price');
         $byPrice = $request->input('by_price');
         $arrivalQuantity = $request->input('arrival_quantity');
@@ -55,7 +62,7 @@ class ProductController extends Controller
 
         //$this->productRepository->arrivalUpdate($productId, $baseSalePrice);
         $this->productStockRepository->arrival($productId, $arrivalQuantity);
-        $this->incomingProductRepository->newIncome($productId, $arrivalQuantity, $byPrice, $supplier);
+        //$this->incomingProductRepository->newIncome($productId, $arrivalQuantity, $byPrice, $supplier);
     }
 
 //    public function addNew(Request $request)
