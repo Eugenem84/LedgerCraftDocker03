@@ -13,7 +13,7 @@
         "dotenv": "^16.4.5",
         "laravel-vite-plugin": "^1.0.0",
         "sass": "^1.56.1",
-        "vite": "^5.0.0",
+        "vite": "^5.2.11",
         "vue": "^3.2.37"
     },
     "dependencies": {
@@ -22,6 +22,6 @@
         "node": "^21.6.2",
         "vue-textarea-autosize": "^1.1.1",
         "vue3-select": "^0.1.2",
-        "vuetify": "^3.6.8"
+        "vuetify": "^3.6.0-beta.0.0"
     }
 }

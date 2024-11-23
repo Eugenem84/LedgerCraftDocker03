@@ -52,17 +52,17 @@ class ProductStockRepository extends Controller
 //        return $productCategory;
 //    }
 //
-//    public function delete($id)
-//    {
-//        $productCategory = ProductCategory::find($id);
-//        if ($productCategory){
-//            //$productCategory->products()->delete();
-//            $productCategory->delete();
-//            return true;
-//        } else {
-//            return false;
-//        }
-//    }
+    public function delete($product_id)
+    {
+        $productCategory = ProductCategory::where('product_id', $product_id)->first();
+        if ($productCategory){
+            //$productCategory->products()->delete();
+            $productCategory->delete();
+            return true;
+        } else {
+            return false;
+        }
+    }
 //
 //    public function edit($id, $newName)
 //    {

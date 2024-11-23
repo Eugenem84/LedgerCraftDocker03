@@ -32,6 +32,6 @@ services:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
     ports:
-      - "8101:5432"
+      - '5433:5432' # Проксируем порт 5432 из контейнера в локальную машину
     container_name: ledger_craft_db
 

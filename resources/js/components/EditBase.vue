@@ -574,7 +574,7 @@ export default {
                     <div>{{product.base_sale_price}}р</div>
                 </div>
 
-                <div id="productStocksEditButtons" v-if="product.isClicked">
+                <div id="productStocksDeleteButtons" v-if="product.isClicked">
                     <button @click="openDeleteStoreProductModal(product.id)"
                             class="btn btn-danger"
                             data-bs-toggle="modal"

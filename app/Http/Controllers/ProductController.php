@@ -84,14 +84,15 @@ class ProductController extends Controller
 //        }
 //    }
 //
-//    public function delete(Request $request){
-//        $id = $request->input('productCategoryId');
-//        $result = $this->productCategoryRepository->delete($id);
-//        if ($result) {
-//            return response()->json(['message' => 'Категория удалена'], 200);
-//        } else {
-//            return response()->json(['message' => 'Категория не найдена'], 404);
-//        }
-//    }
+    public function delete(Request $request){
+        $id = $request->input('productId');
+        $productResult = $this->productRepository->delete($id);
+        if ($productResult){
+            return response()->json(['message' => 'Товар удален'], 200);
+        } else {
+            return response()->json(['message' => 'Товар не найден'], 404);
+        }
+        $storeResult = $this->productStockRepository->delete($id);
+    }
 
 }

@@ -35,15 +35,15 @@ class ProductRepository extends Controller
         $product->save();
     }
 
-//    public function delete($id)
-//    {
-//        $service = Service::find($id);
-//        if ($service){
-//            $service->delete();
-//            return true;
-//        }
-//        return false;
-//    }
+    public function delete($id)
+    {
+        $service = Product::find($id);
+        if ($service){
+            $service->delete();
+            return true;
+        }
+        return false;
+    }
 //
 //    public function edit($id, $newName, $newPrice)
 //    {
