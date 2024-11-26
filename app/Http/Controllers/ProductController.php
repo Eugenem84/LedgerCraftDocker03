@@ -60,7 +60,7 @@ class ProductController extends Controller
         $arrivalQuantity = $request->input('arrival_quantity');
         $supplier = $request->input('supplier', '');
 
-        //$this->productRepository->arrivalUpdate($productId, $baseSalePrice);
+        $this->productRepository->arrivalUpdate($productId, $baseSalePrice);
         $this->productStockRepository->arrival($productId, $arrivalQuantity);
         //$this->incomingProductRepository->newIncome($productId, $arrivalQuantity, $byPrice, $supplier);
     }
