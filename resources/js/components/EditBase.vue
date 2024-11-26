@@ -166,9 +166,13 @@ export default {
       this.showAlert('success', 'категория удалена')
     },
 
-    handleProductAdded(newProduct){
-      //this.productStocks.push(newProduct)
+    handleProductAdded(){
       this.loadProductsByCategory()
+    },
+
+    handleProductDeleted(){
+        console.log('обновляем список продуктов')
+        this.loadProductsByCategory()
     },
 
     handleSpecializationAdded(){
