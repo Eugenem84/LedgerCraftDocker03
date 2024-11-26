@@ -249,7 +249,7 @@ export default {
     },
 
     loadProductCategories(){
-        axios.get(this.$Url + `/api/get_product_categories/${this.selectedSpecializations}`)
+        return axios.get(this.$Url + `/api/get_product_categories/${this.selectedSpecializations}`)
             .then(response => {
                 this.productCategories = response.data
                 if (this.productCategories.length > 0){
@@ -398,6 +398,11 @@ export default {
               this.selectedSpecializations = this.specializations[0].id
               this.loadCategories()
               this.loadProductCategories()
+                  .then(() => {
+                      this.loadProductsByCategory()
+                  })
+              //this.loadProductsByCategory()
+              this.loadEquipmentModels()
               this.loadClients()
           }
         })
