@@ -25,8 +25,9 @@ export default {
       console.log("данные на отправку" ,requestData)
       axios.post(this.$Url + '/api/add_product', requestData)
           .then(response => {
-            console.log(response.data.message)
-            this.$emit('product_added')
+            console.log(response.data)
+            const newProduct = response.data
+            this.$emit('product_added', newProduct)
             this.newProductNameInput = ''
           })
       this.isVisible = false

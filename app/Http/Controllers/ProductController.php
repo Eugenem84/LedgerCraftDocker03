@@ -41,8 +41,8 @@ class ProductController extends Controller
         $productCategoryId= $request->input('product_category_id');
         $productId = $this->productRepository->addNew($name,$baseSalePrice,$productCategoryId);
 
-        $this->productStockRepository->addNew($productId, $productCategoryId);
-        return response()->json(['message' => $request]);
+        $newProduct = $this->productStockRepository->addNew($productId, $productCategoryId);
+        return response()->json($newProduct, 201);
     }
 
     public function arrival(Request $request)

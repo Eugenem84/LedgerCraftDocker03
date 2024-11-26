@@ -29,8 +29,8 @@ class ProductCategoryController extends Controller
     {
         $newName = $request->input('name');
         $specializationId = $request->input('specialization_id');
-        $this->productCategoryRepository->addNew($newName, $specializationId);
-        return response()->json(['message' => $request]);
+        $newProductCategory = $this->productCategoryRepository->addNew($newName, $specializationId);
+        return response()->json($newProductCategory, 201);
     }
 
     public function edit(Request $request){

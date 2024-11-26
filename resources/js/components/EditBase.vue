@@ -152,9 +152,11 @@ export default {
       this.showAlert('success', 'категория удалена')
     },
 
-    handleProductCategoryAdded(){
+    handleProductCategoryAdded(newCategory){
         console.log('обновление списка категорий продуктов')
-        this.loadProductCategories()
+        this.productCategories.push(newCategory)
+        this.selectedProductCategory = newCategory.id
+        //this.loadProductCategories()
         this.showAlert('success', 'категория добавлена')
     },
 
@@ -164,7 +166,8 @@ export default {
       this.showAlert('success', 'категория удалена')
     },
 
-    handleProductAdded(){
+    handleProductAdded(newProduct){
+      //this.productStocks.push(newProduct)
       this.loadProductsByCategory()
     },
 
