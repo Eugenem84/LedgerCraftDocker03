@@ -175,6 +175,11 @@ export default {
         this.loadProductsByCategory()
     },
 
+    handleProductArrivalAdded(){
+        console.log('поступление товара')
+        this.loadProductsByCategory()
+    },
+
     handleSpecializationAdded(){
       //тут нужна перезагрузка страницы
     },
@@ -254,7 +259,6 @@ export default {
                 this.productCategories = response.data
                 if (this.productCategories.length > 0){
                     this.selectedProductCategory = this.productCategories[0].id
-                    //this.loadProductsByCategory()
                 }
             })
             .catch(error => {
