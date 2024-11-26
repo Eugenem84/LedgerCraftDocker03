@@ -159,6 +159,7 @@ export default {
     },
 
     handleProductCategoryDeleted(){
+        console.log('обновление списка категорий продуктов')
       this.loadProductCategories()
       this.showAlert('success', 'категория удалена')
     },

@@ -23,7 +23,7 @@ export default {
       console.log(requestData)
       axios.post(this.$Url + '/api/delete_product_category', requestData)
           .then(response => {
-            this.$emit('product_category-deleted')
+            this.$emit('product-category-deleted')
             console.log(response.data.message)
           })
       this.isVisible = false
