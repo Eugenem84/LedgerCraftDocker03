@@ -26,7 +26,7 @@ export default {
       axios.post(this.$Url + '/api/add_product_category', requestData)
           .then(response => {
             console.log(response.data.message)
-            this.$emit('product_category-added')
+            this.$emit('product-category-added')
             this.newProductCategoryNameInput= ''
           })
       this.isVisible = false
