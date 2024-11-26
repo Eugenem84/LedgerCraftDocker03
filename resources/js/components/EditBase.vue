@@ -254,6 +254,7 @@ export default {
     },
 
     loadProductsByCategory(){
+        console.log('load products by category')
         axios.get(this.$Url + `/api/get_product_stocks/${this.selectedProductCategory}`)
             .then(response => {
                 console.log('товары: ', response.data)
@@ -728,7 +729,7 @@ export default {
 
     <NewProductModal ref="newProductModal"
                           :selectedProductCategory="selectedProductCategory"
-                          @prodact_added="handleProductAdded"
+                          @product_added="handleProductAdded"
     />
 
     <DeleteStoreProductModal ref="deleteStoreProductModal"

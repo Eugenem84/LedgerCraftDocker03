@@ -38,7 +38,7 @@ app.component('edit-order', EditOrder)
 app.component('v-select', VSelect)
 
 const URL = import.meta.env.VITE_URL
-//console.log("URL: ",URL)
+console.log("URL: ",URL)
 app.config.globalProperties.$Url = URL
 
 /**
