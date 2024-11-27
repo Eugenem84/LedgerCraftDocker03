@@ -5,14 +5,14 @@ export default {
   props: ['selectedSpecialization'],
   data(){
     return {
-      isVisible: false,
+      // isVisible: false,
       newClientNameInput: '',
       newClientPhoneInput: '',
     }
   },
   methods: {
     open(){
-      this.isVisible = true
+      //this.isVisible = true
     },
 
     createNewClient(){
@@ -32,7 +32,7 @@ export default {
       this.isVisible = false
     },
     closeModal(){
-      this.isVisible = false
+      //this.isVisible = false
     }
   }
 }

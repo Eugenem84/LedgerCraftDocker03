@@ -10,9 +10,11 @@ import NewClientModal from "./ModalWindows/NewClientModal.vue";
 import NewCategoryModal from "./ModalWindows/NewCategoryModal.vue";
 import VSelect from "vue3-select";
 import NewEquipmentModelModal from "./ModalWindows/NewEquipmentModelModal.vue";
+import AddProductFromStoreModal from "./ModalWindows/AddProductFromStoreModal.vue";
 //import {isVisible} from "bootstrap/js/src/util/index.js";
 export default {
    components: {
+     AddProductFromStoreModal,
      NewEquipmentModelModal,
      NewClientModal,
      NewSpecializationModal,
@@ -416,6 +418,13 @@ export default {
       this.$refs.newServiceModal.open()
     },
 
+      // открытие модального окна добваление материала из магазина
+      openAddFromStoreModal(){
+          console.log('открытие модального окна добавление из магазина')
+          console.log('специализация на передачу: ', this.selectedSpecialization)
+          this.$refs.addProductFromStoreModal.open(this.selectedSpecialization)
+      },
+
     //сохранение ордера
     saveOrder() {
       console.log('создаем ордер')
@@ -650,25 +659,6 @@ export default {
               </template>
           </VSelect>
 
-<!--          <div>-->
-<!--              <select v-model="selectedCategory" @change="handleCategoriesChange" class="form-select w-auto" >-->
-<!--                  <option v-for="category in categories"-->
-<!--                          :key="category.id" :value="category.id">-->
-<!--                      {{category.category_name}}-->
-<!--                  </option>-->
-<!--              </select>-->
-
-<!--              <button type="button"-->
-<!--                      class="btn btn-primary"-->
-<!--                      data-bs-target="#newCategoryModal"-->
-<!--                      data-bs-toggle="modal"-->
-<!--                      v-on:click="openNewCategoryModal"-->
-<!--              >-->
-<!--                  +-->
-<!--              </button>-->
-
-<!--          </div>-->
-
           <div id="tabsTest">
           <div class="container">
             <ul class="nav nav-tabs" role="tablist">
@@ -765,6 +755,16 @@ export default {
                                   добавить материал
                               </button>
                           </div>
+                          <div class="col-auto"
+                               v-if="!newMaterialName">
+                              <button class="btn btn-primary"
+                                      data-bs-toggle="modal"
+                                      data-bs-target="#addProductFromStoreModal"
+                                      @click="openAddFromStoreModal"
+                              >
+                                  добавить со склада
+                              </button>
+                          </div>
                       </div>
                   </div>
               </div>
@@ -819,55 +819,6 @@ export default {
                   </div>
 
 
-                  <!--                  <br>-->
-<!--                  <div style="text-align: center">Выбор материалов: </div>-->
-
-<!--                  <div class="container">-->
-<!--                      <div class="row" style="margin-right: -15px; margin-left: -15px">-->
-<!--                          <div class="col-md-6" style="flex-basis: 52%; padding-right: 0; padding-left: 0;">-->
-<!--                              <input id="newMaterialName"-->
-<!--                                     v-model="newMaterialName"-->
-<!--                                     placeholder="название материала"-->
-<!--                                     class="form-control"-->
-<!--                              >-->
-<!--                          </div>-->
-<!--                          <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">-->
-<!--                              <input id="newMaterialPrice"-->
-<!--                                     v-model="newMaterialPrice"-->
-<!--                                     placeholder="цена"-->
-<!--                                     class="form-control"-->
-<!--                                     v-on:keypress="onlyNumbers"-->
-<!--                              >-->
-<!--                          </div>-->
-<!--                          <div class="col-md-1" style="flex-basis: 12%; padding-right: 0; padding-left: 0;" >-->
-<!--                              <input id="newMaterialCounter"-->
-<!--                                     v-model="newMaterialCounter"-->
-<!--                                     placeholder="шт"-->
-<!--                                     class="form-control"-->
-<!--                                     v-on:keypress="onlyNumbers"-->
-<!--                              >-->
-<!--                          </div>-->
-<!--                          <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">-->
-<!--                              <input id="newMaterialSumPrice"-->
-<!--                                     v-model="newMaterialSumPriceCalc"-->
-<!--                                     placeholder="всего"-->
-<!--                                     class="form-control"-->
-<!--                                     disabled-->
-<!--                              >-->
-<!--                          </div>-->
-<!--                      </div>-->
-<!--                      <div class="row justify-content-end mt-3">-->
-<!--                          <div class="col-auto"-->
-<!--                               v-if="newMaterialName && newMaterialName.trim() !== ''">-->
-<!--                              <button class="btn btn-primary"-->
-<!--                                      @click="addMaterial"-->
-<!--                              >-->
-<!--                                  добавить материал-->
-<!--                              </button>-->
-<!--                          </div>-->
-<!--                      </div>-->
-<!--                  </div>-->
-
 
               </div>
               <div class="tab-pane" id="addedServices">
@@ -906,53 +857,6 @@ export default {
                       <div id="materialTotalSum">итого по материалам: {{totalMaterialPrice}}р</div>
                       <div id="totalSum"> Всего к оплате: {{totalPrice}}р</div>
 
-<!--                      <br>-->
-<!--                      <div class="container">-->
-<!--                          <div class="row" style="margin-right: -15px; margin-left: -15px">-->
-<!--                              <div class="col-md-6" style="flex-basis: 52%; padding-right: 0; padding-left: 0;">-->
-<!--                                  <input id="newMaterialName"-->
-<!--                                         v-model="newMaterialName"-->
-<!--                                         placeholder="название материала"-->
-<!--                                         class="form-control"-->
-<!--                                  >-->
-<!--                              </div>-->
-<!--                              <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">-->
-<!--                                  <input id="newMaterialPrice"-->
-<!--                                         v-model="newMaterialPrice"-->
-<!--                                         placeholder="цена"-->
-<!--                                         class="form-control"-->
-<!--                                         v-on:keypress="onlyNumbers"-->
-<!--                                  >-->
-<!--                              </div>-->
-<!--                              <div class="col-md-1" style="flex-basis: 12%; padding-right: 0; padding-left: 0;" >-->
-<!--                                  <input id="newMaterialCounter"-->
-<!--                                         v-model="newMaterialCounter"-->
-<!--                                         placeholder="шт"-->
-<!--                                         class="form-control"-->
-<!--                                         v-on:keypress="onlyNumbers"-->
-<!--                                  >-->
-<!--                              </div>-->
-<!--                              <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">-->
-<!--                                  <input id="newMaterialSumPrice"-->
-<!--                                         v-model="newMaterialSumPriceCalc"-->
-<!--                                         placeholder="всего"-->
-<!--                                         class="form-control"-->
-<!--                                         disabled-->
-<!--                                  >-->
-<!--                              </div>-->
-<!--                          </div>-->
-<!--                          <div class="row justify-content-end mt-3">-->
-<!--                              <div class="col-auto"-->
-<!--                                   v-if="newMaterialName && newMaterialName.trim() !== ''">-->
-<!--                                  <button class="btn btn-primary"-->
-<!--                                          @click="addMaterial"-->
-<!--                                  >-->
-<!--                                      добавить материал-->
-<!--                                  </button>-->
-<!--                              </div>-->
-<!--                          </div>-->
-<!--                      </div>-->
-
                       <br>
 
                       <textarea id="commentsTextArea"
@@ -970,18 +874,6 @@ export default {
 
           </div>
       </div>
-
-<!--      <div>-->
-<!--        <div>-->
-<!--          <div>-->
-<!--            <div>-->
-<!--              <div>-->
-<!--                Сумма: {{ totalAddedServicesPrice }}-->
-<!--              </div>-->
-<!--            </div>-->
-<!--          </div>-->
-<!--        </div>-->
-<!--      </div>-->
 
     </div>
 
@@ -1023,6 +915,10 @@ export default {
       <NewCategoryModal :selectedSpecialization="selectedSpecialization"
                         ref="newCategoryModal"
                         @category-added="loadCategories"
+      />
+
+      <AddProductFromStoreModal ref="addProductFromStoreModal"
+                                @material-from-store-added=""
       />
 
     </div>
