@@ -43,10 +43,23 @@ export default {
                       this.selectedProductCategory = this.categories[0].id
                       console.log('productCategories: ', this.categories)
                   }
+                  this.loadProductsByCategory()
               })
               .catch(error => {
                   console.error('Ошибка загрузки категорий: ', error.message)
               })
+      },
+
+      loadProductsByCategory(){
+            console.log('load products by category')
+            axios.get(this.$Url + `/api/get_product_stocks/${this.selectedProductCategory}`)
+                .then(response => {
+                    console.log('товары: ', response.data)
+                    this.products = response.data
+                })
+                .catch(error => {
+                    console.log('ошибка загрузки товаров: ', error)
+                })
       },
 
   }
@@ -70,8 +83,6 @@ export default {
                                  :reduce="category => category.id"
                                  label="name"
                                  placeholder="выберите категорию..."
-                                 @update:modelValue="handleSelectEquipmentModelChange"
-                                 @open="adjustDropdownHeight"
                                  ref="vSelect"
                                  class="limited-height"
                         >
@@ -80,17 +91,28 @@ export default {
                                     <span>нет результатов...</span>
                                 </div>
                             </template>
-                            <template #append-item-custom>
-                                <div class="v-select__append-item">
-                                    <span>Этот шаблон всегда виден</span>
+
+                        </VSelect>
+                        <br>
+                        <VSelect v-model="selectedProduct"
+                                 :options="products"
+                                 :reduce="product => product.name"
+                                 label="name"
+                                 placeholder="выберите товар"
+                                 ref="VSelect"
+                                 class="limited-height"
+                        >
+                            <template #no-options="{ search, noResults }">
+                                <div class="no-options">
+                                    <span>нет результатов...</span>
                                 </div>
                             </template>
                         </VSelect>
 
                                 <br>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                            <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Сохранить</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Добавить</button>
                         </div>
                     </form>
                 </div>
