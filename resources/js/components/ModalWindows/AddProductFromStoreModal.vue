@@ -38,10 +38,10 @@ export default {
           console.log('specializationId: ', this.selectedSpecialization);
           return axios.get(this.$Url + `/api/get_product_categories/${this.selectedSpecialization}`)
               .then(response => {
-                  this.productCategories = response.data
-                  if (this.productCategories.length > 0){
-                      this.selectedProductCategory = this.productCategories[0].id
-                      console.log('productCategories: ', this.productCategories)
+                  this.categories = response.data
+                  if (this.categories.length > 0){
+                      this.selectedProductCategory = this.categories[0].id
+                      console.log('productCategories: ', this.categories)
                   }
               })
               .catch(error => {
@@ -64,9 +64,10 @@ export default {
                 </div>
                 <div class="modal-body">
                     <form @submit.stop.prevent="addProductFromStore">
-                        <VSelect :value="11"
-                                 v-model="sfd"
-                                 :options="equipmentModels"
+                        <VSelect
+                                 v-model="selectedProductCategory"
+                                 :options="categories"
+                                 :reduce="category => category.id"
                                  label="name"
                                  placeholder="выберите категорию..."
                                  @update:modelValue="handleSelectEquipmentModelChange"
@@ -77,14 +78,6 @@ export default {
                             <template #no-options="{ search, noResults }">
                                 <div class="no-options">
                                     <span>нет результатов...</span>
-                                    <span>
-                          <button type="button"
-                                  class="btn btn-primary"
-                                  data-bs-target="#newEquipmentModelModal"
-                                  data-bs-toggle="modal" >
-                              Добавить модель
-                          </button>
-                      </span>
                                 </div>
                             </template>
                             <template #append-item-custom>

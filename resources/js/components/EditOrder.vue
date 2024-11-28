@@ -906,44 +906,6 @@ export default {
                           @category-added="loadCategories"
         />
 
-
-<!--        <b-tab :title="tabTitleCounter" href="#addedServices">-->
-<!--          <br>-->
-<!--          <div id="addedServices">-->
-<!--            <b-list-group-item v-for="service in addedServices" :key="service.id" >-->
-<!--              <div class="d-flex justify-content-between align-items-center">-->
-<!--                <div>{{service.service}}</div>-->
-<!--                <div>{{service.price}}</div>-->
-<!--                <b-button @click="deleteFromAdded(service.id)" variant="danger">-->
-<!--                  <BIconTrash icon="trash"></BIconTrash>-->
-<!--                </b-button>-->
-<!--              </div>-->
-<!--            </b-list-group-item>-->
-
-<!--            <br>-->
-
-<!--            <b-form-textarea id="materialsTextArea"-->
-<!--                             v-model="materials"-->
-<!--                             placeholder="нет материалов"-->
-<!--                             rows="1"-->
-<!--                             max-rows="6"-->
-<!--            ></b-form-textarea>-->
-
-<!--            <br>-->
-
-<!--            <b-form-textarea id="commentsTextArea"-->
-<!--                             v-model="comments"-->
-<!--                             placeholder="комментарии"-->
-<!--                             rows="1"-->
-<!--                             max-rows="6"-->
-<!--            ></b-form-textarea>-->
-
-<!--          </div>-->
-<!--        </b-tab>-->
-<!--      </b-tabs>-->
-
-<!--    </div>-->
-
     <div class="fixed-bottom">
       <div class="container-fluid">
         <div class="row justify-content-end">
