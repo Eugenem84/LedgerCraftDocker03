@@ -255,6 +255,10 @@ export default {
           }
       },
 
+      handleSelectedStoreProduct(selectedProduct){
+          console.log('загружаем товар в ордер...', selectedProduct)
+      },
+
     loadCategories(){
       axios.get(this.$Url + `/api/get_categories/${this.selectedSpecialization}`)
           .then(response => {
@@ -918,7 +922,7 @@ export default {
       />
 
       <AddProductFromStoreModal ref="addProductFromStoreModal"
-                                @material-from-store-added=""
+                                @material-from-store-added="handleSelectedStoreProduct"
       />
 
     </div>

@@ -62,6 +62,11 @@ export default {
                 })
       },
 
+      addProductToOrder(){
+        console.log('addProductToOrder...')
+        this.$emit('material-from-store-added', this.selectedProduct)
+      },
+
   }
 }
 </script>
@@ -96,7 +101,7 @@ export default {
                         <br>
                         <VSelect v-model="selectedProduct"
                                  :options="products"
-                                 :reduce="product => product.name"
+                                 :reduce="product => product"
                                  label="name"
                                  placeholder="выберите товар"
                                  ref="VSelect"
@@ -112,7 +117,11 @@ export default {
                                 <br>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                            <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Добавить</button>
+                            <button type="submit"
+                                    class="btn btn-primary"
+                                    data-bs-dismiss="modal"
+                                    @click="addProductToOrder()"
+                            >Добавить</button>
                         </div>
                     </form>
                 </div>
