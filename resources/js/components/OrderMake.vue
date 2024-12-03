@@ -35,6 +35,7 @@ export default {
       services: [],
       addedServices: [],
       addedMaterials: [],
+      addedProducts: [],
 
       selectedSpecialization: null,
       selectedClient: null,
@@ -53,6 +54,8 @@ export default {
           {name: 'в работе', value: 'process', color: 'red'},
           {name: 'в ожидании', value: 'waiting', color: 'orange'},
       ],
+
+      newProductId: 0,
 
       newMaterialId: 0,
       newMaterialName: null,
@@ -102,7 +105,9 @@ export default {
           for (let material of this.addedMaterials){
               sum += material.price * material.counter
           }
-
+          for (let product of this.addedProducts){
+              sum += product.price * product.counter
+          }
           this.materialsPrice = sum;
           return sum
       }
@@ -129,6 +134,10 @@ export default {
         material.total = material.price * material.counter
       },
 
+      updateProductTotal(product){
+          product.total = product.price * product.counter
+      },
+
       updateMaterialCounter(materialId, newCounter){
         const material = this.addedMaterials.find(material => material.id === materialId)
         if (material){
@@ -137,12 +146,29 @@ export default {
         this.updateMaterialTotal(material)
       },
 
+      updateProductCounter(productId, newCounter){
+        const product = this. addedProducts.find(product => product.id === productId)
+          if (product){
+              product.counter = newCounter
+          }
+        this.updateProductTotal(product)
+      },
+
       updateMaterialPrice(materialId, newPrice){
         const material = this.addedMaterials.find(material => material.id === materialId)
         if (material){
             material.price = newPrice
         }
         this.updateMaterialTotal(material)
+      },
+
+      updateProductPrice(productId, newPrice){
+        const product = this.addedProducts.find(product => product.id === productId)
+        if (product){
+            product.base_sale_price = newPrice
+        }
+        this.updateProductTotal(product)
+
       },
 
       updateMaterialName(materialId, newName){
@@ -347,8 +373,9 @@ export default {
 
     //добавление материала в ордер
     addMaterial(){
+      this.newMaterialId++
       const newMaterial = {
-        id: this.newMaterialId + 1,
+        id: this.newMaterialId,
         name: this.newMaterialName,
         price: this.newMaterialPrice,
         counter: this.newMaterialCounter,
@@ -362,19 +389,22 @@ export default {
     },
 
     addProduct(){
-      const newMaterial = {
-          id: this.newMaterialId + 1,
+      this.newProductId++
+      console.log('newProductId: ', this.newProductId)
+      const newProduct = {
+          id: this.newProductId,
           productId: this.selectedProductFromStore.id,
           name: this.selectedProductFromStore.name,
           price: this.selectedProductFromStore.base_sale_price,
           counter: 1,
           total: this.selectedProductFromStore.base_sale_price * 1,
       }
-      this.addedMaterials.push(newMaterial)
+      this.addedProducts.push(newProduct)
       this.newMaterialName = ''
       this.newMaterialPrice= ''
       this.newMaterialCounter = '',
-      console.log('добавленный товар со склада: ', newMaterial)
+      console.log('добавленный товар со склада: ', newProduct)
+      console.log('добавленные товары: ', this.addedProducts)
     },
 
     deleteMaterial(materialName){
@@ -722,6 +752,38 @@ export default {
                                      v-model="material.total"
                               >
                               <button class="btn btn-danger" @click="deleteMaterial(material.name)"> - </button>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div v-for="product in addedProducts" >
+                      <div class="d-flex justify-content-between align-items-center">
+                          <input type="text"
+                                 v-model="product.name"
+                                 class="form-control form-control-sm custom-width-150"
+                                 :disabled=true
+                          >
+                          <div class="d-flex align-items-center">
+
+                              <input v-on:keypress="onlyNumbers"
+                                     class="form-control form-control-sm custom-width-40"
+                                     v-model="product.price"
+                                     @input="updateProductPrice(product.id, product.price)"
+                              >
+                              x
+                              <input v-on:keypress="onlyNumbers"
+                                     class="form-control form-control-sm custom-width-25"
+                                     v-model="product.counter"
+                                     @input="updateProductCounter(product.id, product.counter)"
+                              >
+                              =
+                              <input
+                                  class="form-control form-control-sm custom-width-40"
+                                  :readonly="true"
+                                  disabled
+                                  v-model="product.total"
+                              >
+                              <button class="btn btn-danger" @click="deleteMaterial(product.name)"> - </button>
                           </div>
                       </div>
                   </div>
