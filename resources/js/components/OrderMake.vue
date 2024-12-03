@@ -40,6 +40,7 @@ export default {
       selectedClient: null,
       selectedEquipmentModel: null,
       selectedCategory: null,
+      selectedProductFromStore: null,
       userOrderNumber: null,
       selectedStatus: '',
       paid: false,
@@ -89,6 +90,11 @@ export default {
     newMaterialSumPriceCalc(){
       return this.newMaterialPrice * this.newMaterialCounter
     },
+
+    newProductSumPriceCalc(){
+        return this.newMaterialPrice * 1
+    },
+
     //
       totalMaterialPrice(){
           console.log("материалы: ", this.addedMaterials)
@@ -118,16 +124,6 @@ export default {
               }
           })
       },
-
-      // onSearch(searchQuery) {
-      //     this.searchQuery = searchQuery;
-      //     this.filteredClients = this.clients.filter(client =>
-      //         client.name.toLowerCase().includes(searchQuery.toLowerCase())
-      //     );
-      //
-      //     // Добавление опции "Добавить нового клиента" в конец списка
-      //     this.filteredClients.push({ name: 'Добавить нового клиента', isCreate: true });
-      // },
 
       updateMaterialTotal(material){
         material.total = material.price * material.counter
@@ -257,6 +253,8 @@ export default {
 
       handleSelectedStoreProduct(selectedProduct){
           console.log('загружаем товар в ордер...', selectedProduct)
+          this.selectedProductFromStore = selectedProduct
+          this.addProduct()
       },
 
     loadCategories(){
@@ -361,6 +359,22 @@ export default {
       this.newMaterialPrice= ''
       this.newMaterialCounter = ''
       console.log("добавленные материалы: ",this.addedMaterials)
+    },
+
+    addProduct(){
+      const newMaterial = {
+          id: this.newMaterialId + 1,
+          productId: this.selectedProductFromStore.id,
+          name: this.selectedProductFromStore.name,
+          price: this.selectedProductFromStore.base_sale_price,
+          counter: 1,
+          total: this.selectedProductFromStore.base_sale_price * 1,
+      }
+      this.addedMaterials.push(newMaterial)
+      this.newMaterialName = ''
+      this.newMaterialPrice= ''
+      this.newMaterialCounter = '',
+      console.log('добавленный товар со склада: ', newMaterial)
     },
 
     deleteMaterial(materialName){
