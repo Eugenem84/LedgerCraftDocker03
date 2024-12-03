@@ -7,6 +7,7 @@ use App\Http\Controllers\OrderController;
 use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderService;
+use App\Models\ProductStock;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -81,6 +82,18 @@ class OrderRepository extends Controller
 
         if (isset($data['servicesId']) && is_array($data['servicesId'])) {
             $order->services()->attach($data['servicesId']);
+        }
+
+        if (isset($data['addedProducts']) && is_array($data['addedProducts'])) {
+            foreach ($data['addedProducts'] as $addedProduct) {
+                $productStock = ProductStock::where('id', $addedProduct['productId'])->first();
+                if ($productStock){
+                    $productStock->quantity -= $addedProduct['counter'];
+                    $productStock->save();
+                } else {
+                    throw new \Exception('Product stock not found');
+                }
+            }
         }
 
         if (isset($data['addedMaterials']) && is_array($data['addedMaterials'])) {

@@ -485,6 +485,7 @@ export default {
         modelId: this.selectedEquipmentModel.id,
         totalAmount: this.totalAmount,
         addedMaterials: this.addedMaterials,
+        addedProducts: this.addedProducts,
         materials: this.materials,
         comments: this.comments,
         paid: this.paid,
