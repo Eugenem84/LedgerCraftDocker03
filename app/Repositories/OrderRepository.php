@@ -10,6 +10,7 @@ use App\Models\OrderService;
 use App\Models\ProductStock;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use function Laravel\Prompts\table;
 
 class OrderRepository extends Controller
 {
@@ -85,15 +86,24 @@ class OrderRepository extends Controller
         }
 
         if (isset($data['addedProducts']) && is_array($data['addedProducts'])) {
+            $productData = [];
+
             foreach ($data['addedProducts'] as $addedProduct) {
                 $productStock = ProductStock::where('product_id', $addedProduct['productId'])->first();
-                if ($productStock){
+                if ($productStock && $productStock->quantity >= $addedProduct['counter']) {
                     $productStock->quantity -= $addedProduct['counter'];
                     $productStock->save();
+
+                    // данные для расходного ордера order_product
+                    $productData[$addedProduct['productId']] = [
+                        'sale_price' => $addedProduct['price'],
+                        'quantity' => $addedProduct['counter']
+                    ];
                 } else {
                     throw new \Exception('Product stock not found');
                 }
             }
+            $order->products()->attach($productData);
         }
 
         if (isset($data['addedMaterials']) && is_array($data['addedMaterials'])) {
