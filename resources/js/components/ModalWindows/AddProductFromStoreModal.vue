@@ -51,11 +51,18 @@ export default {
       },
 
       loadProductsByCategory(){
+            this.products = ''
             console.log('load products by category')
+            console.log('selectedProductCategory: ', this.selectedProductCategory)
             axios.get(this.$Url + `/api/get_product_stocks/${this.selectedProductCategory}`)
                 .then(response => {
-                    console.log('товары: ', response.data)
-                    this.products = response.data
+                    if (Array.isArray(response.data)){
+                        console.log('товары: ', response.data)
+                        this.products = response.data
+                    } else {
+                        console.error('Ожидается массив, но получено: ', response.data)
+                        this.products = [];
+                    }
                 })
                 .catch(error => {
                     console.log('ошибка загрузки товаров: ', error)
@@ -90,6 +97,7 @@ export default {
                                  placeholder="выберите категорию..."
                                  ref="vSelect"
                                  class="limited-height"
+                                 @update:modelValue="loadProductsByCategory"
                         >
                             <template #no-options="{ search, noResults }">
                                 <div class="no-options">
