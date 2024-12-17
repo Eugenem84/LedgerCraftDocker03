@@ -174,7 +174,6 @@ export default {
           })
     },
 
-
     loadAllClients(){
       axios.get('http://localhost:8000/api/get_all_clients')
           .then(response => {

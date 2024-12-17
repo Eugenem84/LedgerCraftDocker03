@@ -86,7 +86,7 @@ class OrderRepository extends Controller
 
         if (isset($data['addedProducts']) && is_array($data['addedProducts'])) {
             foreach ($data['addedProducts'] as $addedProduct) {
-                $productStock = ProductStock::where('id', $addedProduct['productId'])->first();
+                $productStock = ProductStock::where('product_id', $addedProduct['productId'])->first();
                 if ($productStock){
                     $productStock->quantity -= $addedProduct['counter'];
                     $productStock->save();
