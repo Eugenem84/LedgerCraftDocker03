@@ -29,6 +29,7 @@ class MaterialController extends Controller
 
         foreach ($products as $product) {
             $materials->push((object)[
+               'product_id' => $product->product_id,
                'name' => $product->name,
                'price' => $product->sale_price,
                'amount' => $product->quantity,

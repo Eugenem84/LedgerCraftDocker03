@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\OrderController;
 use App\Models\Material;
 use App\Models\Order;
+use App\Models\OrderProduct;
 use App\Models\OrderService;
 use App\Models\ProductStock;
 use Illuminate\Support\Facades\Auth;
@@ -132,6 +133,7 @@ class OrderRepository extends Controller
                                 $specializationId,
                                 $user_order_number,
                                 $materials,
+                                $products,
                                 $comments,
                                 $servicesData,
                                 $total_amount,
@@ -164,5 +166,20 @@ class OrderRepository extends Controller
                 $material->save();
             }
         }
+
+        if (isset($products) && is_array($products)) {
+            OrderProduct::where('order_id', $order->id)->delete();
+//            $order->products()->attach($products);
+
+            foreach ($products as $productData) {
+                $product = new OrderProduct();
+                $product->order_id = $order->id;
+                $product->product_id = $productData['product_id'];
+                $product->sale_price = $productData['price'];
+                $product->quantity = $productData['amount'];
+                $product->save();
+            }
+        }
+
     }
 }

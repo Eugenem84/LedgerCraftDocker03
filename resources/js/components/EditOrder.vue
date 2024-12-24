@@ -35,10 +35,10 @@ export default {
       addedServices: [],
       materials: [],
       addedMaterials: [],
+      addedProducts: [],
       equipmentModels: [],
 
-
-        paid: '',
+      paid: '',
       userOrderNumber: '',
       totalServicePrice: 0,
       totalMaterialPrice: 0,
@@ -142,6 +142,15 @@ export default {
               material.amount = newCounter
           }
           this.updateMaterialTotal(material)
+      },
+
+      updateProductCounter(productId, newCounter){
+        console.log("добавленые продукты: ", this.addedProducts)
+        const product = this.addedProducts.find(product => product.product_id === productId)
+          if (product){
+              product.amount = newCounter
+          }
+          this.updateMaterialTotal(product)
       },
 
       updateMaterialPrice(materialId, newPrice){
@@ -258,11 +267,16 @@ export default {
           .then(response => {
               this.materials = response.data.map(material => {
                   material.total = material.amount * material.price
-                  this.addedMaterials.push(material)
+                  if (material.product_id){
+                      this.addedProducts.push(material)
+                  } else {
+                      this.addedMaterials.push(material)
+                  }
                   return material
-
               })
               console.log("materials: ", this.materials)
+              console.log("addedMaterials: ", this.addedMaterials)
+              console.log("addedProducts: ", this.addedProducts)
           })
           .catch(error => {
             console.error(error.message)
@@ -388,7 +402,8 @@ export default {
         specialization_id: this.selectedSpecialization,
         user_order_number: this.userOrderNumber,
         total_amount: this.totalAmount,
-        materials: this.materials,
+        materials: this.addedMaterials,
+        products: this.addedProducts,
         comments: this.comments,
         services: this.addedServices.map(service => service.id),
         paid: this.paid
@@ -410,7 +425,7 @@ export default {
           }
         })
             .then(response => {
-              //console.log(response.data.message)
+              console.log(response.data.message)
               //console.log('datasend: ',orderData )
               this.addedServices = []
               //this.materials = ''
@@ -453,8 +468,6 @@ export default {
             .catch(eError => {
                 console.error(eError.message)
             })
-        //this.selectedClient = this.orderToEdit.client_id
-        //console.log('orderToEdit: ', this.orderToEdit)
         this.loadClients()
         this.loadEquipmentModels()
         console.log('clients: ', this.clients)
@@ -487,30 +500,9 @@ export default {
 
   <div>
     <div>
-<!--      <select v-model="selectedSpecialization" @change="handleSpecializationChange" class="w-auto">-->
-<!--        <option v-for="specialization in specializations"-->
-<!--                              :key="specialization.id" :value="specialization.id" >-->
-<!--          {{ specialization.specializationName }}-->
-<!--        </option>-->
-
-<!--        <option value="create_new_specialization">-->
-<!--          создать новую специализацию-->
-<!--        </option>-->
-<!--      </select>-->
 
       <input id="orderNumber" type="number" v-model="this.userOrderNumber">
       <br>
-<!--      <select v-model="selectedClient" class="w-auto" @change="handleClientChange"  >-->
-<!--        <option v-for="client in clients"-->
-<!--                              :key="client.id" :value="client.id">-->
-<!--          {{client.name}} - {{client.phone}}-->
-<!--        </option>-->
-
-<!--        <option value="create-new-client" v-if="selectedSpecialization">-->
-<!--          создать нового клиента-->
-<!--        </option>-->
-<!--      </select>-->
-
 
         <div class="d-flex">
             <div class="col-11">
@@ -627,7 +619,8 @@ export default {
 
                 <div style="text-align: center">Выбор материалов: </div>
 
-                <div v-for="material in materials" >
+                материалы
+                <div v-for="material in addedMaterials" >
                     <div class="d-flex justify-content-between align-items-center">
                         <input type="text"
                                v-model="material.name"
@@ -659,7 +652,42 @@ export default {
                     </div>
                 </div>
 
-                <a id="materialTotalSum">итого по материалам: </a>
+                продукты
+                <div v-for="material in addedProducts" >
+                    <div class="d-flex justify-content-between align-items-center">
+                        <input type="text"
+                               v-model="material.name"
+                               @input="updateMaterialName(material.id, material.name)"
+                               class="form-control form-control-sm custom-width-150"
+                               disabled
+                        >
+                        <div class="d-flex align-items-center">
+
+                            <input v-on:keypress="onlyNumbers"
+                                   class="form-control form-control-sm custom-width-40"
+                                   v-model="material.price"
+                                   @input="updateProductSalePrice(material.id, material.price)"
+                                   disabled
+                            >
+                            x
+                            <input v-on:keypress="onlyNumbers"
+                                   class="form-control form-control-sm custom-width-25"
+                                   v-model="material.amount"
+                                   @input="updateProductCounter(material.product_id, material.amount)"
+                            >
+                            =
+                            <input
+                                class="form-control form-control-sm custom-width-40"
+                                :readonly="true"
+                                disabled
+                                v-model="material.total"
+                            >
+                            <button class="btn btn-danger" @click="deleteMaterial(material.name)"> - </button>
+                        </div>
+                    </div>
+                </div>
+
+                <a id="materialTotalSum">итого по материаламм: </a>
                 <a class="mb-0">{{totalMaterialPrice}}</a>
                 <br>
 
@@ -856,30 +884,6 @@ export default {
             </div>
         </div>
     </div>
-
-
-<!--    <div id="orderDiv" class="d-flex flex-column" style="min-height: 75vh">-->
-<!--      <b-tabs order switch>-->
-<!--        <b-tab title="Выбор услуг" href="#serviceChoice">-->
-<!--          <br>-->
-<!--          <div id="serviceChoice">-->
-<!--            <b-list-group>-->
-<!--              <b-list-group-item id="serviceItem" v-for="service in services" :key="service.id" @click="addServiceToOrder(service)">-->
-<!--                <div class="d-flex justify-content-between align-items-center">-->
-<!--                  <div>{{service.service }}</div>-->
-<!--                  <div>{{service.price}}</div>-->
-<!--                </div>-->
-<!--              </b-list-group-item>-->
-
-<!--              <b-list-group-item v-if="selectedCategory" id="serviceItem" @click="openNewServiceModal">-->
-<!--                <div class="d-flex justify-content-center align-items-center">-->
-<!--                  добавить новую услугу-->
-<!--                </div>-->
-<!--              </b-list-group-item>-->
-
-<!--            </b-list-group>-->
-<!--          </div>-->
-<!--        </b-tab>-->
 
 
         <NewServiceModal :selectedCategory="selectedCategory"
