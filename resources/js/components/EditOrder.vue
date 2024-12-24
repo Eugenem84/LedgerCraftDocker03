@@ -11,6 +11,7 @@ import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import NewClientModal from "./ModalWindows/NewClientModal.vue";
 import NewCategoryModal from "./ModalWindows/NewCategoryModal.vue";
 import NewEquipmentModelModal from "./ModalWindows/NewEquipmentModelModal.vue";
+import addProductFromStoreModal from "./ModalWindows/AddProductFromStoreModal.vue";
 
 import {th} from "vuetify/locale";
 export default {
@@ -22,6 +23,7 @@ export default {
     NewSpecializationModal,
     NewServiceModal,
     NewCategoryModal,
+    addProductFromStoreModal,
     //BIconTrash,
     //BAlert,
   },
@@ -214,6 +216,12 @@ export default {
       console.log('выбрана категория: ', this.selectedCategory.id)
     },
 
+      handleSelectedStoreProduct(selectedProduct){
+          console.log('загружаем товар в ордер...', selectedProduct)
+          this.selectedProductFromStore = selectedProduct
+          this.addProduct()
+      },
+
     loadCategories(){
       axios.get(this.$Url + `/api/get_categories/${this.selectedSpecialization}`)
           .then(response => {
@@ -389,6 +397,12 @@ export default {
       this.$refs.newServiceModal.selectedCategory = this.selectedCategory.id
       this.$refs.newServiceModal.open()
     },
+
+      openAddFromStoreModal(){
+          console.log('открытие модального окна добавление из магазина')
+          console.log('специализация на передачу: ', this.selectedSpecialization)
+          this.$refs.addProductFromStoreModal.open(this.selectedSpecialization)
+      },
 
     //сохранение ордера
     saveOrder() {
@@ -734,6 +748,16 @@ export default {
                                 добавить материал
                             </button>
                         </div>
+                        <div class="col-auto"
+                             v-if="!newMaterialName">
+                            <button class="btn btn-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#addProductFromStoreModal"
+                                    @click="openAddFromStoreModal"
+                            >
+                                добавить со склада
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -908,6 +932,10 @@ export default {
         <NewCategoryModal :selected-specialization="selectedSpecialization"
                           ref="newCategoryModal"
                           @category-added="loadCategories"
+        />
+
+        <AddProductFromStoreModal ref="addProductFromStoreModal"
+                          @material-from-store-added="handleSelectedStoreProduct"
         />
 
     <div class="fixed-bottom">
