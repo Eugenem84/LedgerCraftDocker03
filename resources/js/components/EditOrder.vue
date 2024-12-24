@@ -3,6 +3,7 @@
 <script>
 import axios from "axios"
 import VSelect from "vue3-select";
+import 'bootstrap'
 //import {BIconTrash} from 'bootstrap-vue'
 //import {BAlert} from "bootstrap-vue";
 //import alert from "bootstrap/js/src/alert";
@@ -11,8 +12,7 @@ import NewSpecializationModal from "./ModalWindows/NewSpecializationModal.vue";
 import NewClientModal from "./ModalWindows/NewClientModal.vue";
 import NewCategoryModal from "./ModalWindows/NewCategoryModal.vue";
 import NewEquipmentModelModal from "./ModalWindows/NewEquipmentModelModal.vue";
-import addProductFromStoreModal from "./ModalWindows/AddProductFromStoreModal.vue";
-
+import AddProductFromStoreModal from "./ModalWindows/AddProductFromStoreModal.vue"
 import {th} from "vuetify/locale";
 export default {
   props: ['orderToEdit' , 'alreadyAddedServices'],
@@ -23,7 +23,7 @@ export default {
     NewSpecializationModal,
     NewServiceModal,
     NewCategoryModal,
-    addProductFromStoreModal,
+    AddProductFromStoreModal,
     //BIconTrash,
     //BAlert,
   },
@@ -57,7 +57,9 @@ export default {
       selectedCategory: null,
       comments: null,
       selectedEquipmentModel: null,
+      selectedProductFromStore: null,
 
+      newProductId: 0,
 
       alertVisible: false,
       alertVariant: 'success',
@@ -402,6 +404,27 @@ export default {
           console.log('открытие модального окна добавление из магазина')
           console.log('специализация на передачу: ', this.selectedSpecialization)
           this.$refs.addProductFromStoreModal.open(this.selectedSpecialization)
+      },
+
+      addProduct(){
+          //this.addedProducts.push(this.selectedProductFromStore)
+          //console.log("addedProducts: ",this.addedProducts)
+           this.newProductId++
+           console.log('newProductId: ', this.newProductId)
+           const newProduct = {
+               id: this.newProductId,
+               product_id: this.selectedProductFromStore.id,
+               name: this.selectedProductFromStore.name,
+               price: this.selectedProductFromStore.base_sale_price,
+               counter: 1,
+               total: this.selectedProductFromStore.base_sale_price * 1,
+           }
+           this.addedProducts.push(newProduct)
+           this.newMaterialName = ''
+           this.newMaterialPrice= ''
+           this.newMaterialCounter = '',
+           console.log('добавленный товар со склада: ', newProduct)
+           console.log('добавленные товары: ', this.addedProducts)
       },
 
     //сохранение ордера
