@@ -333,13 +333,21 @@ export default {
 
       deleteMaterial(materialName){
           console.log("удаляем материал с именем: ", materialName);
-          const materialIndex = this.materials.findIndex(material => material.name === materialName);
+          const materialIndex = this.addedMaterials.findIndex(material => material.name === materialName);
           if (materialIndex !== -1) {
+              this.addedMaterials.splice(materialIndex, 1);
               this.materials.splice(materialIndex, 1);
-              console.log("Материал успешно удален", this.materials);
+              console.log("Материал успешно удален", this.addedMaterials);
           } else {
               console.log("Материал не найден");
           }
+
+      },
+
+      deleteProduct(material){
+        console.log("удаляем продукт: ",material)
+        this.addedProducts.splice(this.addedProducts.indexOf(material), 1);
+        this.materials.splice(this.materials.indexOf(material), 1);
       },
 
       //добавление материала в ордер
@@ -351,6 +359,7 @@ export default {
               amount: this.newMaterialCounter,
               total: this.newMaterialSumPriceCalc,
           }
+          this.addedMaterials.push(newMaterial)
           this.materials.push(newMaterial)
           this.newMaterialName = ''
           this.newMaterialPrice= ''
@@ -416,10 +425,11 @@ export default {
                product_id: this.selectedProductFromStore.id,
                name: this.selectedProductFromStore.name,
                price: this.selectedProductFromStore.base_sale_price,
-               counter: 1,
+               amount: 1,
                total: this.selectedProductFromStore.base_sale_price * 1,
            }
            this.addedProducts.push(newProduct)
+           this.materials.push(newProduct)
            this.newMaterialName = ''
            this.newMaterialPrice= ''
            this.newMaterialCounter = '',
@@ -654,7 +664,7 @@ export default {
         <div class="tab-content">
             <div class="tab-pane" id="materialChoice">
 
-                <div style="text-align: center">Выбор материалов: </div>
+                <div style="text-align: center">Выбор материалов-: </div>
 
                 материалы
                 <div v-for="material in addedMaterials" >
@@ -719,7 +729,7 @@ export default {
                                 disabled
                                 v-model="material.total"
                             >
-                            <button class="btn btn-danger" @click="deleteMaterial(material.name)"> - </button>
+                            <button class="btn btn-danger" @click="deleteProduct(material)"> - </button>
                         </div>
                     </div>
                 </div>
@@ -830,7 +840,7 @@ export default {
                     Добавить новую услугу
                 </div>
 
-                <div>Итого к оплате: {{totalAmount}}</div>
+                <div>Итого к по услугам: {{totalAmount}}</div>
                 <br>
 
             </div>
@@ -870,52 +880,52 @@ export default {
                     <div id="materialTotalSum">итого по материалам: {{totalMaterialPrice}}</div>
                     <div id="totalSum"> Всего к оплате: {{totalPrice}}</div>
 
-                    <br>
-                    <div class="container">
-                        <div class="row" style="margin-right: -15px; margin-left: -15px">
-                            <div class="col-md-6" style="flex-basis: 52%; padding-right: 0; padding-left: 0;">
-                                <input id="newMaterialName"
-                                       v-model="newMaterialName"
-                                       placeholder="название материала"
-                                       class="form-control"
-                                >
-                            </div>
-                            <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">
-                                <input id="newMaterialPrice"
-                                       v-model="newMaterialPrice"
-                                       placeholder="цена"
-                                       class="form-control"
-                                       v-on:keypress="onlyNumbers"
-                                >
-                            </div>
-                            <div class="col-md-1" style="flex-basis: 12%; padding-right: 0; padding-left: 0;" >
-                                <input id="newMaterialCounter"
-                                       v-model="newMaterialCounter"
-                                       placeholder="шт"
-                                       class="form-control"
-                                       v-on:keypress="onlyNumbers"
-                                >
-                            </div>
-                            <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">
-                                <input id="newMaterialSumPrice"
-                                       v-model="newMaterialSumPriceCalc"
-                                       placeholder="всего"
-                                       class="form-control"
-                                       disabled
-                                >
-                            </div>
-                        </div>
-                        <div class="row justify-content-end mt-3">
-                            <div class="col-auto"
-                                 v-if="newMaterialName && newMaterialName.trim() !== ''">
-                                <button class="btn btn-primary"
-                                        @click="addMaterial"
-                                >
-                                    добавить материал
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+<!--                    <br>-->
+<!--                    <div class="container">-->
+<!--                        <div class="row" style="margin-right: -15px; margin-left: -15px">-->
+<!--                            <div class="col-md-6" style="flex-basis: 52%; padding-right: 0; padding-left: 0;">-->
+<!--                                <input id="newMaterialName"-->
+<!--                                       v-model="newMaterialName"-->
+<!--                                       placeholder="название материала"-->
+<!--                                       class="form-control"-->
+<!--                                >-->
+<!--                            </div>-->
+<!--                            <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">-->
+<!--                                <input id="newMaterialPrice"-->
+<!--                                       v-model="newMaterialPrice"-->
+<!--                                       placeholder="цена"-->
+<!--                                       class="form-control"-->
+<!--                                       v-on:keypress="onlyNumbers"-->
+<!--                                >-->
+<!--                            </div>-->
+<!--                            <div class="col-md-1" style="flex-basis: 12%; padding-right: 0; padding-left: 0;" >-->
+<!--                                <input id="newMaterialCounter"-->
+<!--                                       v-model="newMaterialCounter"-->
+<!--                                       placeholder="шт"-->
+<!--                                       class="form-control"-->
+<!--                                       v-on:keypress="onlyNumbers"-->
+<!--                                >-->
+<!--                            </div>-->
+<!--                            <div class="col-md-3" style="flex-basis: 18%; padding-right: 0; padding-left: 0;">-->
+<!--                                <input id="newMaterialSumPrice"-->
+<!--                                       v-model="newMaterialSumPriceCalc"-->
+<!--                                       placeholder="всего"-->
+<!--                                       class="form-control"-->
+<!--                                       disabled-->
+<!--                                >-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                        <div class="row justify-content-end mt-3">-->
+<!--                            <div class="col-auto"-->
+<!--                                 v-if="newMaterialName && newMaterialName.trim() !== ''">-->
+<!--                                <button class="btn btn-primary"-->
+<!--                                        @click="addMaterial"-->
+<!--                                >-->
+<!--                                    добавить материал-->
+<!--                                </button>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
 
                     <br>
 
