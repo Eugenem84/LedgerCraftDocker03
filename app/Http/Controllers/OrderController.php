@@ -148,6 +148,12 @@ class OrderController extends Controller
         }
     }
 
+    public function getOrdersByUser($id)
+    {
+        $orders = $this->orderRepository->getByUser($id);
+        return \response()->json($orders);
+    }
+
     public function getDetails($id){
         $order = $this->orderRepository->getDetails($id);
         if (!$order){
