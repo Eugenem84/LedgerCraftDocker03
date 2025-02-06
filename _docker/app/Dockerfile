@@ -28,4 +28,4 @@ RUN curl -sS https://getcomposer.org/installer | php -- \
 
 WORKDIR /var/www
 #
-#CMD ["npm", "run", "dev"]
+#CMD ["npm", "run", "dev"] test

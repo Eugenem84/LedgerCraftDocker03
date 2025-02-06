@@ -1,6 +1,26 @@
 version: "3"
 
 services:
+  traefik:
+    image: traefik:v3.3.3
+    restart: always
+    container_name: ledger_craft_traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.address=:80"    # Добавляем HTTP
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=medov-foto@mail.ru"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "443:443"
+      - "8080:8080" #интерфейс traefik
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./letsencrypt:/letsencrypt"
+
   nginx:
     image: nginx:latest
     volumes:
@@ -19,6 +39,12 @@ services:
     volumes:
       - ./:/var/www/
     container_name: ledger_craft_app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`localhost`)" # Замени на свой домен
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=myresolver"
+      - "traefik.http.services.app.loadbalancer.server.port=80"
     depends_on:
       - db
 
