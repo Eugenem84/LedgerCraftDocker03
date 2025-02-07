@@ -9,11 +9,13 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.email=medov-foto@mail.ru"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
+      - "80:80"
       - "443:443"
       - "8080:8080" #интерфейс traefik
     volumes:
@@ -30,6 +32,12 @@ services:
     container_name: ledger_craft_nginx
     depends_on:
       - app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginx.rule=Host(`dev.medovf2h.beget.tech`)"
+      - "traefik.http.routers.nginx.entrypoints=websecure"
+      - "traefik.http.routers.nginx.tls.certresolver=myresolver"
+      - "traefik.http.services.nginx.loadbalancer.server.port=80"
 
   app:
     build:
