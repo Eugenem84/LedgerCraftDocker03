@@ -54,6 +54,19 @@ services:
       - "traefik.http.services.app.loadbalancer.server.port=80"
     depends_on:
       - db
+    environment:
+      APP_URL: 'https://dev.medovf2h.beget.tech'
+      APP_ENV: 'production'
+      APP_KEY: 'your-app-key' # Лучше генерировать его
+      DB_CONNECTION: 'pgsql'
+      DB_HOST: 'db'
+      DB_PORT: '5432'
+      DB_DATABASE: 'ledger_craft_db'
+      DB_USERNAME: 'root'
+      DB_PASSWORD: 'root'
+      CACHE_DRIVER: 'file'
+      SESSION_DRIVER: 'file'
+      QUEUE_CONNECTION: 'sync'
 
   db:
     image: postgres
