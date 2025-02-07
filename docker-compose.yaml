@@ -48,7 +48,7 @@ services:
     container_name: ledger_craft_app
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`217.114.0.27`)" # Замени на свой домен
+      - "traefik.http.routers.app.rule=Host(`dev.medovf2h.beget.tech`)" # Замени на свой домен
       - "traefik.http.routers.app.entrypoints=websecure"
       - "traefik.http.routers.app.tls.certresolver=myresolver"
       - "traefik.http.services.app.loadbalancer.server.port=80"
