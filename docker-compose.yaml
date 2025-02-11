@@ -22,22 +22,21 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./letsencrypt:/letsencrypt"
 
-#  nginx:
-#    image: nginx:latest
-#    volumes:
-#      - ./:/var/www/
-#      - ./_docker/nginx/conf.d/:/etc/nginx/conf.d/
-#    ports:
-#      - "8876:80"
-#    container_name: ledger_craft_nginx
-#    depends_on:
-#      - app
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.nginx.rule=Host(`dev.medovf2h.beget.tech`)"
-#      - "traefik.http.routers.nginx.entrypoints=websecure"
-#      - "traefik.http.routers.nginx.tls.certresolver=myresolver"
-#      - "traefik.http.services.nginx.loadbalancer.server.port=80"
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./:/var/www/
+      - ./_docker/nginx/conf.d/:/etc/nginx/conf.d/
+
+    container_name: ledger_craft_nginx
+    depends_on:
+      - app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginx.rule=Host(`dev.medovf2h.beget.tech`)"
+      - "traefik.http.routers.nginx.entrypoints=websecure"
+      - "traefik.http.routers.nginx.tls.certresolver=myresolver"
+      - "traefik.http.services.nginx.loadbalancer.server.port=80"
 
   app:
     build:
@@ -46,12 +45,6 @@ services:
     volumes:
       - ./:/var/www/
     container_name: ledger_craft_app
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`dev.medovf2h.beget.tech`)" # Замени на свой домен
-      - "traefik.http.routers.app.entrypoints=websecure"
-      - "traefik.http.routers.app.tls.certresolver=myresolver"
-      - "traefik.http.services.app.loadbalancer.server.port=80"
     depends_on:
       - db
     environment:
@@ -78,6 +71,6 @@ services:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
     ports:
-      - '5433:5432' # Проксируем порт 5432 из контейнера в локальную машину
+      - '5433:5432' # Проксируем порт 5432 из контейнера в локальную
     container_name: ledger_craft_db
 
