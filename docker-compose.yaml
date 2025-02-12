@@ -8,12 +8,20 @@ services:
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
+      - "--api.dashboard=true"               # Включаем сам дашборд
+      - "--api.debug=true"                   # Включаем debug режим для отображения дополнительных логов в дашборде
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.email=medov-foto@mail.ru"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=DEBUG"  # Уровень логирования, может быть: DEBUG, INFO, WARN, ERROR
+      - "--accesslog=true"   # Включение логов доступа
+      - "--accesslog.filepath=/letsencrypt/access.log"  # Путь для логов доступа
     ports:
       - "80:80"
       - "443:443"
@@ -27,7 +35,6 @@ services:
     volumes:
       - ./:/var/www/
       - ./_docker/nginx/conf.d/:/etc/nginx/conf.d/
-
     container_name: ledger_craft_nginx
     depends_on:
       - app
@@ -37,6 +44,11 @@ services:
       - "traefik.http.routers.nginx.entrypoints=websecure"
       - "traefik.http.routers.nginx.tls.certresolver=myresolver"
       - "traefik.http.services.nginx.loadbalancer.server.port=80"
+
+        # Разрешаем HTTP без редиректа на HTTPS
+     # - "traefik.http.routers.nginx-http.rule=Host(`dev.medovf2h.beget.tech`)"
+     # - "traefik.http.routers.nginx-http.entrypoints=web"
+     # - "traefik.http.routers.nginx-http.service=nginx"
 
   app:
     build:
@@ -50,7 +62,7 @@ services:
     environment:
       APP_URL: 'https://dev.medovf2h.beget.tech'
       APP_ENV: 'production'
-      APP_KEY: 'your-app-key' # Лучше генерировать его
+      APP_KEY: 'base64:dwzzLawbopqcZ98G934Nt36KNwHN5t4s1mCCASGz3i8=' # Лучше генерировать его
       DB_CONNECTION: 'pgsql'
       DB_HOST: 'db'
       DB_PORT: '5432'
@@ -60,6 +72,8 @@ services:
       CACHE_DRIVER: 'file'
       SESSION_DRIVER: 'file'
       QUEUE_CONNECTION: 'sync'
+    ports:
+      - "5173:5173"
 
   db:
     image: postgres
