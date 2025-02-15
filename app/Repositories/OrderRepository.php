@@ -53,6 +53,11 @@ class OrderRepository extends Controller
         return Order::where('user_id', $userId)->orderBy('created_at', 'desc')->get();
     }
 
+    public function getBySpecialization($id)
+    {
+        return Order::where('specialization_id', $id)->orderBy('created_at', 'desc')->get();
+    }
+
     public function getDetails($id)
     {
         return Order::find($id);

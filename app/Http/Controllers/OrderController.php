@@ -40,6 +40,16 @@ class OrderController extends Controller
         $this->equipmentModelRepository = $equipmentModelRepository;
     }
 
+    public function getBySpecialization(Request $request, $id)
+    {
+        $orders = $this->orderRepository->getBySpecialization($id);
+        if ($orders){
+            return response()->json($orders);
+        } else {
+            return response()->json(['message' => 'ордеров нет']);
+        }
+    }
+
     public function switchPaidStatus(Request $request, $id)
     {
         $order = $this->orderRepository->switchPaidStatus($id);

@@ -94,6 +94,7 @@ Route::post('/delete_store_product', [ProductController::class, 'delete']);
 Route::post('/arrival_product', [ProductController::class, 'arrival']);
 
 
+Route::get('/orders_by_specialization/{id}', [OrderController::class, 'getBySpecialization']);
 //Route::get('/get_all_orders', [OrderController::class, 'getAll']);
 Route::get('/order/{orderId}', [OrderController::class, 'getDetails']);
 //Route::post('/save_order', [OrderController::class, 'saveOrder']);
@@ -111,3 +112,7 @@ Route::get('/get_top_services/{specializationId}', [StatisticController::class, 
 Route::get('/get_top_profit_clients/{specializationId}', [StatisticController::class, 'getTopProfitClients']);
 
 Route::get('/get_orders_by_user/{id}', [OrderController::class, 'getOrdersByUser']);
+//Route::get('/get_orders_by_user', [OrderController::class, 'getByUser']);
+Route::middleware('auth:sanctum')->get('/get_orders_by_user', [OrderController::class, 'getByUser']);
+Route::middleware('auth:sanctum')->get('/get_specializations_by_user', [SpecializationController::class, 'getAll']);
+
