@@ -48,6 +48,7 @@ class ClientRepository extends Controller
         $client->phone = $phone;
         $client->specialization_id = $specializationId;
         $client->save();
+        return $client->fresh();
     }
 
     public function delete($id)

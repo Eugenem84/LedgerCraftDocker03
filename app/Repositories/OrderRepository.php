@@ -21,7 +21,8 @@ class OrderRepository extends Controller
             UPDATE orders
             SET paid = NOT paid
             WHERE id = :id
-        ", ['id' => $orderId]);
+        ", ['id' => $orderId]
+        );
     }
     public function updatePaidStatus($orderId, $paidStatus)
     {
@@ -55,7 +56,15 @@ class OrderRepository extends Controller
 
     public function getBySpecialization($id)
     {
-        return Order::where('specialization_id', $id)->orderBy('created_at', 'desc')->get();
+        return DB::select("
+          SELECT orders.*, clients.name AS client_name, equipment_models.name AS model_name
+          FROM orders
+          JOIN clients ON orders.client_id = clients.id
+          JOIN equipment_models ON orders.model_id = equipment_models.id
+          WHERE orders.specialization_id = :specialization_id
+        ", ['specialization_id' => $id]
+        );
+        //return Order::where('specialization_id', $id)->orderBy('created_at', 'desc')->get();
     }
 
     public function getDetails($id)

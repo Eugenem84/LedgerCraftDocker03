@@ -95,6 +95,8 @@ Route::post('/arrival_product', [ProductController::class, 'arrival']);
 
 
 Route::get('/orders_by_specialization/{id}', [OrderController::class, 'getBySpecialization']);
+
+
 //Route::get('/get_all_orders', [OrderController::class, 'getAll']);
 Route::get('/order/{orderId}', [OrderController::class, 'getDetails']);
 //Route::post('/save_order', [OrderController::class, 'saveOrder']);

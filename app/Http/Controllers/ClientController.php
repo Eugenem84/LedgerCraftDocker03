@@ -37,11 +37,22 @@ class ClientController extends Controller
     public function addNew(Request $request)
     {
         try {
-            $name = $request->input('name');
-            $phone = $request->input('phone');
-            $specializationId = $request->input('specialization_id');
-            $this->clientRepository->addNew($name, $phone, $specializationId);
-            return response()->json(['message' => 'Клиент успешно добавлен']);
+            $client = $this->clientRepository->addNew(
+                $request->input('name'),
+                $request->input('phone'),
+                $request->input('specialization_id')
+            );
+
+            return response()->json([
+                'message' => 'Клиент успешно добавлен!!!',
+                'client' => [
+                    'id' => $client->id,
+                    'name' => $client->name,
+                    'phone' => $client->phone,
+                    'specialization_id' => $client->specialization_id
+                ]
+            ],201);
+
         } catch (\Exception){
             return response()->json(['error' => 'Ошибка при добавлении клиента']);
         }
