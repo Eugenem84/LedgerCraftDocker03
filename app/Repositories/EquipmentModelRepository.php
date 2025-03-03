@@ -31,10 +31,11 @@ class EquipmentModelRepository extends Controller
 
     public function addNew($name, $specializationId )
     {
-        $client = new EquipmentModel();
-        $client->name = $name;
-        $client->specialization_id = $specializationId;
-        $client->save();
+        $model = new EquipmentModel();
+        $model->name = $name;
+        $model->specialization_id = $specializationId;
+        $model->save();
+        return $model->fresh();
     }
 
     public function delete($id)

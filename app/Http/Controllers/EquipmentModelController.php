@@ -29,10 +29,19 @@ class EquipmentModelController extends Controller
     public function addNew(Request $request)
     {
         try {
-            $name = $request->input('name');
-            $specializationId = $request->input('specialization_id');
-            $this->equipmentModelRepository->addNew($name, $specializationId);
-            return response()->json(['message' => 'Модель успешно добавлена']);
+            $equipmentModel = $this->equipmentModelRepository->addNew(
+                $request->input('name'),
+                $request->input('specialization_id'),
+            );
+
+            return response()->json([
+                'message' => 'Модель успешно добавлена',
+                'model' => [
+                    'id' => $equipmentModel->id,
+                    'name' => $equipmentModel->name,
+                    'specialization_id' => $equipmentModel->specialization_id
+                ]
+            ],201);
         } catch (\Exception){
             return response()->json(['error' => 'Ошибка при добавлении модели']);
         }
