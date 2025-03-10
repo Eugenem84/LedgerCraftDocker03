@@ -106,6 +106,8 @@ Route::get('/get_services/{orderId}', [OrderController::class, 'getServices']);
 Route::put('update_order_status/{id}', [OrderController::class, 'updateStatus']);
 Route::put('update_paid_status/{id}', [OrderController::class, 'updatePadeStatus']);
 Route::put('switch_paid_status/{id}', [OrderController::class, 'switchPaidStatus']);
+Route::get('/get_orders_by_user', [OrderController::class, 'getByUser']);
+
 
 Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'getMaterialsByOrder']);
 
@@ -117,4 +119,4 @@ Route::get('/get_orders_by_user/{id}', [OrderController::class, 'getOrdersByUser
 //Route::get('/get_orders_by_user', [OrderController::class, 'getByUser']);
 Route::middleware('auth:sanctum')->get('/get_orders_by_user', [OrderController::class, 'getByUser']);
 Route::middleware('auth:sanctum')->get('/get_specializations_by_user', [SpecializationController::class, 'getAll']);
-
+Route::middleware('auth:sanctum')->post('/save_order', [OrderController::class, 'saveOrder']);

@@ -40,7 +40,7 @@ class CategoryController extends Controller
         if ($result){
             return response()->json(['message' => 'Категорияэ успешно изменена'], 200);
         } else {
-            return response()->json(['message' => 'Категория не найдена'], 404);
+            return response()->json(['message' => 'Категория не найдена'], 403);
         }
     }
 
@@ -50,7 +50,7 @@ class CategoryController extends Controller
         if ($result) {
             return response()->json(['message' => 'Категория удалена'], 200);
         } else {
-            return response()->json(['message' => 'Категория не найдена'], 404);
+            return response()->json(['message' => 'Категория не найдена'], 403);
         }
     }
 

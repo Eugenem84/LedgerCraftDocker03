@@ -187,7 +187,19 @@ class OrderController extends Controller
 
     public function saveOrder(Request $request)
     {
-        $data = $request->only(['clientId', 'userOrderNumber', 'specializationId', 'status', 'totalAmount', 'modelId' , 'materials', 'comments', 'addedMaterials', 'addedProducts', 'paid']);
+        $data = $request->only([
+            'clientId',
+            'userOrderNumber',
+            'specializationId',
+            'status',
+            'totalAmount',
+            'modelId' ,
+            'materials',
+            'comments',
+            'addedMaterials',
+            'addedProducts',
+            'paid'
+        ]);
         $data['servicesId'] = $request->input('servicesId');
         $order = $this->orderRepository->saveOrder($data);
         if ($order){
