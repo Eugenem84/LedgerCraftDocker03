@@ -156,7 +156,7 @@ class ServiceController extends Controller
             $this->serviceRepository->addNew($name, $price, $categoryId);
             return response()->json(['message' => 'Сервис успешно добавлен']);
         } catch (\Exception){
-            return response()->json(['error' => 'Ошибка добавления']);
+            return response()->json(['error' => 'Ошибка добавления'], 403);
         }
     }
 

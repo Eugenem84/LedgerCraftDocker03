@@ -211,7 +211,7 @@ class OrderController extends Controller
     public function deleteOrder($id)
     {
         $this->orderRepository->deleteOrder($id);
-        return response('ордер удален');
+        return response('ордер удален', 200);
     }
 
     public function updateOrder(Request $request)

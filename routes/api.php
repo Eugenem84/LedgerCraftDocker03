@@ -14,6 +14,7 @@ use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\EquipmentModelController;
 use App\Http\Controllers\ProductStockController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\AppVersionController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -120,3 +121,5 @@ Route::get('/get_orders_by_user/{id}', [OrderController::class, 'getOrdersByUser
 Route::middleware('auth:sanctum')->get('/get_orders_by_user', [OrderController::class, 'getByUser']);
 Route::middleware('auth:sanctum')->get('/get_specializations_by_user', [SpecializationController::class, 'getAll']);
 Route::middleware('auth:sanctum')->post('/save_order', [OrderController::class, 'saveOrder']);
+
+Route::get('/app-quasar-android-version', [AppVersionController::class, 'checkQuasarAndroidVersion']);
