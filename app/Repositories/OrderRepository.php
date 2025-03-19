@@ -127,7 +127,7 @@ class OrderRepository extends Controller
                 $material->order_id = $order->id;
                 $material->name = $materialData['name'];
                 $material->price = $materialData['price'];
-                $material->amount = $materialData['amount'];
+                $material->amount = $materialData['counter'];
                 $material->save();
             }
         }

@@ -40,7 +40,7 @@ services:
       - app
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.nginx.rule=Host(`dev.medovf2h.beget.tech`)"
+      - "traefik.http.routers.nginx.rule=Host(`prod.medovf2h.beget.tech`)"
       - "traefik.http.routers.nginx.entrypoints=websecure"
       - "traefik.http.routers.nginx.tls.certresolver=myresolver"
       - "traefik.http.services.nginx.loadbalancer.server.port=80"
@@ -60,7 +60,7 @@ services:
     depends_on:
       - db
     environment:
-      APP_URL: 'https://dev.medovf2h.beget.tech'
+      APP_URL: 'https://prod.medovf2h.beget.tech'
       APP_ENV: 'production'
       APP_KEY: 'base64:dwzzLawbopqcZ98G934Nt36KNwHN5t4s1mCCASGz3i8=' # Лучше генерировать его
       DB_CONNECTION: 'pgsql'
