@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AppVersionController extends Controller
 {
@@ -29,5 +30,20 @@ class AppVersionController extends Controller
             'version' => $matches[1],
             'apk_name' => $latestApk
         ]);
+    }
+
+    public function downloadLatestApk(): BinaryFileResponse
+    {
+        $directory = storage_path('app/public');
+        $files = glob($directory . '/*.apk');
+        if (empty($files)) {
+            abort(404, 'APK файл не найден');
+        }
+        usort($files, function ($a, $b) {
+           return filemtime($b) - filemtime($a);
+        });
+
+        $latestApk = $files[0];
+        return response()->download($latestApk, basename($latestApk));
     }
 }

@@ -123,3 +123,4 @@ Route::middleware('auth:sanctum')->get('/get_specializations_by_user', [Speciali
 Route::middleware('auth:sanctum')->post('/save_order', [OrderController::class, 'saveOrder']);
 
 Route::get('/app-quasar-android-version', [AppVersionController::class, 'checkQuasarAndroidVersion']);
+Route::get('/download-latest-android-apk', [AppVersionController::class, 'downloadLatestApk']);
