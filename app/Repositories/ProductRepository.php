@@ -44,17 +44,17 @@ class ProductRepository extends Controller
         }
         return false;
     }
-//
-//    public function edit($id, $newName, $newPrice)
-//    {
-//        $service = Service::find($id);
-//        if ($service){
-//            $service->service = $newName;
-//            $service->price = $newPrice;
-//            $service->save();
-//            return true;
-//        } else {
-//            return false;
-//        }
-//    }
+
+    public function edit($id, $newName, $newBaseSalePrice)
+    {
+        $product = Product::find($id);
+        if ($product){
+            $product->name = $newName;
+            $product->base_sale_price = $newBaseSalePrice;
+            $product->save();
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

@@ -14,7 +14,7 @@ class ClientRepository extends Controller
 
     public function getBySpecialization($specializationId)
     {
-        return Client::where('specialization_id', $specializationId)->get();
+        return Client::where('specialization_id', $specializationId)->orderByDesc('id')->get();
     }
 
     public function getName($id)
