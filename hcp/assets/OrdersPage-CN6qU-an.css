@@ -1,0 +1,17 @@
+
+.fab[data-v-372fd12a] {
+  position: fixed;
+  bottom: 70px;
+  right: 16px;
+  z-index: 1000; /* чтобы кнопка была поверх остальных элементов */
+}
+.border-waiting[data-v-372fd12a] {
+  border-left: 3px solid yellow;
+}
+.border-done[data-v-372fd12a] {
+  border-left: 3px solid green;
+}
+.border-process[data-v-372fd12a] {
+  border-left: 3px solid red;
+}
+

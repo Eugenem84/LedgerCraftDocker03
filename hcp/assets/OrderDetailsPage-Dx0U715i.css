@@ -1,0 +1,12 @@
+
+.selectService[data-v-08baa732]:hover {
+  background-color: yellow;
+  color: black
+}
+.fab[data-v-08baa732] {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 1000; /* чтобы кнопка была поверх остальных элементов */
+}
+

@@ -13,7 +13,7 @@ class OrderService extends Model
     protected $primaryKey = ['order_id', 'service_id'];
     public $incrementing = false;
 
-    protected $fillable = ['order_id', 'service_is'];
+    protected $fillable = ['order_id', 'service_is', 'sale_price', 'quantity'];
 
     public function order()
     {

@@ -1,0 +1,14 @@
+
+.sticky-tabs[data-v-4266a777] {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: black;
+}
+.fab[data-v-4266a777] {
+  position: fixed;
+  bottom: 70px;
+  right: 16px;
+  z-index: 1000; /* чтобы кнопка была поверх остальных элементов */
+}
+

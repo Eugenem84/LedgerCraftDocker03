@@ -73,16 +73,17 @@ class ProductController extends Controller
 //        return response()->json(['message' => $request]);
 //    }
 //
-//    public function edit(Request $request){
-//        $id = $request->input('id');
-//        $newName = $request->input('name');
-//        $result = $this->productCategoryRepository->edit($id, $newName);
-//        if ($result){
-//            return response()->json(['message' => 'Категория успешно изменена'], 200);
-//        } else {
-//            return response()->json(['message' => 'Категория не найдена'], 404);
-//        }
-//    }
+    public function edit(Request $request){
+        $id = $request->input('id');
+        $newName = $request->input('name');
+        $baseSailPrice = $request->input('base_sale_price');
+        $result = $this->productRepository->edit($id, $newName, $baseSailPrice);
+        if ($result){
+            return response()->json(['message' => 'Товар успешно изменен'], 200);
+        } else {
+            return response()->json(['message' => 'Товар не найден'], 404);
+        }
+    }
 //
     public function delete(Request $request){
         $id = $request->input('productId');

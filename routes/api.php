@@ -91,6 +91,7 @@ Route::get('/get_product_stocks/{productCategoryId}', [ProductStockController::c
 Route::get('/get_products/{productCategoryId}', [ProductController::class, 'getByProductCategory']);
 Route::post('/add_product', [ProductController::class, 'addNew']);
 Route::post('/delete_store_product', [ProductController::class, 'delete']);
+Route::post('/edit_product', [ProductController::class, 'edit']);
 
 Route::post('/arrival_product', [ProductController::class, 'arrival']);
 
@@ -123,3 +124,8 @@ Route::middleware('auth:sanctum')->get('/get_specializations_by_user', [Speciali
 Route::middleware('auth:sanctum')->post('/save_order', [OrderController::class, 'saveOrder']);
 
 Route::get('/app-quasar-android-version', [AppVersionController::class, 'checkQuasarAndroidVersion']);
+
+Route::get('/hcp/chcp.json', [AppVersionController::class, 'getChcpManifest']);
+Route::get('/hcp/chcp.manifest', [AppVersionController::class, 'getChcpManifest']);
+
+Route::get('/download-apk', [AppVersionController::class, 'downloadApk']);

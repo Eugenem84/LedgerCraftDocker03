@@ -1,0 +1,9 @@
+
+.fab[data-v-b54eb96f] {
+  position: fixed;
+  bottom: 70px;
+  right: 16px;
+  z-index: 1000; /* чтобы кнопка была поверх остальных элементов */
+}
+
+
