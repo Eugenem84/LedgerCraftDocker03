@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use App\Repositories\OrderRepository;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use function Laravel\Prompts\error;
 use App\Repositories\SpecializationRepository;
 use App\Repositories\ClientRepository;
@@ -173,16 +174,35 @@ class OrderController extends Controller
         }
     }
 
+//    public function getServices($orderId)
+//    {
+//        $services = [];
+//        $servicesId = $this->orderRepository->getServicesId($orderId);
+//        foreach ($servicesId as $serviceId){
+//            $service = $this->serviceRepository->getService($serviceId);
+//            $services[] = $service;
+//        }
+//        return $services;
+//
+//    }
+
     public function getServices($orderId)
     {
-        $services = [];
-        $servicesId = $this->orderRepository->getServicesId($orderId);
-        foreach ($servicesId as $serviceId){
-            $service = $this->serviceRepository->getService($serviceId);
-            $services[] = $service;
-        }
-        return $services;
+       $services = [];
 
+       $orderServices = DB::table('order_service')
+           ->where('order_id', $orderId)
+           ->join('services', 'order_service.service_id', '=', 'services.id')
+           ->select('services.id as id', 'services.service as service', 'order_service.sale_price')
+           ->get();
+       foreach ($orderServices as $orderService) {
+           $services[] = [
+             'id' => $orderService->id,
+             'service' => $orderService->service,
+             'price' => $orderService->sale_price,
+           ];
+       }
+       return $services;
     }
 
     public function saveOrder(Request $request)

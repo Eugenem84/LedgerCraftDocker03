@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderProduct;
 use App\Models\OrderService;
 use App\Models\ProductStock;
+use App\Models\Service;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use function Laravel\Prompts\table;
@@ -97,7 +98,18 @@ class OrderRepository extends Controller
         $order->save();
 
         if (isset($data['servicesId']) && is_array($data['servicesId'])) {
-            $order->services()->attach($data['servicesId']);
+            $serviceData = [];
+
+            foreach ($data['servicesId'] as $serviceId) {
+                $service = Service::find($serviceId);
+                if ($service) {
+                    $serviceData[$serviceId] = [
+                        'sale_price' => $service->price,
+                        'quantity' => 1
+                    ];
+                }
+            }
+            $order->services()->attach($serviceData);
         }
 
         if (isset($data['addedProducts']) && is_array($data['addedProducts'])) {
@@ -163,8 +175,22 @@ class OrderRepository extends Controller
         //$order->materials = $materials;
         $order->comments = $comments;
         $order->paid = $paid;
-        $order->services()->sync($servicesData);
+        //$order->services()->sync($servicesData);
         $order->save();
+
+        if (isset($servicesData) && is_array($servicesData)) {
+            $serviceData = [];
+            foreach ($servicesData as $serviceId){
+                $service = Service::find($serviceId);
+                if ($service) {
+                    $serviceData[$serviceId] = [
+                        'sale_price' => $service->price,
+                        'quantity' => 1
+                    ];
+                }
+            }
+            $order->services()->sync($serviceData);
+        }
 
         if (isset($materials) && is_array($materials)) {
             // Удаляем существующие материалы
