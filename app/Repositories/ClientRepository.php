@@ -19,7 +19,7 @@ class ClientRepository extends Controller
 
     public function getName($id)
     {
-        $client = Client::find($id);
+        $client = Client::withTrashed()->find($id);
         if ($client){
             $clientName = $client->name;
             if ($clientName){
@@ -31,15 +31,15 @@ class ClientRepository extends Controller
 
     public function getPhone($id)
     {
-        $clint = Client::find($id);
-        if ($clint){
-            $clintPhone = $clint->phone;
+        $client = Client::withTrashed()->find($id);
+        if ($client){
+            $clintPhone = $client->phone;
             if ($clintPhone){
                 return $clintPhone;
             }
         }
+        return 'нет телефона';
     }
-
 
     public function addNew($name, $phone, $specializationId )
     {
@@ -74,5 +74,4 @@ class ClientRepository extends Controller
             return false;
         }
     }
-
 }

@@ -174,18 +174,6 @@ class OrderController extends Controller
         }
     }
 
-//    public function getServices($orderId)
-//    {
-//        $services = [];
-//        $servicesId = $this->orderRepository->getServicesId($orderId);
-//        foreach ($servicesId as $serviceId){
-//            $service = $this->serviceRepository->getService($serviceId);
-//            $services[] = $service;
-//        }
-//        return $services;
-//
-//    }
-
     public function getServices($orderId)
     {
        $services = [];

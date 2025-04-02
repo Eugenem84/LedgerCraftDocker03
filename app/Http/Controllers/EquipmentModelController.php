@@ -20,11 +20,7 @@ class EquipmentModelController extends Controller
     public function getBySpecialization($specializationId)
     {
         $models = $this->equipmentModelRepository->getBySpecialization($specializationId);
-//        if ($clients->isEmpty()){
-//            //return response()->json(['message' => 'У данной специализации нет клиентов']);
-//        } else {
             return response()->json($models);
-//        }
     }
     public function addNew(Request $request)
     {

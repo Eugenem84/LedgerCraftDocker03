@@ -181,7 +181,7 @@ class OrderRepository extends Controller
         if (isset($servicesData) && is_array($servicesData)) {
             $serviceData = [];
             foreach ($servicesData as $serviceId){
-                $service = Service::find($serviceId);
+                $service = Service::withTrashed()->find($serviceId);
                 if ($service) {
                     $serviceData[$serviceId] = [
                         'sale_price' => $service->price,
