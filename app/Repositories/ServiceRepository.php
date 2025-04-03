@@ -10,7 +10,10 @@ class ServiceRepository extends Controller
 {
     public function getByCategory($categoryId)
     {
-        return Service::where('category_id', $categoryId)->get();
+        return Service::where('category_id', $categoryId)
+            ->withCount('orders')
+            ->orderBy('orders_count', 'desc')
+            ->get();
     }
 
     public function getService($id)
