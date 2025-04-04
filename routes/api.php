@@ -92,7 +92,6 @@ Route::get('/get_products/{productCategoryId}', [ProductController::class, 'getB
 Route::post('/add_product', [ProductController::class, 'addNew']);
 Route::post('/delete_store_product', [ProductController::class, 'delete']);
 Route::post('/edit_product', [ProductController::class, 'edit']);
-
 Route::post('/arrival_product', [ProductController::class, 'arrival']);
 
 

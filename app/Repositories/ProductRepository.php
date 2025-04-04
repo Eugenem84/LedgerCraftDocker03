@@ -37,24 +37,24 @@ class ProductRepository extends Controller
 
     public function delete($id)
     {
-        $service = Product::find($id);
-        if ($service){
-            $service->delete();
+        $product = Product::find($id);
+        if ($product){
+            $product->delete();
             return true;
         }
         return false;
     }
-//
-//    public function edit($id, $newName, $newPrice)
-//    {
-//        $service = Service::find($id);
-//        if ($service){
-//            $service->service = $newName;
-//            $service->price = $newPrice;
-//            $service->save();
-//            return true;
-//        } else {
-//            return false;
-//        }
-//    }
+
+    public function edit($id, $newName, $baseSalePrice)
+    {
+        $product = Product::find($id);
+        if ($product){
+            $product->name = $newName;
+            $product->base_sale_price = $baseSalePrice;
+            $product->save();
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
