@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -48,5 +49,13 @@ class Order extends Model
         return $this->belongsToMany(Product::class, 'order_product')
                     ->withPivot('sale_price','quantity')
                     ->withTimestamps();
+    }
+
+    // Генерация токена при создании заказа
+    protected static function booted()
+    {
+        static::creating(function ($order) {
+            $order->share_token = Str::random(40);
+        });
     }
 }

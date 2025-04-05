@@ -41,3 +41,6 @@ Route::get('/get_all_orders', [OrderController::class, 'getAll']);
 Route::get('/get_orders_by_user', [OrderController::class, 'getByUser']);
 Route::post('/save_order', [OrderController::class, 'saveOrder']);
 
+Route::get('/order-report/{order}', [OrderController::class, 'showReport'])
+    ->name('order-report');
+

@@ -94,7 +94,6 @@ Route::post('/delete_store_product', [ProductController::class, 'delete']);
 Route::post('/edit_product', [ProductController::class, 'edit']);
 Route::post('/arrival_product', [ProductController::class, 'arrival']);
 
-
 Route::get('/orders_by_specialization/{id}', [OrderController::class, 'getBySpecialization']);
 
 
@@ -108,6 +107,8 @@ Route::put('update_order_status/{id}', [OrderController::class, 'updateStatus'])
 Route::put('update_paid_status/{id}', [OrderController::class, 'updatePadeStatus']);
 Route::put('switch_paid_status/{id}', [OrderController::class, 'switchPaidStatus']);
 Route::get('/get_orders_by_user', [OrderController::class, 'getByUser']);
+
+Route::post('/order-report/{order}/share-link', [OrderController::class, 'generateShareLink']);
 
 
 Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'getMaterialsByOrder']);

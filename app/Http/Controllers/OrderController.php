@@ -17,6 +17,9 @@ use App\Repositories\SpecializationRepository;
 use App\Repositories\ClientRepository;
 use App\Repositories\ServiceRepository;
 use App\Repositories\EquipmentModelRepository;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\URL;
+
 
 
 class OrderController extends Controller
@@ -240,4 +243,21 @@ class OrderController extends Controller
         return response()->json(['message' => 'Ордер успешно обновился']);
     }
 
+// Показ отчёта
+    public function showReport(Order $order)
+    {
+        return view('order-report', [
+            'order' => $order->load(['client', 'services', 'materials', 'products'])
+        ]);
+    }
+
+    public function generateShareLink(Order $order)
+    {
+        return response()->json([
+            'url' => route('order-report', ['order' => $order->id]),
+        ]);
+    }
+
 }
+
+
