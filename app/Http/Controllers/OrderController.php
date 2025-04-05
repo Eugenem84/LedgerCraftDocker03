@@ -205,7 +205,6 @@ class OrderController extends Controller
             'status',
             'totalAmount',
             'modelId' ,
-            'materials',
             'comments',
             'addedMaterials',
             'addedProducts',
@@ -247,7 +246,7 @@ class OrderController extends Controller
     public function showReport(Order $order)
     {
         return view('order-report', [
-            'order' => $order->load(['client', 'services', 'materials', 'products'])
+            'order' => $order->load(['client', 'services', 'material', 'products'])
         ]);
     }
 

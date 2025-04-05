@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Отчет по заказу #{{ $order->id }}</title>
+    <title>Отчет по заказу</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 p-8">
 <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6">
-    <h1 class="text-2xl font-bold mb-6">Отчет по заказу #{{ $order->id }}</h1>
+    <h1 class="text-2xl font-bold mb-6">Отчет по заказу </h1>
 
     <!-- Блок статуса -->
     <div class="mb-6 p-4 rounded-lg
@@ -25,7 +25,7 @@
         </div>
         <div>
             <h2 class="font-semibold">Модель оборудования:</h2>
-            <p>{{ $order->model->name ?? 'Не указана' }}</p>
+            <p>{{ $order->model_id ?? 'Не указана' }}</p>
         </div>
     </div>
 
@@ -40,13 +40,15 @@
                 </tr>
             @endforeach
         </table>
+        Всего к оплате: {{$order->total_amount}}₽
     </div>
+    {{$order}}
 
     <!-- Кнопка для PDF -->
-    <a href="{{ route('order.pdf', $order->share_token) }}"
-       class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-        Скачать PDF
-    </a>
+{{--    <a href="{{ route('order.pdf', $order->share_token) }}"--}}
+{{--       class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">--}}
+{{--        Скачать PDF--}}
+{{--    </a>--}}
 </div>
 </body>
 </html>

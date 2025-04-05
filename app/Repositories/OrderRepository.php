@@ -92,7 +92,6 @@ class OrderRepository extends Controller
         $order->user_id = $userId;
         $order->model_id = $data['modelId'];
         $order->total_amount = (int)$data['totalAmount'];
-        $order->materials = $data['materials'];
         $order->comments = $data['comments'];
         $order->paid = $data['paid'];
         $order->save();
@@ -139,7 +138,7 @@ class OrderRepository extends Controller
                 $material->order_id = $order->id;
                 $material->name = $materialData['name'];
                 $material->price = $materialData['price'];
-                $material->amount = $materialData['counter'];
+                $material->amount = $materialData['amount'];
                 $material->save();
             }
         }
