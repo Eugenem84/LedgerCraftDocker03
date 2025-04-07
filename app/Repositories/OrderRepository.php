@@ -115,15 +115,15 @@ class OrderRepository extends Controller
             $productData = [];
 
             foreach ($data['addedProducts'] as $addedProduct) {
-                $productStock = ProductStock::where('product_id', $addedProduct['productId'])->first();
-                if ($productStock && $productStock->quantity >= $addedProduct['counter']) {
-                    $productStock->quantity -= $addedProduct['counter'];
+                $productStock = ProductStock::where('product_id', $addedProduct['product_id'])->first();
+                if ($productStock && $productStock->quantity >= $addedProduct['amount']) {
+                    $productStock->quantity -= $addedProduct['amount'];
                     $productStock->save();
 
                     // данные для расходного ордера order_product
-                    $productData[$addedProduct['productId']] = [
+                    $productData[$addedProduct['product_id']] = [
                         'sale_price' => $addedProduct['price'],
-                        'quantity' => $addedProduct['counter']
+                        'quantity' => $addedProduct['amount']
                     ];
                 } else {
                     throw new \Exception('недотаточен остаток по товару');
