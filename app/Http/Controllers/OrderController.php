@@ -246,14 +246,21 @@ class OrderController extends Controller
     public function showReport(Order $order)
     {
         return view('order-report', [
-            'order' => $order->load(['client', 'services', 'material', 'products'])
+            'order' => $order->load(['client', 'services', 'materials', 'products'])
         ]);
     }
 
     public function generateShareLink(Order $order)
     {
+        if(!$order->share_token){
+            $order->share_token = Str::random(40);
+            $order->save();
+        }
         return response()->json([
-            'url' => route('order-report', ['order' => $order->id]),
+            'url' => route('order-report', [
+                'order' => $order->id,
+                'token' => $order->share_token,
+            ]),
         ]);
     }
 

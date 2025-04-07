@@ -36,10 +36,10 @@ class Order extends Model
 
     public function user()
     {
-        $this->belongsTo(User::class);
+        return $this->belongsTo(User::class);
     }
 
-    public function material()
+    public function materials()
     {
         return $this->hasMany(Material::class);
     }
@@ -51,7 +51,7 @@ class Order extends Model
                     ->withTimestamps();
     }
 
-    // Генерация токена при создании заказа
+//     Генерация токена при создании заказа
 //    protected static function booted()
 //    {
 //        static::creating(function ($order) {
