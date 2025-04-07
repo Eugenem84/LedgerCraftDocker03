@@ -126,7 +126,7 @@ class OrderRepository extends Controller
                         'quantity' => $addedProduct['counter']
                     ];
                 } else {
-                    throw new \Exception('Product stock not found');
+                    throw new \Exception('недотаточен остаток по товару');
                 }
             }
             $order->products()->attach($productData);
