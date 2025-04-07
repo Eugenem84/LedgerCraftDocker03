@@ -52,7 +52,7 @@
 
     <!-- Таблицы с услугами и материалами -->
     <div class="mb-8">
-        <h2 class="text-xl font-semibold mb-4">Выполненные работы</h2>
+        <h2 class="text-xl font-semibold mb-4">Выполненные работы и материалы:</h2>
         <table class="w-full mb-6">
             @foreach($order->services as $service)
                 <tr class="border-b">
