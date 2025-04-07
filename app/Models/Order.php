@@ -52,10 +52,10 @@ class Order extends Model
     }
 
     // Генерация токена при создании заказа
-    protected static function booted()
-    {
-        static::creating(function ($order) {
-            $order->share_token = Str::random(40);
-        });
-    }
+//    protected static function booted()
+//    {
+//        static::creating(function ($order) {
+//            $order->share_token = Str::random(40);
+//        });
+//    }
 }
