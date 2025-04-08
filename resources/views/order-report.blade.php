@@ -8,14 +8,6 @@
 <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6">
     <h1 class="text-2xl text-center font-bold mb-6">Отчет по заказу </h1>
 
-{{--    <!-- Блок статуса -->--}}
-{{--    <div class="mb-6 p-4 rounded-lg--}}
-{{--            @if($order->status == 'done') bg-green-100--}}
-{{--            @elseif($order->status == 'process') bg-orange-100--}}
-{{--            @else bg-yellow-100 @endif">--}}
-{{--        Статус: {{ trans("statuses.$order->status") }}--}}
-{{--    </div>--}}
-
     @php
         $statusClasses = [
             'done' => 'bg-green-100 text-green-800',
@@ -44,10 +36,7 @@
             <p>{{ $order->client->name }}</p>
             <p>{{ $order->client->phone }}</p>
         </div>
-{{--        <div>--}}
-{{--            <h2 class="font-semibold">Модель оборудования:</h2>--}}
-{{--            <p>{{ $order->model_id ?? 'Не указана' }}</p>--}}
-{{--        </div>--}}
+
     </div>
 
     <!-- Таблицы с услугами и материалами -->
