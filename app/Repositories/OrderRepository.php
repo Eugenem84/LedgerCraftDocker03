@@ -148,6 +148,18 @@ class OrderRepository extends Controller
     public function deleteOrder($id)
     {
         $order = Order::find($id);
+        if (!$order) {
+            throw new \Exception('Order not found');
+        }
+
+        foreach ($order->products as $product) {
+            $orderedQuantity = $product->pivot->quantity;
+            $productStock = ProductStock::where('product_id', $product->id)->first();
+            if($productStock) {
+                $productStock->quantity += $orderedQuantity;
+                $productStock->save();
+            }
+        }
         OrderService::where('order_id', $id)->delete();
         $order->delete();
     }

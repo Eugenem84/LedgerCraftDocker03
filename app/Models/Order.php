@@ -50,12 +50,4 @@ class Order extends Model
                     ->withPivot('sale_price','quantity')
                     ->withTimestamps();
     }
-
-//     Генерация токена при создании заказа
-//    protected static function booted()
-//    {
-//        static::creating(function ($order) {
-//            $order->share_token = Str::random(40);
-//        });
-//    }
 }

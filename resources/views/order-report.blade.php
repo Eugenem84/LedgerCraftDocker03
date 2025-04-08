@@ -39,11 +39,11 @@
 
     <!-- Клиент и модель -->
     <div class="grid grid-cols-2 gap-4 mb-8">
-{{--        <div>--}}
-{{--            <h2 class="font-semibold">Клиент:</h2>--}}
-{{--            <p>{{ $order->client->name }}</p>--}}
-{{--            <p>{{ $order->client->phone }}</p>--}}
-{{--        </div>--}}
+        <div>
+            <h2 class="font-semibold">Клиент:</h2>
+            <p>{{ $order->client->name }}</p>
+            <p>{{ $order->client->phone }}</p>
+        </div>
 {{--        <div>--}}
 {{--            <h2 class="font-semibold">Модель оборудования:</h2>--}}
 {{--            <p>{{ $order->model_id ?? 'Не указана' }}</p>--}}
