@@ -6,7 +6,7 @@
 </head>
 <body class="bg-gray-100 p-8">
 <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6">
-    <h1 class="text-2xl font-bold mb-6">Отчет по заказу </h1>
+    <h1 class="text-2xl text-center font-bold mb-6">Отчет по заказу </h1>
 
 {{--    <!-- Блок статуса -->--}}
 {{--    <div class="mb-6 p-4 rounded-lg--}}
@@ -52,7 +52,8 @@
 
     <!-- Таблицы с услугами и материалами -->
     <div class="mb-8">
-        <h2 class="text-xl font-semibold mb-4">Выполненные работы и материалы:</h2>
+{{--        <h2 class="text-xl font-semibold mb-4">Выполненные работы и материалы:</h2>--}}
+        <h2 class="text-center font-semibold mb-4">Выполненные работы:</h2>
         <table class="w-full mb-6">
             @foreach($order->services as $service)
                 <tr class="border-b">
@@ -60,6 +61,13 @@
                     <td class="text-right">{{ number_format($service->pivot->sale_price) }} ₽</td>
                 </tr>
             @endforeach
+        </table>
+
+        <table class="w-full mb-6">
+
+{{--        <hr class="my-6 border-gray-300">--}}
+
+            <h2 class="text-center font-semibold mb-4">Использованные материалы:</h2>
 
             @foreach($order->products as $product)
                 <tr class="border-b">
