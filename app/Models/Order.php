@@ -31,7 +31,8 @@ class Order extends Model
     //связь с таблицей услуг (многие ко многим)
     public function services()
     {
-        return $this->belongsToMany(Service::class, 'order_service', 'order_id', 'service_id');
+        return $this->belongsToMany(Service::class, 'order_service', 'order_id', 'service_id')
+            ->withPivot('sale_price', 'quantity');
     }
 
     public function user()

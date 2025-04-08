@@ -96,20 +96,24 @@ class OrderRepository extends Controller
         $order->paid = $data['paid'];
         $order->save();
 
-        if (isset($data['servicesId']) && is_array($data['servicesId'])) {
+
+        if (isset($data['services']) && is_array($data['services'])) {
             $serviceData = [];
 
-            foreach ($data['servicesId'] as $serviceId) {
-                $service = Service::find($serviceId);
-                if ($service) {
-                    $serviceData[$serviceId] = [
-                        'sale_price' => $service->price,
-                        'quantity' => 1
-                    ];
-                }
+            foreach ($data['services'] as $service) {
+                $serviceId = $service['id'];
+                $price = $service['price'];
+                $quantity = $service['quantity'];
+
+                $serviceData[$serviceId] = [
+                    'sale_price' => $price,
+                    'quantity' => $quantity,
+                ];
             }
+
             $order->services()->attach($serviceData);
         }
+
 
         if (isset($data['addedProducts']) && is_array($data['addedProducts'])) {
             $productData = [];
@@ -191,17 +195,19 @@ class OrderRepository extends Controller
 
         if (isset($servicesData) && is_array($servicesData)) {
             $serviceData = [];
-            foreach ($servicesData as $serviceId){
-                $service = Service::withTrashed()->find($serviceId);
-                if ($service) {
-                    $serviceData[$serviceId] = [
-                        'sale_price' => $service->price,
-                        'quantity' => 1
-                    ];
-                }
+            foreach ($servicesData as $service) {
+                $serviceId = $service['id']; // получаем id услуги
+                $price = $service['price'];  // получаем цену из данных
+                $quantity = $service['quantity'] ?? 1; // получаем количество, если оно есть (по умолчанию 1)
+
+                $serviceData[$serviceId] = [
+                    'sale_price' => $price, // используем цену, которая пришла с фронта
+                    'quantity' => $quantity  // и количество, которое пришло с фронта
+                ];
             }
-            $order->services()->sync($serviceData);
+            $order->services()->sync($serviceData); // синхронизируем связи с учетом новых данных
         }
+
 
         if (isset($materials) && is_array($materials)) {
             // Удаляем существующие материалы

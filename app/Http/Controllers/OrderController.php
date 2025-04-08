@@ -210,7 +210,7 @@ class OrderController extends Controller
             'addedProducts',
             'paid'
         ]);
-        $data['servicesId'] = $request->input('servicesId');
+        $data['services'] = $request->input('services');
         $order = $this->orderRepository->saveOrder($data);
         if ($order){
             return response()->json(['message' => 'ордер сохранен']);
