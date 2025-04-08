@@ -57,7 +57,7 @@
             @foreach($order->services as $service)
                 <tr class="border-b">
                     <td class="py-2">{{ $service->service }}</td>
-                    <td class="text-right">{{ number_format($service->price) }} ₽</td>
+                    <td class="text-right">{{ number_format($service->pivot->sale_price) }} ₽</td>
                 </tr>
             @endforeach
 

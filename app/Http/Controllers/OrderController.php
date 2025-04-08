@@ -246,7 +246,13 @@ class OrderController extends Controller
     public function showReport(Order $order)
     {
         return view('order-report', [
-            'order' => $order->load(['client', 'services', 'materials', 'products'])
+            'order' => $order->load([
+                'client',
+                'services' => function ($query) {
+                    $query->withPivot('sale_price');
+                },
+                'materials',
+                'products'])
         ]);
     }
 
