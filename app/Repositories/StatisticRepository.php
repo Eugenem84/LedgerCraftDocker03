@@ -71,4 +71,60 @@ class StatisticRepository
             LIMIT 10
         ", ['specialization_id' => $specializationId]);
     }
+
+    public function getIncomeByYear($specializationId)
+    {
+        return DB::table('orders')
+            ->selectRaw("
+            date_part('month', updated_at) AS month_number,
+            to_char(updated_at, 'Mon')      AS month_name,
+            SUM(total_amount)               AS total
+        ")
+            ->where('specialization_id', $specializationId)
+            ->where('status', 'done')
+            ->where('paid', true)
+            ->whereYear('updated_at', Carbon::now()->year) // текущий год
+            ->groupByRaw("date_part('month', updated_at), to_char(updated_at, 'Mon')")
+            ->orderByRaw("date_part('month', updated_at)")
+            ->get();
+    }
+
+    public function getIncomeByTimePeriod($specializationId, $period)
+    {
+        $query = DB::table('orders')
+            ->select(DB::raw('SUM(total_amount) as total'));
+
+        // Условия фильтрации
+        $query->where('specialization_id', $specializationId);
+        $query->where('status', 'done');
+        $query->where('paid', 1);
+
+        // Динамическая группировка и сортировка в зависимости от выбранного периода
+        switch ($period) {
+            case 'month':
+                $query->selectRaw('to_char(updated_at, \'Mon\') as period');
+                $query->groupBy(DB::raw('date_part(\'month\', updated_at), to_char(updated_at, \'Mon\')'));
+                $query->orderBy(DB::raw('date_part(\'month\', updated_at)'));
+                break;
+            case 'week':
+                $query->selectRaw('EXTRACT(week FROM updated_at) as period');
+                $query->groupBy(DB::raw('EXTRACT(week FROM updated_at)'));
+                $query->orderBy(DB::raw('EXTRACT(week FROM updated_at)'));
+                break;
+            case 'day':
+                $query->selectRaw('to_char(updated_at, \'YYYY-MM-DD\') as period');
+                $query->groupBy(DB::raw('to_char(updated_at, \'YYYY-MM-DD\')'));
+                $query->orderBy(DB::raw('to_char(updated_at, \'YYYY-MM-DD\')'));
+                break;
+            case 'year':
+                $query->selectRaw('EXTRACT(year FROM updated_at) as period');
+                $query->groupBy(DB::raw('EXTRACT(year FROM updated_at)'));
+                $query->orderBy(DB::raw('EXTRACT(year FROM updated_at)'));
+                break;
+        }
+
+        // Получаем данные
+        return $query->get();
+    }
+
 }
