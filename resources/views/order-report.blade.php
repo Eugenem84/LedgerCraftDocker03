@@ -61,7 +61,7 @@
             @foreach($order->products as $product)
                 <tr class="border-b">
                     <td class="py-2">{{ $product->name }}</td>
-                    <td class="text-right">x{{ $product->pivot->quantity }} - {{number_format($product->base_sale_price)}} ₽</td>
+                    <td class="text-right"> х{{ $product->pivot->quantity }} - {{number_format($product->base_sale_price)}} ₽</td>
                 </tr>
             @endforeach
             {{$order->products[0]->pivot->quantity}}
