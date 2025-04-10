@@ -64,7 +64,6 @@
                     <td class="text-right"> х{{ $product->pivot->quantity }} - {{number_format($product->base_sale_price)}} ₽</td>
                 </tr>
             @endforeach
-            {{$order->products[0]->pivot->quantity}}
 
             @foreach($order->materials as $material)
                 <tr class="border-b">
