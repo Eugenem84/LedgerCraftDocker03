@@ -61,14 +61,15 @@
             @foreach($order->products as $product)
                 <tr class="border-b">
                     <td class="py-2">{{ $product->name }}</td>
-                    <td class="text-right">{{number_format($product->base_sale_price)}} ₽</td>
+                    <td class="text-right">x{{ $product->pivot->quantity }} - {{number_format($product->base_sale_price)}} ₽</td>
                 </tr>
             @endforeach
+            {{$order->products[0]->pivot->quantity}}
 
             @foreach($order->materials as $material)
                 <tr class="border-b">
                     <td class="py-2">{{$material->name}}</td>
-                    <td class="text-right">{{number_format($material->price)}} ₽</td>
+                    <td class="text-right">x{{ $material->amount }} -  {{number_format($material->price)}} ₽</td>
                 </tr>
             @endforeach
 
