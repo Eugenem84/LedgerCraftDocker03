@@ -102,16 +102,20 @@ class StatisticRepository
         // Динамическая группировка и сортировка в зависимости от выбранного периода
         switch ($period) {
             case 'month':
+                $query->whereYear('updated_at', now()->year);
                 $query->selectRaw('to_char(updated_at, \'Mon\') as period');
                 $query->groupBy(DB::raw('date_part(\'month\', updated_at), to_char(updated_at, \'Mon\')'));
                 $query->orderBy(DB::raw('date_part(\'month\', updated_at)'));
                 break;
             case 'week':
+                $query->whereYear('updated_at', now()->year);
                 $query->selectRaw('EXTRACT(week FROM updated_at) as period');
                 $query->groupBy(DB::raw('EXTRACT(week FROM updated_at)'));
                 $query->orderBy(DB::raw('EXTRACT(week FROM updated_at)'));
                 break;
             case 'day':
+                $query->whereYear('updated_at', now()->year);
+                $query->whereMonth('updated_at',now()->month);
                 $query->selectRaw('to_char(updated_at, \'YYYY-MM-DD\') as period');
                 $query->groupBy(DB::raw('to_char(updated_at, \'YYYY-MM-DD\')'));
                 $query->orderBy(DB::raw('to_char(updated_at, \'YYYY-MM-DD\')'));
