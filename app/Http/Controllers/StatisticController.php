@@ -37,11 +37,21 @@ class StatisticController extends Controller
 
     public function getIncomesByPeriod(Request $request, $specializationId)
     {
-        $period = $request->get('period') ?? $request->query('period'); // Получаем выбранный период из запроса, по умолчанию месяц
-        \Log::info("Запрошенный период: " . var_export($period, true));
+        $period = $request->get('period') ?? $request->query('period');// Получаем выбранный период из запроса, по умолчанию месяц
+
+        if ($period === 'day') {
+            $data = $this->statisticRepository->getIncomeByDay($specializationId);
+            return response()->json($data);
+        }
+
         $data = $this->statisticRepository->getIncomeByTimePeriod($specializationId, $period);
 
         return response()->json($data);
+    }
+
+    public function getIncomesByDat(Request $request, $specializationId)
+    {
+
     }
 
 }

@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Carbon\CarbonPeriod;
 
 class StatisticRepository
 {
@@ -131,4 +132,49 @@ class StatisticRepository
         return $query->get();
     }
 
+    public function getIncomeByDay($specializationId)
+    {
+        // Устанавливаем диапазон: последние 7 дней
+        $endDate = Carbon::now()->endOfDay();
+        $startDate = Carbon::now()->subDays(30)->startOfDay(); // 7 дней включая сегодня
+
+        // Запрос к БД
+        $aggregateData = DB::table('orders')
+            ->join('order_service', 'orders.id', '=', 'order_service.order_id')
+            ->select(
+                DB::raw("DATE(orders.updated_at) as date"),
+                DB::raw('SUM(order_service.quantity * order_service.sale_price) as total')
+            )
+            ->where('orders.specialization_id', $specializationId)
+            ->whereBetween('orders.updated_at', [$startDate, $endDate])
+            ->groupBy(DB::raw('DATE(orders.updated_at)'))
+            ->pluck('total', 'date')
+            ->map(function ($item) {
+                return (float)$item;
+            });
+
+        // Генерируем все даты за последние 7 дней
+        $allDates = [];
+        $currentDate = $startDate->copy();
+
+        while ($currentDate <= $endDate) {
+            $dateString = $currentDate->format('Y-m-d');
+            $allDates[$dateString] = 0;
+            $currentDate->addDay();
+        }
+
+        // Объединяем данные
+        $mergedData = array_merge($allDates, $aggregateData->toArray());
+
+        // Сортируем по дате и форматируем
+        return collect($mergedData)
+            ->sortKeys() // Сортировка по дате
+            ->map(function ($total, $date) {
+                return [
+                    'period' => $date,
+                    'total' => $total
+                ];
+            })
+            ->values();
+    }
 }

@@ -118,6 +118,8 @@ Route::get('/get_top_services/{specializationId}', [StatisticController::class, 
 Route::get('/get_top_profit_clients/{specializationId}', [StatisticController::class, 'getTopProfitClients']);
 Route::get('/income_by_year/{specializationId}', [StatisticController::class, 'getIncomeByYear']);
 Route::post('/incomes_by_period/{specializationId}', [StatisticController::class, 'getIncomesByPeriod']);
+Route::post('/incomes_by_day/{specializationId}', [StatisticController::class, 'getIncomesByDay']);
+
 
 Route::get('/get_orders_by_user/{id}', [OrderController::class, 'getOrdersByUser']);
 //Route::get('/get_orders_by_user', [OrderController::class, 'getByUser']);
