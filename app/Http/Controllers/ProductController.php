@@ -62,7 +62,7 @@ class ProductController extends Controller
 
         $this->productRepository->arrivalUpdate($productId, $baseSalePrice);
         $this->productStockRepository->arrival($productId, $arrivalQuantity);
-        //$this->incomingProductRepository->newIncome($productId, $arrivalQuantity, $byPrice, $supplier);
+        $this->incomingProductRepository->newIncome($productId, $arrivalQuantity, $byPrice, $supplier);
     }
 
 //    public function addNew(Request $request)
