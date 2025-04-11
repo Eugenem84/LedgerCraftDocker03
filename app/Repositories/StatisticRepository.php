@@ -136,7 +136,7 @@ class StatisticRepository
     {
         // Устанавливаем диапазон: последние 7 дней
         $endDate = Carbon::now()->endOfDay();
-        $startDate = Carbon::now()->subDays(30)->startOfDay(); // 7 дней включая сегодня
+        $startDate = Carbon::now()->subDays(30)->startOfDay(); // 30 дней включая сегодня
 
         // Запрос к БД
         $aggregateData = DB::table('orders')
@@ -172,6 +172,51 @@ class StatisticRepository
             ->map(function ($total, $date) {
                 return [
                     'period' => $date,
+                    'total' => $total
+                ];
+            })
+            ->values();
+    }
+
+    public function getIncomeByWeek($specializationId)
+    {
+        $endDate = Carbon::now()->endOfWeek();
+        $startDate = Carbon::now()->subWeeks(15)->startOfWeek();
+
+        // Используем одинарные кавычки и экранирование для формата
+        $weekFormat = "IYYY-\"W\"IW";
+
+        $aggregateData = DB::table('orders')
+            ->join('order_service', 'orders.id', '=', 'order_service.order_id')
+            ->select(
+                DB::raw("TO_CHAR(orders.updated_at, '".$weekFormat."') AS week"),
+                DB::raw('SUM(order_service.quantity * order_service.sale_price) as total')
+            )
+            ->where('orders.specialization_id', $specializationId)
+            ->whereBetween('orders.updated_at', [$startDate->toDateTimeString(), $endDate->toDateTimeString()])
+            ->groupBy(DB::raw("TO_CHAR(orders.updated_at, '".$weekFormat."')"))
+            ->pluck('total', 'week')
+            ->map(function ($item) {
+                return (float)$item;
+            });
+
+        // Генерация недель с ISO-форматом
+        $allWeeks = [];
+        $currentWeek = $startDate->copy();
+
+        while ($currentWeek <= $endDate) {
+            $weekKey = $currentWeek->isoFormat('YYYY-[W]WW');
+            $allWeeks[$weekKey] = 0;
+            $currentWeek->addWeek();
+        }
+
+        $mergedData = array_replace($allWeeks, $aggregateData->toArray());
+
+        return collect($mergedData)
+            ->sortKeys()
+            ->map(function ($total, $week) {
+                return [
+                    'period' => $week,
                     'total' => $total
                 ];
             })
