@@ -49,6 +49,11 @@ class StatisticController extends Controller
             return response()->json($data);
         }
 
+        if ($period === 'month') {
+            $data = $this->statisticRepository->getIncomeByMonth($specializationId);
+            return response()->json($data);
+        }
+
         $data = $this->statisticRepository->getIncomeByTimePeriod($specializationId, $period);
 
         return response()->json($data);

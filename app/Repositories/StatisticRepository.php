@@ -222,4 +222,53 @@ class StatisticRepository
             })
             ->values();
     }
+
+    public function getIncomeByMonth($specializationId)
+    {
+        // Устанавливаем диапазон: последние 12 месяцев
+        $endDate = Carbon::now()->endOfMonth();
+        $startDate = Carbon::now()->subMonths(11)->startOfMonth();
+
+        // Запрос для PostgreSQL
+        $aggregateData = DB::table('orders')
+            ->join('order_service', 'orders.id', '=', 'order_service.order_id')
+            ->select(
+                DB::raw("TO_CHAR(orders.updated_at, 'YYYY-MM') AS month"),
+                DB::raw('SUM(order_service.quantity * order_service.sale_price) as total')
+            )
+            ->where('orders.specialization_id', $specializationId)
+            ->whereBetween('orders.updated_at', [
+                $startDate->toDateTimeString(),
+                $endDate->toDateTimeString()
+            ])
+            ->groupBy(DB::raw("TO_CHAR(orders.updated_at, 'YYYY-MM')"))
+            ->pluck('total', 'month')
+            ->map(function ($item) {
+                return (float)$item;
+            });
+
+        // Генерируем все месяцы в диапазоне
+        $allMonths = [];
+        $currentMonth = $startDate->copy();
+
+        while ($currentMonth <= $endDate) {
+            $monthKey = $currentMonth->format('Y-m');
+            $allMonths[$monthKey] = 0;
+            $currentMonth->addMonth();
+        }
+
+        // Объединяем данные
+        $mergedData = array_replace($allMonths, $aggregateData->toArray());
+
+        // Сортируем и форматируем результат
+        return collect($mergedData)
+            ->sortKeys()
+            ->map(function ($total, $month) {
+                return [
+                    'period' => $month,
+                    'total' => $total
+                ];
+            })
+            ->values();
+    }
 }
