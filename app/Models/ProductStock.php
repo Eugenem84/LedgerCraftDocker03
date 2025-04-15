@@ -17,6 +17,6 @@ class ProductStock extends Model
 
     public function product()
     {
-        return $this->belongsTo(ProductCategory::class);
+        return $this->belongsTo(Product::class);
     }
 }
