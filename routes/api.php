@@ -15,6 +15,9 @@ use App\Http\Controllers\EquipmentModelController;
 use App\Http\Controllers\ProductStockController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AppVersionController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PasswordResetController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -26,23 +29,35 @@ use App\Http\Controllers\AppVersionController;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+//Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+//    return $request->user();
+//});
+
+//Route::post('/login', function (Request $request) {
+//   $credentials = $request->only('email', 'password');
+//   if (!Auth::attempt($credentials)){
+//       return response()->json(['message' => 'авторизация не пройдена'], 401);
+//   }
+//   $user = Auth::user();
+//   $token = $user->createToken('auth_token')->plainTextToken;
+//   return response()->json([
+//      'access_token' => $token,
+//      'token_type' => 'Bearer',
+//       'user' => $user,
+//   ]);
+//});
+
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::delete('/delete-account', [AuthController::class, 'deleteAccount']);
 });
 
-Route::post('/login', function (Request $request) {
-   $credentials = $request->only('email', 'password');
-   if (!Auth::attempt($credentials)){
-       return response()->json(['message' => 'авторизация не пройдена'], 401);
-   }
-   $user = Auth::user();
-   $token = $user->createToken('auth_token')->plainTextToken;
-   return response()->json([
-      'access_token' => $token,
-      'token_type' => 'Bearer',
-       'user' => $user,
-   ]);
-});
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
+Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
 
 Route::middleware('auth:api')->group(function (){
