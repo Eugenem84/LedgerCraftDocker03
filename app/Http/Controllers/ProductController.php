@@ -65,19 +65,12 @@ class ProductController extends Controller
         $this->incomingProductRepository->newIncome($productId, $arrivalQuantity, $byPrice, $supplier);
     }
 
-//    public function addNew(Request $request)
-//    {
-//        $newName = $request->input('name');
-//        $specializationId = $request->input('specialization_id');
-//        $this->productCategoryRepository->addNew($newName, $specializationId);
-//        return response()->json(['message' => $request]);
-//    }
-//
     public function edit(Request $request){
         $id = $request->input('id');
         $newName = $request->input('name');
         $baseSailPrice = $request->input('base_sale_price');
-        $result = $this->productRepository->edit($id, $newName, $baseSailPrice);
+        $storeBalance  = $request->input('store_balance');
+        $result = $this->productRepository->edit($id, $newName, $baseSailPrice, $storeBalance);
         if ($result){
             return response()->json(['message' => 'Товар успешно изменен'], 200);
         } else {

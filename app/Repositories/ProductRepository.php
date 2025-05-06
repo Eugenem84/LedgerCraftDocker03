@@ -45,16 +45,33 @@ class ProductRepository extends Controller
         return false;
     }
 
-    public function edit($id, $newName, $baseSalePrice)
+    public function edit($id, $newName, $baseSalePrice, $storeBalance)
     {
-        $product = Product::find($id);
-        if ($product){
-            $product->name = $newName;
-            $product->base_sale_price = $baseSalePrice;
-            $product->save();
-            return true;
-        } else {
+        $product = Product::with('stock')->find($id);
+        if (!$product) {
             return false;
         }
+
+        $product->name = $newName;
+        $product->base_sale_price = $baseSalePrice;
+
+        if ($product->stock) {
+            $product->stock->quantity = $storeBalance;
+            $product->stock->save();
+        }
+        $product->save();
+
+        return true;
+
+//        $product = Product::with('stock')->find($id);
+//        if ($product){
+//            $product->name = $newName;
+//            $product->base_sale_price = $baseSalePrice;
+//            $product->stock->quantity = $storeBalance;
+//            $product->save();
+//            return true;
+//        } else {
+//            return false;
+//        }
     }
 }
