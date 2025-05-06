@@ -59,9 +59,11 @@ class StatisticController extends Controller
         return response()->json($data);
     }
 
-    public function getIncomesByDat(Request $request, $specializationId)
+    public function getStatsByPeriod(Request $r, $id)
     {
-
+        $period = $r->get('period', 'month');
+        $data   = $this->statisticRepository->getStatsByPeriod($id, $period);
+        return response()->json($data);
     }
 
 }

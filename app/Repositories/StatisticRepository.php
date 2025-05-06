@@ -271,4 +271,47 @@ class StatisticRepository
             })
             ->values();
     }
+
+
+    public function getStatsByPeriod(int $specializationId, string $period)
+    {
+        $groupFormat = match($period) {
+            'day'   => 'YYYY-MM-DD',
+            'week'  => 'IYYY-"W"IW',
+            'month' => 'YYYY-MM',
+            'year'  => 'YYYY',
+            default => 'YYYY-MM-DD',
+        };
+
+        $query = DB::table('orders')
+            ->join('order_service','orders.id','=','order_service.order_id')
+            ->selectRaw("to_char(updated_at, '{$groupFormat}') as period")
+            ->selectRaw('SUM(order_service.quantity * order_service.sale_price) as total')
+            ->selectRaw('COUNT(DISTINCT orders.id)                   as count')
+            ->where('orders.specialization_id', $specializationId)
+            ->where('status', 'done')
+            ->where('paid', 1)
+            ->whereBetween('updated_at', $this->getDateRange($period))
+            ->groupBy('period')
+            ->orderBy('period');
+
+        return $query->get()->map(fn($r) => [
+            'period' => $r->period,
+            'total'  => (float)$r->total,
+            'count'  => (int)  $r->count,
+        ])->values();
+    }
+
+// вспомогательный для диапазонов по period
+    protected function getDateRange(string $period): array
+    {
+        $now = Carbon::now();
+        return match($period) {
+            'day'   => [$now->copy()->subDays(30)->startOfDay(), $now->endOfDay()],
+            'week'  => [$now->copy()->subWeeks(15)->startOfWeek(), $now->endOfWeek()],
+            'month' => [$now->copy()->subMonths(11)->startOfMonth(), $now->endOfMonth()],
+            'year'  => [Carbon::create(2000,1,1), $now],
+            default => [$now->copy()->subDays(30), $now],
+        };
+    }
 }

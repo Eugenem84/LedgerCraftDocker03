@@ -117,7 +117,7 @@ Route::get('/get_total_DWYM/{specializationId}', [StatisticController::class, 'g
 Route::get('/get_top_services/{specializationId}', [StatisticController::class, 'getTopServicesBySpecialization']);
 Route::get('/get_top_profit_clients/{specializationId}', [StatisticController::class, 'getTopProfitClients']);
 Route::get('/income_by_year/{specializationId}', [StatisticController::class, 'getIncomeByYear']);
-Route::post('/incomes_by_period/{specializationId}', [StatisticController::class, 'getIncomesByPeriod']);
+Route::post('/incomes_by_period/{specializationId}', [StatisticController::class, 'getStatsByPeriod']);
 //Route::post('/incomes_by_day/{specializationId}', [StatisticController::class, 'getIncomesByDay']);
 
 
