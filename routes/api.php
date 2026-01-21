@@ -17,6 +17,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\SyncController;
 
 /*
 |--------------------------------------------------------------------------
@@ -111,7 +112,6 @@ Route::post('/arrival_product', [ProductController::class, 'arrival']);
 
 Route::get('/orders_by_specialization/{id}', [OrderController::class, 'getBySpecialization']);
 
-
 //Route::get('/get_all_orders', [OrderController::class, 'getAll']);
 Route::get('/order/{orderId}', [OrderController::class, 'getDetails']);
 //Route::post('/save_order', [OrderController::class, 'saveOrder']);
@@ -148,3 +148,6 @@ Route::get('/hcp/chcp.json', [AppVersionController::class, 'getChcpManifest']);
 Route::get('/hcp/chcp.manifest', [AppVersionController::class, 'getChcpManifest']);
 
 Route::get('/download-apk', [AppVersionController::class, 'downloadApk']);
+
+Route::post('/sync', [SyncController::class, 'sync']);
+Route::get('/sync-updates', [SyncController::class, 'fetchUpdates']);
