@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 
 class SyncController extends Controller
 {
     private array $tables = [
         'clients',
+        'specializations',
         // 'orders', 'invoices', ...
     ];
 
@@ -50,7 +52,7 @@ class SyncController extends Controller
 public function fetchUpdates(Request $request)
 {
     $table = $request->query('table');
-    $table = 'clients';
+    //$table = 'specializations';
     $since = $request->query('since', 0);
 
     // временно
@@ -70,9 +72,14 @@ if (empty($table)) {
         ]);
     }
 
-    $updates = DB::table($table)
-        ->whereNull('deleted_at')
-        ->get();
+    $query = DB::table($table);
+
+    // Добавляем условие для "мягкого удаления" только если колонка существует в таблице
+    if (Schema::hasColumn($table, 'deleted_at')) {
+        $query->whereNull('deleted_at');
+    }
+
+    $updates = $query->get();
 
     // отдаём прямо в браузер: количество + первые 10 записей
     return response()->json([
