@@ -23,8 +23,11 @@ class SyncController extends Controller
         'products',
         'product_categories',
         'product_stocks',
+        'categories',
         'services',
         'service_categories',
+        'by_product_prices',
+        'sales_product_prices',
     ];
 
     // ==============================================
