@@ -49,34 +49,40 @@ class SyncController extends Controller
                 $table   = $op['table'] ?? null;
                 $type    = $op['type'] ?? null;
                 $payload = $op['payload'] ?? null;
+                $localId = $payload['local_id'] ?? $op['id'] ?? null; // Получаем local_id
 
                 if (!$table || !$type || !$payload || !in_array($table, $this->tables)) {
-                    $results['errors'][] = ['index' => $index, 'error' => 'Invalid operation structure or table.'];
+                    $results['errors'][] = ['local_id' => $localId, 'error' => 'Invalid operation structure or table.'];
                     continue;
                 }
 
                 try {
-                    match ($type) {
-                        'insert' => $this->insertRecord($table, $payload, $results, $syncId),
-                        'update' => $this->updateRecord($table, $payload, $results, $syncId),
-                        'delete' => $this->deleteRecord($table, $payload, $results, $syncId),
-                        default  => $results['errors'][] = ['index' => $index, 'error' => "Unsupported operation type: {$type}"],
-                    };
+                    switch ($type) {
+                        case 'insert':
+                            $this->insertRecord($table, $payload, $results, $syncId, $localId);
+                            break;
+                        case 'update':
+                            $this->updateRecord($table, $payload, $results, $syncId, $localId);
+                            break;
+                        case 'delete':
+                            $this->deleteRecord($table, $payload, $results, $syncId, $localId);
+                            break;
+                        default:
+                            $results['errors'][] = ['local_id' => $localId, 'error' => "Unsupported operation type: {$type}"];
+                    }
                 } catch (QueryException $e) {
-                    // --- ВОТ ЭТО ГЛАВНОЕ ---
-                    //  именно ошибку базы данных и возвращаем максимум деталей.
                     $results['errors'][] = [
-                        'index' => $index,
+                        'local_id' => $localId,
                         'error' => 'DATABASE_ERROR',
                         'details' => [
-                            'message' => $e->getMessage(), // Полное сообщение от БД
-                            'sql' => $e->getSql(),         // Запрос, который сломался
-                            'bindings' => $e->getBindings(), // Данные, которые вставляли
+                            'message' => $e->getMessage(),
+                            'sql' => $e->getSql(),
+                            'bindings' => $e->getBindings(),
                         ],
                     ];
                     Log::error('Sync DB operation failed', ['operation' => $op, 'exception' => $e]);
                 } catch (\Exception $e) {
-                    $results['errors'][] = ['index' => $index, 'error' => 'GENERAL_ERROR', 'details' => ['message' => $e->getMessage()]];
+                    $results['errors'][] = ['local_id' => $localId, 'error' => 'GENERAL_ERROR', 'details' => ['message' => $e->getMessage()]];
                     Log::error('Sync operation failed', ['operation' => $op, 'exception' => $e]);
                 }
             }
@@ -150,46 +156,36 @@ class SyncController extends Controller
     // 3️⃣ Вспомогательные методы для sync()
     // ==============================================
 
-    private function insertRecord(string $table, array $payload, array &$results, ?string $syncId): void
+    private function insertRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
     {
-        // Убираем 'id' если клиент его прислал, БД должна генерировать его сама
-        unset($payload['id']);
+        // Убираем 'id' и 'local_id', БД должна генерировать 'id' сама
+        unset($payload['id'], $payload['local_id']);
 
-        // Устанавливаем временные метки
         $now = Carbon::now();
-
-        // 3. Помечаем запись ID клиента
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
         }
         $payload['created_at'] = $now;
         $payload['updated_at'] = $now;
 
-        // --- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ---
-        // Вместо insertGetId, который может молча вернуть 0,
-        // используем insertReturning. Этот метод надежно вернет
-        // ID на большинстве современных БД (PostgreSQL, SQL Server).
-        // Для MySQL он вернет true/false, поэтому мы сохраняем обратную совместимость.
-        $inserted = DB::table($table)->insertReturning($payload, 'id');
+        // Используем стандартный insert
+        DB::table($table)->insert($payload);
+        // Получаем ID последней вставленной записи
+        $newId = DB::getPdo()->lastInsertId();
 
-        // Если insertReturning вернул массив (PostgreSQL), берем id из него.
-        // Если вернул true (MySQL), используем insertGetId как запасной вариант.
-        $newId = is_array($inserted) ? ($inserted[0]->id ?? null) : DB::getPdo()->lastInsertId();
 
         $results['synced'][] = [
-            'table' => $table,
             'type' => 'insert',
-            'id' => $newId,
+            'local_id' => $localId, // local_id из операции клиента
+            'server_id' => $newId,
         ];
     }
 
-    private function updateRecord(string $table, array $payload, array &$results, ?string $syncId): void
+    private function updateRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
     {
         $id = $payload['id'];
         unset($payload['id']);
 
-        // Устанавливаем временную метку
-        // 3. Помечаем запись ID клиента
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
         }
@@ -199,21 +195,19 @@ class SyncController extends Controller
 
         if ($affected > 0) {
             $results['synced'][] = [
-                'table' => $table,
                 'type' => 'update',
-                'id' => $id,
+                'local_id' => $localId,
+                'server_id' => $id,
             ];
         }
     }
 
-    private function deleteRecord(string $table, array $payload, array &$results, ?string $syncId): void
+    private function deleteRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
     {
         $id = $payload['id'];
-
         $query = DB::table($table)->where('id', $id);
 
         $updateData = [];
-        // Проверяем, использует ли таблица "мягкое удаление"
         if ($this->tableHasSoftDeletes($table)) {
             $updateData['deleted_at'] = Carbon::now();
             if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
@@ -226,18 +220,15 @@ class SyncController extends Controller
 
         if ($affected > 0) {
             $results['synced'][] = [
-                'table' => $table,
                 'type' => 'delete',
-                'id' => $id,
+                'local_id' => $localId,
+                'server_id' => $id,
             ];
         }
     }
 
     private function tableHasSoftDeletes(string $table): bool
     {
-        // Чтобы не делать запрос к схеме БД на каждый вызов,
-        // можно захардкодить или кэшировать эту информацию.
-        // Для примера, предположим, что эти таблицы используют soft deletes.
         $softDeleteTables = ['orders', 'clients', 'products'];
         return in_array($table, $softDeleteTables, true);
     }
