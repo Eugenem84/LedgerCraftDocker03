@@ -30,29 +30,21 @@ class SyncController extends Controller
         'sales_product_prices',
     ];
 
-    // ==============================================
-    // 1️⃣ POST /api/sync — отправка операций клиента
-    // ==============================================
     public function sync(Request $request)
     {
         $operations = $request->input('operations', []);
         $results = [
             'synced' => [],
-            'server_updates' => [],
             'errors' => [],
         ];
-
-        // 1. Получаем ID клиента/сессии. Он должен передаваться в заголовке или теле запроса.
-        // Например, 'X-Sync-ID'.
         $syncId = $request->header('X-Sync-ID');
 
-        // Оборачиваем все операции в транзакцию для атомарности
         DB::transaction(function () use ($operations, &$results, $syncId) {
-            foreach ($operations as $index => $op) {
+            foreach ($operations as $op) {
                 $table   = $op['table'] ?? null;
                 $type    = $op['type'] ?? null;
                 $payload = $op['payload'] ?? null;
-                $localId = $payload['local_id'] ?? $op['id'] ?? null; // Получаем local_id
+                $localId = $payload['uuid_id'] ?? $payload['local_id'] ?? $op['id'] ?? null;
 
                 if (!$table || !$type || !$payload || !in_array($table, $this->tables)) {
                     $results['errors'][] = ['local_id' => $localId, 'error' => 'Invalid operation structure or table.'];
@@ -74,15 +66,7 @@ class SyncController extends Controller
                             $results['errors'][] = ['local_id' => $localId, 'error' => "Unsupported operation type: {$type}"];
                     }
                 } catch (QueryException $e) {
-                    $results['errors'][] = [
-                        'local_id' => $localId,
-                        'error' => 'DATABASE_ERROR',
-                        'details' => [
-                            'message' => $e->getMessage(),
-                            'sql' => $e->getSql(),
-                            'bindings' => $e->getBindings(),
-                        ],
-                    ];
+                    $results['errors'][] = ['local_id' => $localId, 'error' => 'DATABASE_ERROR', 'details' => ['message' => $e->getMessage(), 'sql' => $e->getSql(), 'bindings' => $e->getBindings()]];
                     Log::error('Sync DB operation failed', ['operation' => $op, 'exception' => $e]);
                 } catch (\Exception $e) {
                     $results['errors'][] = ['local_id' => $localId, 'error' => 'GENERAL_ERROR', 'details' => ['message' => $e->getMessage()]];
@@ -94,100 +78,166 @@ class SyncController extends Controller
         return response()->json($results);
     }
 
-    // ==============================================
-    // 2️⃣ GET /api/sync-updates — получение обновлений для клиента
-    // ==============================================
     public function fetchUpdates(Request $request)
     {
-        // Жёсткий и честный лог, чтобы видеть реальность
         Log::debug('SYNC_UPDATES REQUEST', ['query' => $request->query()]);
-
-        // Получаем ID клиента, чтобы не отправлять ему его же изменения
         $syncId = $request->header('X-Sync-ID');
-
         $table = $request->query('table');
         $since = $request->query('since');
 
-        // Проверка table
         if (!$table || !in_array($table, $this->tables, true)) {
-            return response()->json([
-                'error' => 'Invalid or missing table',
-                'received_table' => $table,
-                'allowed_tables' => $this->tables,
-                'query' => $request->query(),
-            ], 400);
+            return response()->json(['error' => 'Invalid or missing table'], 400);
         }
 
         $query = DB::table($table);
 
-        // since ожидаем в миллисекундах
         if ($since !== null && $since !== '') {
             try {
                 $sinceCarbon = Carbon::createFromTimestampMs((int)$since);
                 $query->where('updated_at', '>', $sinceCarbon);
             } catch (\Throwable $e) {
-                return response()->json([
-                    'error' => 'Invalid since timestamp',
-                    'since' => $since,
-                ], 400);
+                return response()->json(['error' => 'Invalid since timestamp'], 400);
             }
         }
 
-        // 2. Исключаем записи, измененные этим же клиентом
-        // Мы проверяем, что колонка существует и что syncId был передан.
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $query->where(fn($q) => $q->where('last_sync_id', '!=', $syncId)->orWhereNull('last_sync_id'));
         }
 
-        // soft delete — только если колонка есть
         if ($this->tableHasSoftDeletes($table)) {
             $query->whereNull('deleted_at');
         }
 
-        $records = $query
-            ->orderBy('updated_at')
-            ->get();
-
-        return response()->json([
-            'table'   => $table,
-            'count'   => $records->count(),
-            'records' => $records,
-        ]);
+        $records = $query->orderBy('updated_at')->get();
+        return response()->json(['table' => $table, 'count' => $records->count(), 'records' => $records]);
     }
-
-    // ==============================================
-    // 3️⃣ Вспомогательные методы для sync()
-    // ==============================================
 
     private function insertRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
     {
-        // Убираем 'id' и 'local_id', БД должна генерировать 'id' сама
-        unset($payload['id'], $payload['local_id']);
+        // Служебные поля, которые не должны попадать в реальные колонки таблиц
+        unset($payload['id'], $payload['local_id'], $payload['uuid_id']);
 
         $now = Carbon::now();
+
+        // Специальная обработка для orders: картаем только реально существующие колонки
+        if ($table === 'orders') {
+            $data = [
+                'specialization_id' => $payload['specialization_id'] ?? null,
+                'client_id'        => $payload['client_id'] ?? null,
+                'hours'            => $payload['hours'] ?? null,
+                'minutes'          => $payload['minutes'] ?? null,
+                'total_amount'     => $payload['total_amount'] ?? null,
+                'comments'         => $payload['comments'] ?? null,
+                // materials сейчас не синкаем с клиента, пусть будет NULL
+            ];
+
+            if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
+                $data['last_sync_id'] = $syncId;
+            }
+            $data['created_at'] = $now;
+            $data['updated_at'] = $now;
+
+            $newId = DB::table($table)->insertGetId($data);
+
+            $results['synced'][] = [
+                'type'      => 'insert',
+                'local_id'  => $localId,
+                'server_id' => $newId,
+            ];
+
+            return;
+        }
+
+        // Специальная обработка для order_service:
+        // на сервере это чисто связывающая таблица без PK и timestamps
+        if ($table === 'order_service') {
+            // order_id и service_id приходят уже как server-side ID (см. fkTransformationMap на фронте)
+            $orderId   = $payload['order_id']   ?? null;
+            $serviceId = $payload['service_id'] ?? null;
+
+            // По умолчанию количество = 1, а цена берётся из таблицы services
+            $quantity  = $payload['quantity'] ?? 1;
+            $salePrice = $payload['sale_price'] ?? null;
+
+            if ($salePrice === null && $serviceId !== null) {
+                $salePrice = DB::table('services')
+                    ->where('id', $serviceId)
+                    ->value('price');
+            }
+
+            $now = Carbon::now();
+
+            $data = [
+                'order_id'    => $orderId,
+                'service_id'  => $serviceId,
+                'sale_price'  => $salePrice,
+                'quantity'    => $quantity,
+                'created_at'  => $now,
+                'updated_at'  => $now,
+                // uuid_* и deleted_at заполняться не будут — по договорённости их игнорируем
+            ];
+
+            // #region agent log
+            $logPayload = [
+                'sessionId'    => 'c685cd',
+                'runId'        => 'pre-fix',
+                'hypothesisId' => 'H3',
+                'location'     => 'SyncController.php:insertRecord:order_service',
+                'message'      => 'insertRecord for order_service',
+                'data'         => [
+                    'payload' => $payload,
+                    'data'    => $data,
+                ],
+                'timestamp'    => round(microtime(true) * 1000),
+            ];
+            @file_put_contents(
+                '/Users/artem/PhpstormProjects/ledger-craft-offline-first-PS/.cursor/debug-c685cd.log',
+                json_encode($logPayload, JSON_UNESCAPED_UNICODE) . PHP_EOL,
+                FILE_APPEND
+            );
+            // #endregion agent log
+
+            DB::table($table)->insert($data);
+
+            // Для связки серверный ID нам не нужен, но для единообразия вернём null
+            $results['synced'][] = [
+                'type'      => 'insert',
+                'local_id'  => $localId,
+                'server_id' => null,
+            ];
+
+            return;
+        }
+
+        // Обработка по умолчанию для остальных таблиц
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
         }
         $payload['created_at'] = $now;
         $payload['updated_at'] = $now;
 
-        // Используем стандартный insert
-        DB::table($table)->insert($payload);
-        // Получаем ID последней вставленной записи
-        $newId = DB::getPdo()->lastInsertId();
-
+        $newId = DB::table($table)->insertGetId($payload);
 
         $results['synced'][] = [
-            'type' => 'insert',
-            'local_id' => $localId, // local_id из операции клиента
+            'type'      => 'insert',
+            'local_id'  => $localId,
             'server_id' => $newId,
         ];
     }
 
     private function updateRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
     {
+        // Для обновления запись на сервере обязана содержать server-side ID
+        if (!array_key_exists('id', $payload)) {
+            $results['errors'][] = [
+                'local_id' => $localId,
+                'error' => 'MISSING_ID_FOR_UPDATE',
+            ];
+            return;
+        }
+
         $id = $payload['id'];
-        unset($payload['id']);
+        unset($payload['id'], $payload['local_id'], $payload['uuid_id']);
 
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
@@ -207,12 +257,20 @@ class SyncController extends Controller
 
     private function deleteRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
     {
+        if (!array_key_exists('id', $payload)) {
+            $results['errors'][] = [
+                'local_id' => $localId,
+                'error' => 'MISSING_ID_FOR_DELETE',
+            ];
+            return;
+        }
+
         $id = $payload['id'];
         $query = DB::table($table)->where('id', $id);
 
-        $updateData = [];
+        $affected = 0;
         if ($this->tableHasSoftDeletes($table)) {
-            $updateData['deleted_at'] = Carbon::now();
+            $updateData = ['deleted_at' => Carbon::now()];
             if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
                 $updateData['last_sync_id'] = $syncId;
             }
@@ -232,7 +290,9 @@ class SyncController extends Controller
 
     private function tableHasSoftDeletes(string $table): bool
     {
-        $softDeleteTables = ['orders', 'clients', 'products'];
+        // Важно: у таблицы orders в миграции нет deleted_at,
+        // поэтому здесь перечисляем только реально soft-deletable таблицы.
+        $softDeleteTables = ['clients', 'products', 'services', 'categories'];
         return in_array($table, $softDeleteTables, true);
     }
 }
