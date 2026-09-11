@@ -64,7 +64,8 @@
   - `MISSING_ID_FOR_UPDATE` / `MISSING_ID_FOR_DELETE` — нет `id` (серверного);
   - `RECORD_NOT_FOUND` — `update` по несуществующему `id`;
   - `DATABASE_ERROR` / `GENERAL_ERROR` — с `details`;
-- ⚠️ `last_sync_id` (анти-эхо) проставляется только если колонка существует — а её нет (задача 3.6).
+- ✅ `last_sync_id` (анти-эхо, задача 3.6): колонка есть у всех синкаемых таблиц, сервер
+  проставляет её значением `X-Sync-ID` при insert/update/soft-delete.
 
 ### Спец-обработка таблиц
 
@@ -95,7 +96,8 @@ Headers: X-Sync-ID: <uuid>
 
 - `since` — миллисекунды (`Carbon::createFromTimestampMs`);
 - таблица не из `$tables` → `400 { "error": "Invalid or missing table" }`;
-- анти-эхо (`last_sync_id`) не действует — колонок нет;
+- ✅ анти-эхо (`last_sync_id`, задача 3.6): записи с `last_sync_id == X-Sync-ID` исключаются —
+  устройство не получает свои же изменения; правка чужого устройства вернёт запись автору;
 - soft-delete (`deleted_at IS NULL`) — только для `clients, products, services, categories`;
 - сортировка `ORDER BY updated_at`.
 
@@ -190,8 +192,14 @@ Headers: X-Sync-ID: <uuid>
 - [ ] **P1 · `orders` в синке.** При `insert` принимаются только `specialization_id, client_id,
   hours, minutes, total_amount, comments` — теряются `status`, `paid`, `model_id`, `share_token`,
   а также `user_id`/`user_order_number`. Нужно: расширить список колонок.
-- [ ] **P1 · `last_sync_id` (задача 3.6).** Код анти-эха есть (`Schema::hasColumn`), но колонок нет
-  ни у одной таблицы → механизм не работает.
+- [x] **P1 · `last_sync_id` (задача 3.6). Сделано.** Миграция
+  `2026_09_13_000000_add_last_sync_id_to_sync_tables` добавила `last_sync_id` (nullable, index)
+  всем синкаемым таблицам. `SyncController` проставляет её при insert (включая `order_service`),
+  update и soft-delete, а `fetchUpdates` отдаёт устройству только чужие записи:
+  `last_sync_id != X-Sync-ID OR last_sync_id IS NULL`. Тесты:
+  `SyncControllerTest::test_own_changes_are_not_echoed_back_to_the_device`,
+  `::test_change_by_another_device_comes_back_to_the_author`,
+  `::test_order_service_insert_is_not_echoed_to_the_same_device`.
 - [ ] **P1 · Типы денег (задача 3.12).** `services.price` — VARCHAR (в SQL приходится писать
   `CAST(... AS numeric)`), `materials.price` — `decimal(10,2)`, суммы заказов — целые рубли.
   Привести к целым рублям.

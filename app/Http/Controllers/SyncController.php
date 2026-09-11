@@ -202,6 +202,12 @@ class SyncController extends Controller
                 $data['uuid_id'] = $localId;
             }
 
+            // Анти-эхо (задача 3.6): помечаем строку устройством-автором, чтобы оно
+            // не получило своё же изменение обратно в sync-updates.
+            if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
+                $data['last_sync_id'] = $syncId;
+            }
+
             $existing = DB::table($table)
                 ->where('order_id', $orderId)
                 ->where('service_id', $serviceId)

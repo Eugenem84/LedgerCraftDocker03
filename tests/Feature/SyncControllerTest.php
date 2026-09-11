@@ -57,6 +57,22 @@ class SyncControllerTest extends TestCase
     }
 
     /**
+     * @return array{count: int, records: array}
+     */
+    private function fetchUpdates(string $table, ?string $syncId = 'test-device', int $since = 0): array
+    {
+        $headers = $syncId === null ? [] : ['X-Sync-ID' => $syncId];
+
+        $response = $this->getJson("/api/sync-updates?table={$table}&since={$since}", $headers);
+        $response->assertOk();
+
+        return [
+            'count'   => (int) $response->json('count'),
+            'records' => $response->json('records') ?? [],
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
      */
@@ -331,5 +347,75 @@ class SyncControllerTest extends TestCase
 
         $this->assertSame([], $result['errors']);
         $this->assertSame(1, DB::table('clients')->where('uuid_id', '66666666-6666-6666-6666-666666666666')->count());
+    }
+
+    public function test_own_changes_are_not_echoed_back_to_the_device(): void
+    {
+        $localId = '99999999-9999-9999-9999-999999999999';
+
+        $this->sync([$this->insertOp('specializations', $localId, [
+            'specializationName' => 'Мастерская',
+            'popularCounter'     => 0,
+        ])], 'device-a');
+
+        // Автор изменения не получает своё же изменение обратно (анти-эхо, 3.6).
+        $this->assertSame(0, $this->fetchUpdates('specializations', 'device-a')['count']);
+
+        // Другое устройство запись получает.
+        $other = $this->fetchUpdates('specializations', 'device-b');
+        $this->assertSame(1, $other['count']);
+        $this->assertSame($localId, $other['records'][0]['uuid_id']);
+
+        // Без X-Sync-ID фильтра нет — отдаём всё.
+        $this->assertSame(1, $this->fetchUpdates('specializations', null)['count']);
+    }
+
+    public function test_change_by_another_device_comes_back_to_the_author(): void
+    {
+        $localId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+        $this->sync([$this->insertOp('specializations', $localId, [
+            'specializationName' => 'Мастерская',
+            'popularCounter'     => 0,
+        ])], 'device-a');
+
+        $specializationId = DB::table('specializations')->where('uuid_id', $localId)->value('id');
+
+        // Другое устройство правит запись — теперь она снова нужна автору.
+        $this->sync([[
+            'id'      => 'op-update-spec',
+            'type'    => 'update',
+            'table'   => 'specializations',
+            'payload' => ['id' => $specializationId, 'specializationName' => 'Мастерская-2'],
+        ]], 'device-b');
+
+        $own = $this->fetchUpdates('specializations', 'device-a');
+        $this->assertSame(1, $own['count']);
+        $this->assertSame('Мастерская-2', $own['records'][0]['specializationName']);
+        $this->assertSame('device-b', $own['records'][0]['last_sync_id']);
+
+        // А устройство, которое правило, — не получает: это его изменение.
+        $this->assertSame(0, $this->fetchUpdates('specializations', 'device-b')['count']);
+    }
+
+    public function test_order_service_insert_is_not_echoed_to_the_same_device(): void
+    {
+        $orderId = $this->seedOrder();
+        $serviceId = DB::table('services')->insertGetId([
+            'service'    => 'Работа',
+            'price'      => '1000',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->sync([$this->insertOp('order_service', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', [
+            'order_id'   => $orderId,
+            'service_id' => $serviceId,
+            'sale_price' => 900,
+            'quantity'   => 1,
+        ])], 'device-a');
+
+        $this->assertSame(0, $this->fetchUpdates('order_service', 'device-a')['count']);
+        $this->assertSame(1, $this->fetchUpdates('order_service', 'device-b')['count']);
     }
 }
