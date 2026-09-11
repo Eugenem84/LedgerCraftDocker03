@@ -1,66 +1,97 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Ledger Craft — Backend (Laravel API)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Серверная часть системы учёта работ и запчастей для мастерских. Обслуживает
+**offline-first** приложение (клиент — Quasar/Vue + локальный SQLite/sql.js):
+принимает пакеты локальных изменений, отдаёт инкрементальные обновления, ведёт склад,
+приходы товара, цены и статистику.
 
-## About Laravel
+> Связанный репозиторий (клиент): `ledger-craft-offline-first-PS` (Quasar/Vue).
+> Оба открываются в одном `.code-workspace`.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Стек
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Слой | Технология |
+|---|---|
+| Язык / фреймворк | PHP 8.2 + Laravel |
+| БД | **PostgreSQL** (в `docker-compose`) |
+| Авторизация | Laravel Sanctum (токены) |
+| Идентификация устройства | заголовок `X-Sync-ID` (UUID клиента) |
+| Веб-сервер | nginx + Traefik (TLS, dev-домен `dev.medovf2h.beget.tech`) |
+| Синхронизация | `SyncController` (PHP); **экспериментальный Go-сайдкар** `sync/` |
+| Инфраструктура | `docker-compose.yaml` |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Быстрый старт (Docker)
 
-## Learning Laravel
+```bash
+docker-compose up -d --build
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Сервисы:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+| Сервис | Контейнер | Наружу |
+|---|---|---|
+| `traefik` | `ledger_craft_traefik` | `:80`, `:443`, дашборд `:8080` |
+| `nginx` | `ledger_craft_nginx` | через Traefik (домен `dev.medovf2h.beget.tech`) |
+| `app` (php-fpm) | `ledger_craft_app` | `:5173` (dev-сервер) |
+| `sync` (Go) | `ledger_craft_sync` | `:8081` → контейнерный `:8080` |
+| `db` (Postgres) | `ledger_craft_db` | `:5433` → контейнерный `:5432` |
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Миграции и ключ приложения:
 
-## Laravel Sponsors
+```bash
+docker exec -it ledger_craft_app php artisan migrate
+docker exec -it ledger_craft_app php artisan key:generate
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+> ⚠️ `docker-compose.yaml` содержит dev-секреты прямо в файле (APP_KEY, пароли БД) —
+> для продакшена вынести в `.env`, не хранить в репозитории.
+> ⚠️ В `.env.example` указан `DB_CONNECTION=mysql`, а рабочий docker использует `pgsql` —
+> привести к единому.
 
-### Premium Partners
+## Конфигурация
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+- `.env.example` — шаблон окружения; рабочий `.env` не коммитится.
+- `env.production` — прод-переменные.
+- `config/` — стандартные конфиги Laravel.
 
-## Contributing
+## Структура проекта
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```
+app/
+├── Http/Controllers/     # API-контроллеры (SyncController, ProductController, OrderController, …)
+└── Repositories/         # слой доступа к данным (ProductRepository, IncomingProductRepository, …)
+routes/
+└── api.php               # все API-роуты
+database/
+└── migrations/           # 53 миграции схемы БД
+sync/                     # Go-сайдкар синхронизации (экспериментальный)
+_docker/                  # Dockerfile'ы (app, nginx, sync), php.ini
+tests/                    # PHPUnit
+```
 
-## Code of Conduct
+## Документация
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- [`docs/API.md`](docs/API.md) — **канонический контракт API** (роуты синка, приход, склад, отчёты).
+- [`docs/DB.md`](docs/DB.md) — серверная схема БД (таблицы, назначение, статус).
 
-## Security Vulnerabilities
+## Основные API-роуты
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Полный список — в `routes/api.php` и `docs/API.md`. Ключевые:
 
-## License
+| Метод | Путь | Назначение |
+|---|---|---|
+| POST | `/api/sync` | приём пакета локальных изменений клиента |
+| GET | `/api/sync-updates` | инкрементальная выдача изменений |
+| POST | `/api/arrival_product` | приход товара на склад |
+| POST | `/api/register`, `/api/login` | авторизация (Sanctum) |
+| GET | `/api/get_product_stocks/{productCategoryId}` | остатки склада |
+| GET | `/api/orders_by_specialization/{id}` | заказы по специализации |
+| GET | `/api/get_total_DWYM/{specializationId}` | статистика |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Тесты
+
+```bash
+docker exec -it ledger_craft_app php artisan test
+# или
+docker exec -it ledger_craft_app ./vendor/bin/phpunit
+```
