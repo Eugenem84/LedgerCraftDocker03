@@ -131,7 +131,48 @@ class SyncController extends Controller
         }
 
         $records = $query->orderBy('updated_at')->get();
+
+        // Единый стандарт времени (задача 3.8): сервер отдаёт timestamps ISO-8601 UTC
+        // (`2026-09-12T10:00:00.000000Z`). «Сырое» значение Postgres (`2026-09-12 10:00:00`)
+        // клиентский `Date.parse` принимает за ЛОКАЛЬНОЕ время устройства — сравнение версий
+        // (last-write-wins) и курсор выдачи смещались бы на часовой пояс.
+        $records->each(fn ($record) => $this->normalizeTimestamps($record));
+
         return response()->json(['table' => $table, 'count' => $records->count(), 'records' => $records]);
+    }
+
+    /**
+     * Приводит timestamps записи к ISO-8601 UTC (единый стандарт, задача 3.8).
+     * Работает по ссылке: query builder отдаёт `stdClass`, мутируем его поля.
+     */
+    private function normalizeTimestamps(object $record): void
+    {
+        foreach (['created_at', 'updated_at', 'deleted_at'] as $column) {
+            if (!isset($record->$column) || !is_string($record->$column)) {
+                continue;
+            }
+
+            try {
+                $record->$column = Carbon::parse($record->$column)->toJSON();
+            } catch (\Throwable $e) {
+                Log::warning('Sync: не удалось разобрать timestamp', [
+                    'column' => $column,
+                    'value'  => $record->$column,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Момент операции с секундной точностью.
+     *
+     * В БД timestamps хранятся как `timestamp(0)`, поэтому и ответ `/sync`, и запись
+     * должны использовать одно и то же значение: иначе клиент сохранил бы «свою»
+     * версию записи, которой на сервере нет (задача 3.8).
+     */
+    private function syncNow(): Carbon
+    {
+        return Carbon::now()->startOfSecond();
     }
 
     private function insertRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
@@ -141,7 +182,8 @@ class SyncController extends Controller
         // (вырезание перенесено из Go-сайдкара, D1/задача 3.11).
         $payload = $this->stripClientFields($payload);
 
-        $now = Carbon::now();
+        // Одна и та же секунда идёт и в запись, и в ответ (задача 3.8).
+        $now = $this->syncNow();
 
         // Специальная обработка для orders: картаем только реально существующие колонки
         if ($table === 'orders') {
@@ -164,9 +206,12 @@ class SyncController extends Controller
             $newId = $this->upsertRecord($table, $data, $localId);
 
             $results['synced'][] = [
-                'type'      => 'insert',
-                'local_id'  => $localId,
-                'server_id' => $newId,
+                'type'       => 'insert',
+                'local_id'   => $localId,
+                'server_id'  => $newId,
+                // Версия записи на сервере (задача 3.8): клиент сохранит её локально,
+                // чтобы более старая копия не «воскрешала» запись (last-write-wins).
+                'updated_at' => $now->toJSON(),
             ];
 
             return;
@@ -234,9 +279,10 @@ class SyncController extends Controller
                 : null;
 
             $results['synced'][] = [
-                'type'      => 'insert',
-                'local_id'  => $localId,
-                'server_id' => $serverId,
+                'type'       => 'insert',
+                'local_id'   => $localId,
+                'server_id'  => $serverId,
+                'updated_at' => $now->toJSON(),
             ];
 
             return;
@@ -252,9 +298,10 @@ class SyncController extends Controller
         $newId = $this->upsertRecord($table, $payload, $localId);
 
         $results['synced'][] = [
-            'type'      => 'insert',
-            'local_id'  => $localId,
-            'server_id' => $newId,
+            'type'       => 'insert',
+            'local_id'   => $localId,
+            'server_id'  => $newId,
+            'updated_at' => $now->toJSON(),
         ];
     }
 
@@ -275,7 +322,10 @@ class SyncController extends Controller
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
         }
-        $payload['updated_at'] = Carbon::now();
+
+        // Сервер — источник версии: клиент применит её у себя после ответа (задача 3.8).
+        $now = $this->syncNow();
+        $payload['updated_at'] = $now;
 
         if (!DB::table($table)->where('id', $id)->exists()) {
             $results['errors'][] = [
@@ -292,15 +342,19 @@ class SyncController extends Controller
         // Клиент считает операцию доставленной только при явном ответе по ней
         // (задача 3.5), поэтому «пустой» ответ заставил бы его повторять вечно.
         $results['synced'][] = [
-            'type' => 'update',
-            'local_id' => $localId,
-            'server_id' => $id,
+            'type'       => 'update',
+            'local_id'   => $localId,
+            'server_id'  => $id,
+            'updated_at' => $now->toJSON(),
         ];
     }
 
     private function deleteRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
     {
         $id = $payload['id'] ?? null;
+
+        // Время операции: у soft-delete это ещё и новая версия записи (задача 3.8).
+        $now = $this->syncNow();
 
         // order_service — связка без собственного PK: удаляем по натуральному
         // ключу `order_id + service_id` (серверные id), который присылает клиент.
@@ -316,10 +370,11 @@ class SyncController extends Controller
 
                 // DELETE идемпотентен: отсутствие строки — тоже «применено».
                 $results['synced'][] = [
-                    'type' => 'delete',
-                    'local_id' => $localId,
-                    'server_id' => null,
-                    'deleted' => $affected,
+                    'type'       => 'delete',
+                    'local_id'   => $localId,
+                    'server_id'  => null,
+                    'deleted'    => $affected,
+                    'updated_at' => $now->toJSON(),
                 ];
 
                 return;
@@ -337,7 +392,9 @@ class SyncController extends Controller
         $query = DB::table($table)->where('id', $id);
 
         if ($this->tableHasSoftDeletes($table)) {
-            $updateData = ['deleted_at' => Carbon::now()];
+            // Soft-delete — это изменение записи, поэтому двигаем и версию (`updated_at`):
+            // иначе «удалено» осталось бы невидимым для выдачи по курсору (задача 3.9).
+            $updateData = ['deleted_at' => $now, 'updated_at' => $now];
             if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
                 $updateData['last_sync_id'] = $syncId;
             }
@@ -347,10 +404,13 @@ class SyncController extends Controller
         }
 
         // Подтверждаем всегда: повторный DELETE уже удалённой записи — норма.
+        // `updated_at` — момент операции (у hard-delete записи на сервере уже нет,
+        // клиент ничего не применяет: локальная строка удалена вместе с операцией).
         $results['synced'][] = [
-            'type' => 'delete',
-            'local_id' => $localId,
-            'server_id' => $id,
+            'type'       => 'delete',
+            'local_id'   => $localId,
+            'server_id'  => $id,
+            'updated_at' => $now->toJSON(),
         ];
     }
 

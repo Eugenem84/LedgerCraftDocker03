@@ -3,20 +3,26 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Идемпотентность и изоляция операций синка (задача 3.5).
+ * Идемпотентность, изоляция и версии операций синка.
  *
- * Критерий задачи: «повторная отправка того же батча не создаёт дублей».
+ * Задача 3.5: «повторная отправка того же батча не создаёт дублей».
+ * Задача 3.8: сервер — источник версии записи (`updated_at`), клиент её применяет
+ * локально (last-write-wins); время отдаётся в одном стандарте — ISO-8601 UTC.
+ *
  * Дополнительно проверяем контракт, на который опирается клиент:
  *   • каждая операция получает **явный** ответ (`synced`) — клиент считает
  *     операцию доставленной только по нему (FE-половина 3.5);
  *   • битая операция не срывает остальной батч (SAVEPOINT-изоляция из Go, 3.11);
  *   • `order_service` (без PK) дедуплицируется по натуральному ключу
  *     `order_id + service_id` и удаляется по нему же;
- *   • `server_id`/`*_server_id` из payload не попадают в реальные колонки.
+ *   • `server_id`/`*_server_id` из payload не попадают в реальные колонки;
+ *   • у каждой подтверждённой операции есть `updated_at` — та же версия, что
+ *     записана в БД (задача 3.8).
  *
  * Тест выполняется на **отдельной** тестовой БД (см. `phpunit.xml`):
  * `RefreshDatabase` сносит таблицы, поэтому на «не тестовой» БД тест
@@ -418,4 +424,152 @@ class SyncControllerTest extends TestCase
         $this->assertSame(0, $this->fetchUpdates('order_service', 'device-a')['count']);
         $this->assertSame(1, $this->fetchUpdates('order_service', 'device-b')['count']);
     }
+
+    /**
+     * Проверяет, что значение — ISO-8601 UTC (`2026-09-12T10:00:00.000000Z`).
+     * Единый стандарт времени для обоих роутов синка (задача 3.8).
+     */
+    private function assertIsoUtc(string $value): void
+    {
+        $this->assertMatchesRegularExpression(
+            '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/',
+            $value,
+            "Ожидался ISO-8601 UTC timestamp, получено: {$value}"
+        );
+    }
+
+    /**
+     * Версия из ответа должна совпадать с тем, что реально записано в БД:
+     * клиент сохранит её локально, иначе его «своя» версия разошлась бы с сервером.
+     */
+    private function assertMatchesStored(string $table, int $serverId, string $returned): void
+    {
+        $this->assertSame(
+            Carbon::parse(DB::table($table)->where('id', $serverId)->value('updated_at'))->toJSON(),
+            $returned,
+            "`updated_at` из ответа /sync не совпал с версией в таблице {$table}"
+        );
+    }
+
+    public function test_insert_response_contains_server_updated_at(): void
+    {
+        [$specializationId, $clientId] = $this->seedOrderDeps();
+
+        // orders — отдельная ветка insert (маппинг колонок)
+        $orders = $this->sync([$this->insertOp('orders', '11111111-0000-0000-0000-000000000001', [
+            'specialization_id' => $specializationId,
+            'client_id'         => $clientId,
+            'total_amount'      => 1500,
+        ])]);
+
+        $this->assertSame([], $orders['errors']);
+        $this->assertIsoUtc($orders['synced'][0]['updated_at']);
+        $this->assertMatchesStored('orders', $orders['synced'][0]['server_id'], $orders['synced'][0]['updated_at']);
+
+        // generic-путь (clients)
+        $clients = $this->sync([$this->insertOp('clients', '11111111-0000-0000-0000-000000000002', [
+            'name'  => 'Иван',
+            'phone' => '+7',
+        ])]);
+
+        $this->assertSame([], $clients['errors']);
+        $this->assertIsoUtc($clients['synced'][0]['updated_at']);
+        $this->assertMatchesStored('clients', $clients['synced'][0]['server_id'], $clients['synced'][0]['updated_at']);
+    }
+
+    public function test_order_service_insert_response_contains_server_updated_at(): void
+    {
+        $orderId = $this->seedOrder();
+        $serviceId = DB::table('services')->insertGetId([
+            'service'    => 'Работа',
+            'price'      => '1000',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $result = $this->sync([$this->insertOp('order_service', '22222222-0000-0000-0000-000000000001', [
+            'order_id'   => $orderId,
+            'service_id' => $serviceId,
+            'sale_price' => 900,
+            'quantity'   => 1,
+        ])]);
+
+        $this->assertSame([], $result['errors']);
+        $this->assertIsoUtc($result['synced'][0]['updated_at']);
+
+        // У связки нет своего PK — версию сверяем по натуральному ключу.
+        $this->assertSame(
+            Carbon::parse(
+                DB::table('order_service')
+                    ->where('order_id', $orderId)
+                    ->where('service_id', $serviceId)
+                    ->value('updated_at')
+            )->toJSON(),
+            $result['synced'][0]['updated_at']
+        );
+    }
+
+    public function test_update_response_contains_server_updated_at(): void
+    {
+        $orderId = $this->seedOrder();
+
+        $result = $this->sync([[
+            'id'      => 'op-update-stamp',
+            'type'    => 'update',
+            'table'   => 'orders',
+            'payload' => ['id' => $orderId, 'comments' => 'комментарий'],
+        ]]);
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame($orderId, $result['synced'][0]['server_id']);
+        $this->assertIsoUtc($result['synced'][0]['updated_at']);
+        $this->assertMatchesStored('orders', $orderId, $result['synced'][0]['updated_at']);
+    }
+
+    public function test_soft_delete_bumps_version_and_returns_stamp(): void
+    {
+        $localId = '33333333-0000-0000-0000-000000000001';
+
+        $this->sync([$this->insertOp('clients', $localId, ['name' => 'Иван'])], 'device-a');
+
+        $clientId = DB::table('clients')->where('uuid_id', $localId)->value('id');
+        $before = DB::table('clients')->where('id', $clientId)->value('updated_at');
+
+        // Версия измеряется в секундах: сдвигаем время, чтобы «до» и «после» не совпали.
+        $this->travel(2)->seconds();
+
+        $result = $this->sync([[
+            'id'      => 'op-delete-stamp',
+            'type'    => 'delete',
+            'table'   => 'clients',
+            'payload' => ['id' => $clientId],
+        ]], 'device-a');
+
+        $this->assertSame([], $result['errors']);
+        $this->assertNotNull(DB::table('clients')->where('id', $clientId)->value('deleted_at'));
+        $this->assertIsoUtc($result['synced'][0]['updated_at']);
+        $this->assertMatchesStored('clients', $clientId, $result['synced'][0]['updated_at']);
+
+        // Soft-delete — изменение записи: версия обязана двинуться вперёд,
+        // иначе удаление не «доедет» до другого устройства по курсору (задача 3.9).
+        $after = DB::table('clients')->where('id', $clientId)->value('updated_at');
+        $this->assertTrue(Carbon::parse($after)->greaterThan(Carbon::parse($before)));
+    }
+
+    public function test_fetch_updates_returns_iso_timestamps(): void
+    {
+        $localId = '44444444-0000-0000-0000-000000000001';
+
+        $this->sync([$this->insertOp('clients', $localId, ['name' => 'Иван'])], 'device-a');
+
+        $records = $this->fetchUpdates('clients', 'device-b')['records'];
+
+        $this->assertCount(1, $records);
+        // «Сырое» `2026-09-12 10:00:00` из Postgres клиентский `Date.parse`
+        // принимает за локальное время устройства — версии и курсор «плыли» бы (3.8).
+        $this->assertIsoUtc($records[0]['created_at']);
+        $this->assertIsoUtc($records[0]['updated_at']);
+    }
+
+
 }

@@ -40,7 +40,7 @@
 
 ```json
 {
-  "synced": [ { "type": "insert", "local_id": "<UUID>", "server_id": 12345 } ],
+  "synced": [ { "type": "insert", "local_id": "<UUID>", "server_id": 12345, "updated_at": "2026-09-12T10:00:00.000000Z" } ],
   "errors": [ { "local_id": "<UUID>", "error": "DATABASE_ERROR", "details": { "message": "..." } } ]
 }
 ```
@@ -50,6 +50,12 @@
 - ✅ **ответ приходит по каждой операции** (задача 3.5): `update`/`delete` подтверждаются даже
   при `affected = 0`; `update` несуществующей записи → `RECORD_NOT_FOUND`. Клиент считает
   операцию доставленной **только** по явному ответу, иначе возвращает её в очередь;
+- ✅ **`updated_at` в ответе** (задача 3.8): у каждой подтверждённой операции есть версия
+  записи в **ISO-8601 UTC** (`2026-09-12T10:00:00.000000Z`) — это ровно то значение, которое
+  записано в БД (секундная точность, `Carbon::now()->startOfSecond()`, колонки `timestamp(0)`).
+  Клиент сохраняет её локально, чтобы его «своя» версия не разошлась с сервером и более
+  старая копия не воскрешала запись (**last-write-wins**). У `update` это новая версия, у
+  `delete` — момент операции (у `order_service` и hard-delete своего `server_id` нет);
 - `localId = payload.uuid_id ?? payload.local_id ?? op.id`;
 - из payload **вырезаются** `id`, `local_id`, `uuid_id`, а также `server_id` и `*_server_id`;
 - ✅ **идемпотентность** (задача 3.5): `insert` — «найти или вставить/обновить» по
@@ -98,11 +104,16 @@ Headers: X-Sync-ID: <uuid>
 - таблица не из `$tables` → `400 { "error": "Invalid or missing table" }`;
 - ✅ анти-эхо (`last_sync_id`, задача 3.6): записи с `last_sync_id == X-Sync-ID` исключаются —
   устройство не получает свои же изменения; правка чужого устройства вернёт запись автору;
-- soft-delete (`deleted_at IS NULL`) — только для `clients, products, services, categories`;
-- сортировка `ORDER BY updated_at`.
+- ✅ soft-delete (`deleted_at IS NULL`) — только для `clients, products, services, categories`;
+  удаление двигает `updated_at`, поэтому «удалено» видно выдаче по курсору (задача 3.9);
+- сортировка `ORDER BY updated_at`;
+- ✅ единый стандарт времени (задача 3.8): `created_at`/`updated_at`/`deleted_at` отдаются
+  строками **ISO-8601 UTC** (`2026-09-12T10:00:00.000000Z`). «Сырое» `2026-09-12 10:00:00`
+  клиентский `Date.parse` трактует как ЛОКАЛЬНОЕ время устройства — версии (last-write-wins)
+  и курсор выдачи смещались бы на часовой пояс.
 
 Ответ: `{ "table": "clients", "count": 2, "records": [ { "id": 1, ... } ] }`
-(`id` — **серверный**). Для вставки на клиенте нужны `created_at`/`updated_at`.
+(`id` — **серверный**). Для вставки на клиенте нужны `created_at`/`updated_at` (ISO-8601 UTC).
 
 ## 3. `POST /api/arrival_product` — приход товара
 
