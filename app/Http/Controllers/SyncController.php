@@ -25,9 +25,8 @@ class SyncController extends Controller
         'product_stocks',
         'categories',
         'services',
-        'service_categories',
-        'by_product_prices',
-        'sales_product_prices',
+        'buy_product_prices',
+        'sales_products_prices',
     ];
 
     public function sync(Request $request)
@@ -176,26 +175,6 @@ class SyncController extends Controller
                 'updated_at'  => $now,
                 // uuid_* и deleted_at заполняться не будут — по договорённости их игнорируем
             ];
-
-            // #region agent log
-            $logPayload = [
-                'sessionId'    => 'c685cd',
-                'runId'        => 'pre-fix',
-                'hypothesisId' => 'H3',
-                'location'     => 'SyncController.php:insertRecord:order_service',
-                'message'      => 'insertRecord for order_service',
-                'data'         => [
-                    'payload' => $payload,
-                    'data'    => $data,
-                ],
-                'timestamp'    => round(microtime(true) * 1000),
-            ];
-            @file_put_contents(
-                '/Users/artem/PhpstormProjects/ledger-craft-offline-first-PS/.cursor/debug-c685cd.log',
-                json_encode($logPayload, JSON_UNESCAPED_UNICODE) . PHP_EOL,
-                FILE_APPEND
-            );
-            // #endregion agent log
 
             DB::table($table)->insert($data);
 
