@@ -19,10 +19,21 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="APP_KEY" value="base64:dwzzLawbopqcZ98G934Nt36KNwHN5t4s1mCCASGz3i8="/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
-        <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
-        <!-- <env name="DB_DATABASE" value=":memory:"/> -->
+        <!--
+            Тестовая БД — отдельная от рабочей (docker-compose: db -> localhost:5433,
+            пользователь root/root). В имени обязательно `test`: RefreshDatabase
+            сносит все таблицы, а тест SyncController дополнительно проверяет это
+            в setUp() и пропускает запуск на «не тестовой» БД.
+        -->
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="5433"/>
+        <env name="DB_DATABASE" value="ledgercraft_test"/>
+        <env name="DB_USERNAME" value="root"/>
+        <env name="DB_PASSWORD" value="root"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

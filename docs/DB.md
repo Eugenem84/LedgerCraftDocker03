@@ -20,8 +20,8 @@
 | `incoming_products` | приходы товара | `product_id` (FK), `supplier` (string), `quantity`, **`by_price`** (int) |
 | `orders` | заказы | `specialization_id`, `client_id`, `hours`, `minutes`, `total_amount` (**рубли**, int), `comments`, `status`, `paid`, `model_id`, `user_order_number`, `share_token`; колонка `materials` удалена |
 | `order_service` | связка заказ↔работа | `order_id`, `service_id`, `sale_price`, `quantity`, `uuid_id` (миграция 2026), timestamps; **без PK** (композитный ключ закомментирован) |
-| `order_product` | связка заказ↔товар | `order_id`, `product_id`, `sale_price`, `quantity` |
-| `materials` | материалы | `name`, `specialization_id`, `deleted_at` |
+| `order_product` | связка заказ↔товар | `order_id`, `product_id`, `sale_price`, `quantity`; планируется `buy_price` (себестоимость для маржи — задача 9.5) |
+| `materials` | **строки материалов заказа** (ручные позиции: «мастер купил на стороне») | `order_id` (FK, NOT NULL), `name`, `price` (decimal(10,2)), `amount`; колонок `specialization_id`/`deleted_at` **нет**. Клиентский «справочник материалов» аналога на сервере не имеет — на стороне клиента решено (D2) свести обе стороны к одной таблице |
 | `equipment_models` | модели техники | `name`, `specialization_id`, `deleted_at` |
 
 ## Служебные таблицы
@@ -32,10 +32,24 @@
 ## Нюансы
 
 - **Деньги** — целые числа в **рублях** (совпадает с клиентом после задачи 2.3).
-- **Soft-delete** (`deleted_at`) есть не у всех таблиц; серверный `SyncController`
-  учитывает только `clients, products, services, categories`.
-- **`uuid_id`** — только у `order_service` (для сопоставления с клиентом). У остальных
-  таблиц сопоставление с клиентом идёт по `server_id` на стороне клиента.
+- **Удаления:** `deleted_at` реально есть у `clients`, `services`, `categories`,
+  `equipment_models`, `products`, `orders` (`2026_02_11_133000`), `order_service` (`2026_03_04_162502`),
+  но `SyncController::tableHasSoftDeletes()` знает только `clients, products, services, categories`.
+  Итог: удаление заказа через `/sync` — жёсткое, а `sync-updates` отдаёт уже удалённые заказы
+  обратно (на клиенте — фантом).
+- **Владелец:** `/sync` и `/sync-updates` — без auth; `X-Sync-ID` — метка устройства, не авторизация;
+  `orders.user_id` при insert из синка теряется, выдача не фильтруется по пользователю.
+- **Go-сайдкар** `sync/`: альтернативная реализация с **устаревшим** списком таблиц
+  (`service_categories`, `by_product_prices`, `sales_product_prices`), к nginx/Traefik не подключён;
+  решение — единственный транспорт Laravel, Go выносится из `master` (см. `docs/API.md` §7).
+- **`uuid_id`** — ✅ теперь у **всех** синкаемых таблиц (миграция
+  `2026_09_12_000000_add_uuid_id_to_sync_tables`, nullable + unique): это клиентский `local_id`,
+  ключ идемпотентности синка (задача 3.5). У `order_service` колонка появилась ещё в
+  `2026_04_05_110000`; у неё же нет своего PK, поэтому там ключ — `order_id + service_id`.
+- **Идемпотентность синка:** `INSERT` — «найти или вставить/обновить» по `uuid_id`; повторная
+  отправка батча дублей не создаёт, `created_at` существующей записи не перезаписывается.
+  `update`/`delete` всегда подтверждаются (`affected = 0` — тоже), `update` несуществующей
+  записи → `RECORD_NOT_FOUND`. Каждая операция изолирована `SAVEPOINT`'ом.
 - **`last_sync_id`** — задумывался для анти-эха, но колонок нет ни у одной таблицы.
 - **`order_service`** не имеет собственного PK и timestamps изначально; `updated_at`/`uuid_id`
   добавлены отдельными миграциями.

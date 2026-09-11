@@ -50,6 +50,11 @@ class SyncController extends Controller
                     continue;
                 }
 
+                // SAVEPOINT на операцию (перенос из Go-сайдкара, задача 3.11):
+                // одна битая операция не откатывает весь батч и не «вешает» транзакцию
+                // (в PostgreSQL после ошибки транзакция переходит в aborted state).
+                DB::statement('SAVEPOINT sync_op');
+
                 try {
                     switch ($type) {
                         case 'insert':
@@ -64,10 +69,14 @@ class SyncController extends Controller
                         default:
                             $results['errors'][] = ['local_id' => $localId, 'error' => "Unsupported operation type: {$type}"];
                     }
+
+                    DB::statement('RELEASE SAVEPOINT sync_op');
                 } catch (QueryException $e) {
+                    $this->rollbackSavepoint();
                     $results['errors'][] = ['local_id' => $localId, 'error' => 'DATABASE_ERROR', 'details' => ['message' => $e->getMessage(), 'sql' => $e->getSql(), 'bindings' => $e->getBindings()]];
                     Log::error('Sync DB operation failed', ['operation' => $op, 'exception' => $e]);
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
+                    $this->rollbackSavepoint();
                     $results['errors'][] = ['local_id' => $localId, 'error' => 'GENERAL_ERROR', 'details' => ['message' => $e->getMessage()]];
                     Log::error('Sync operation failed', ['operation' => $op, 'exception' => $e]);
                 }
@@ -75,6 +84,20 @@ class SyncController extends Controller
         });
 
         return response()->json($results);
+    }
+
+    /**
+     * Откатывает текущую операцию к SAVEPOINT'у и снимает его.
+     * Сбой самого отката не должен ломать батч — остальные операции продолжаем.
+     */
+    private function rollbackSavepoint(): void
+    {
+        try {
+            DB::statement('ROLLBACK TO SAVEPOINT sync_op');
+            DB::statement('RELEASE SAVEPOINT sync_op');
+        } catch (\Throwable $e) {
+            Log::error('Sync savepoint rollback failed', ['exception' => $e]);
+        }
     }
 
     public function fetchUpdates(Request $request)
@@ -113,8 +136,10 @@ class SyncController extends Controller
 
     private function insertRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
     {
-        // Служебные поля, которые не должны попадать в реальные колонки таблиц
-        unset($payload['id'], $payload['local_id'], $payload['uuid_id']);
+        // Служебные поля клиента не должны попадать в реальные колонки таблиц:
+        // `id`/`local_id`/`uuid_id`, а также `server_id` и сигнальные `*_server_id`
+        // (вырезание перенесено из Go-сайдкара, D1/задача 3.11).
+        $payload = $this->stripClientFields($payload);
 
         $now = Carbon::now();
 
@@ -136,7 +161,7 @@ class SyncController extends Controller
             $data['created_at'] = $now;
             $data['updated_at'] = $now;
 
-            $newId = DB::table($table)->insertGetId($data);
+            $newId = $this->upsertRecord($table, $data, $localId);
 
             $results['synced'][] = [
                 'type'      => 'insert',
@@ -148,7 +173,8 @@ class SyncController extends Controller
         }
 
         // Специальная обработка для order_service:
-        // на сервере это чисто связывающая таблица без PK и timestamps
+        // на сервере это связывающая таблица без собственного PK и timestamps,
+        // поэтому идемпотентность — по натуральному ключу `order_id + service_id`.
         if ($table === 'order_service') {
             // order_id и service_id приходят уже как server-side ID (см. fkTransformationMap на фронте)
             $orderId   = $payload['order_id']   ?? null;
@@ -164,25 +190,47 @@ class SyncController extends Controller
                     ->value('price');
             }
 
-            $now = Carbon::now();
-
             $data = [
-                'order_id'    => $orderId,
-                'service_id'  => $serviceId,
-                'sale_price'  => $salePrice,
-                'quantity'    => $quantity,
-                'created_at'  => $now,
-                'updated_at'  => $now,
-                // uuid_* и deleted_at заполняться не будут — по договорённости их игнорируем
+                'sale_price' => $salePrice,
+                'quantity'   => $quantity,
+                'updated_at' => $now,
             ];
 
-            DB::table($table)->insert($data);
+            // `uuid_id` — клиентский id строки связки: по нему клиент сопоставляет
+            // свою запись с серверной (аналог server_id, задача 3.5).
+            if (Schema::hasColumn($table, 'uuid_id')) {
+                $data['uuid_id'] = $localId;
+            }
 
-            // Для связки серверный ID нам не нужен, но для единообразия вернём null
+            $existing = DB::table($table)
+                ->where('order_id', $orderId)
+                ->where('service_id', $serviceId)
+                ->first();
+
+            if ($existing) {
+                // Повторная отправка того же INSERT — обновляем строку, не дублируем.
+                DB::table($table)
+                    ->where('order_id', $orderId)
+                    ->where('service_id', $serviceId)
+                    ->update($data);
+            } else {
+                $data['order_id']   = $orderId;
+                $data['service_id'] = $serviceId;
+                $data['created_at'] = $now;
+
+                DB::table($table)->insert($data);
+            }
+
+            // Если у связки всё-таки есть собственный `id` — возвращаем его,
+            // иначе null (текущая схема): идемпотентность обеспечил натуральный ключ.
+            $serverId = Schema::hasColumn($table, 'id')
+                ? DB::table($table)->where('order_id', $orderId)->where('service_id', $serviceId)->value('id')
+                : null;
+
             $results['synced'][] = [
                 'type'      => 'insert',
                 'local_id'  => $localId,
-                'server_id' => null,
+                'server_id' => $serverId,
             ];
 
             return;
@@ -195,7 +243,7 @@ class SyncController extends Controller
         $payload['created_at'] = $now;
         $payload['updated_at'] = $now;
 
-        $newId = DB::table($table)->insertGetId($payload);
+        $newId = $this->upsertRecord($table, $payload, $localId);
 
         $results['synced'][] = [
             'type'      => 'insert',
@@ -216,27 +264,63 @@ class SyncController extends Controller
         }
 
         $id = $payload['id'];
-        unset($payload['id'], $payload['local_id'], $payload['uuid_id']);
+        $payload = $this->stripClientFields($payload);
 
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
         }
         $payload['updated_at'] = Carbon::now();
 
-        $affected = DB::table($table)->where('id', $id)->update($payload);
-
-        if ($affected > 0) {
-            $results['synced'][] = [
-                'type' => 'update',
+        if (!DB::table($table)->where('id', $id)->exists()) {
+            $results['errors'][] = [
                 'local_id' => $localId,
-                'server_id' => $id,
+                'error' => 'RECORD_NOT_FOUND',
+                'details' => ['id' => $id],
             ];
+            return;
         }
+
+        DB::table($table)->where('id', $id)->update($payload);
+
+        // Подтверждаем всегда — даже если значения не изменились (affected = 0).
+        // Клиент считает операцию доставленной только при явном ответе по ней
+        // (задача 3.5), поэтому «пустой» ответ заставил бы его повторять вечно.
+        $results['synced'][] = [
+            'type' => 'update',
+            'local_id' => $localId,
+            'server_id' => $id,
+        ];
     }
 
     private function deleteRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
     {
-        if (!array_key_exists('id', $payload)) {
+        $id = $payload['id'] ?? null;
+
+        // order_service — связка без собственного PK: удаляем по натуральному
+        // ключу `order_id + service_id` (серверные id), который присылает клиент.
+        if ($id === null && $table === 'order_service') {
+            $orderId   = $payload['order_id'] ?? null;
+            $serviceId = $payload['service_id'] ?? null;
+
+            if ($orderId !== null && $serviceId !== null) {
+                $affected = DB::table($table)
+                    ->where('order_id', $orderId)
+                    ->where('service_id', $serviceId)
+                    ->delete();
+
+                // DELETE идемпотентен: отсутствие строки — тоже «применено».
+                $results['synced'][] = [
+                    'type' => 'delete',
+                    'local_id' => $localId,
+                    'server_id' => null,
+                    'deleted' => $affected,
+                ];
+
+                return;
+            }
+        }
+
+        if ($id === null) {
             $results['errors'][] = [
                 'local_id' => $localId,
                 'error' => 'MISSING_ID_FOR_DELETE',
@@ -244,27 +328,80 @@ class SyncController extends Controller
             return;
         }
 
-        $id = $payload['id'];
         $query = DB::table($table)->where('id', $id);
 
-        $affected = 0;
         if ($this->tableHasSoftDeletes($table)) {
             $updateData = ['deleted_at' => Carbon::now()];
             if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
                 $updateData['last_sync_id'] = $syncId;
             }
-            $affected = $query->update($updateData);
+            $query->update($updateData);
         } else {
-            $affected = $query->delete();
+            $query->delete();
         }
 
-        if ($affected > 0) {
-            $results['synced'][] = [
-                'type' => 'delete',
-                'local_id' => $localId,
-                'server_id' => $id,
-            ];
+        // Подтверждаем всегда: повторный DELETE уже удалённой записи — норма.
+        $results['synced'][] = [
+            'type' => 'delete',
+            'local_id' => $localId,
+            'server_id' => $id,
+        ];
+    }
+
+    /**
+     * Идемпотентная вставка (задача 3.5).
+     *
+     * Ключ идемпотентности — клиентский идентификатор записи (`local_id`),
+     * который хранится в колонке `uuid_id`. Если запись с таким `uuid_id` уже
+     * есть, она обновляется (повторная отправка батча не создаёт дубль), иначе
+     * вставляется новая. `created_at` при повторной отправке не переписываем.
+     *
+     * @return int|string|null серверный id записи
+     */
+    private function upsertRecord(string $table, array $data, ?string $localId): int|string|null
+    {
+        if ($localId === null || !Schema::hasColumn($table, 'uuid_id')) {
+            // Дедуплицировать нечем (нет ключа или БД без миграции `uuid_id`):
+            // вставляем как раньше — от «осиротевших» дублей защищает SAVEPOINT.
+            return DB::table($table)->insertGetId($data);
         }
+
+        $existing = DB::table($table)->where('uuid_id', $localId)->first();
+
+        if ($existing) {
+            $update = $data;
+            unset($update['created_at']);
+
+            DB::table($table)->where('uuid_id', $localId)->update($update);
+
+            return $existing->id ?? null;
+        }
+
+        $data['uuid_id'] = $localId;
+
+        return DB::table($table)->insertGetId($data);
+    }
+
+    /**
+     * Вырезает служебные поля клиента из payload: `id`, `local_id`, `uuid_id`,
+     * `server_id` и сигнальные `*_server_id`. Перенос из Go-сайдкара (D1, 3.11):
+     * иначе `server_id`/`*_server_id` улетали бы в реальные колонки таблиц.
+     */
+    private function stripClientFields(array $payload): array
+    {
+        $clean = [];
+
+        foreach ($payload as $key => $value) {
+            if (in_array($key, ['id', 'local_id', 'uuid_id', 'server_id'], true)) {
+                continue;
+            }
+            if (str_ends_with($key, '_server_id')) {
+                continue;
+            }
+            $clean[$key] = $value;
+        }
+
+        return $clean;
     }
 
     private function tableHasSoftDeletes(string $table): bool
