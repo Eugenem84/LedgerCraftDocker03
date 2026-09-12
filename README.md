@@ -17,7 +17,7 @@
 | Авторизация | Laravel Sanctum (токены) |
 | Идентификация устройства | заголовок `X-Sync-ID` (UUID клиента) |
 | Веб-сервер | nginx + Traefik (TLS, dev-домен `dev.medovf2h.beget.tech`) |
-| Синхронизация | `SyncController` (PHP); **экспериментальный Go-сайдкар** `sync/` |
+| Синхронизация | `SyncController` (PHP) — **единственный транспорт** (`/api/sync`, `/api/sync-updates`), решение D1 |
 | Инфраструктура | `docker-compose.yaml` |
 
 ## Быстрый старт (Docker)
@@ -33,7 +33,6 @@ docker-compose up -d --build
 | `traefik` | `ledger_craft_traefik` | `:80`, `:443`, дашборд `:8080` |
 | `nginx` | `ledger_craft_nginx` | через Traefik (домен `dev.medovf2h.beget.tech`) |
 | `app` (php-fpm) | `ledger_craft_app` | `:5173` (dev-сервер) |
-| `sync` (Go) | `ledger_craft_sync` | `:8081` → контейнерный `:8080` |
 | `db` (Postgres) | `ledger_craft_db` | `:5433` → контейнерный `:5432` |
 
 Миграции и ключ приложения:
@@ -64,10 +63,12 @@ routes/
 └── api.php               # все API-роуты
 database/
 └── migrations/           # 53 миграции схемы БД
-sync/                     # Go-сайдкар синхронизации (экспериментальный)
-_docker/                  # Dockerfile'ы (app, nginx, sync), php.ini
+_docker/                  # Dockerfile'ы (app, nginx), php.ini
 tests/                    # PHPUnit
 ```
+
+> Go-сайдкар синхронизации (`sync/`, `_docker/sync/`, сервис `sync` в compose) вынесен из
+> проекта в песочницу `../ledger-craft-go-sync-sandbox` — решение D1, задача 3.11.
 
 ## Документация
 

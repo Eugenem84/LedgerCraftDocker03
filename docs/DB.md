@@ -21,7 +21,7 @@
 | `orders` | заказы | `specialization_id`, `client_id`, `hours`, `minutes`, `total_amount` (**рубли**, int), `comments`, `status`, `paid`, `model_id`, `user_order_number`, `share_token`; колонка `materials` удалена |
 | `order_service` | связка заказ↔работа | `order_id`, `service_id`, `sale_price`, `quantity`, `uuid_id` (миграция 2026), timestamps; **без PK** (композитный ключ закомментирован) |
 | `order_product` | связка заказ↔товар | `order_id`, `product_id`, `sale_price`, `quantity`; планируется `buy_price` (себестоимость для маржи — задача 9.5) |
-| `materials` | **строки материалов заказа** (ручные позиции: «мастер купил на стороне») | `order_id` (FK, NOT NULL), `name`, `price` (decimal(10,2)), `amount`; колонок `specialization_id`/`deleted_at` **нет**. Клиентский «справочник материалов» аналога на сервере не имеет — на стороне клиента решено (D2) свести обе стороны к одной таблице |
+| `materials` | **строки материалов заказа** (ручные позиции: «мастер купил на стороне») | `order_id` (FK, NOT NULL), `name`, `price` (bigint), `amount` (smallint); колонок `specialization_id`/`deleted_at` **нет** (удаление — через `sync_tombstones`). Клиентский «справочник материалов» аналога на сервере не имеет — на стороне клиента решено (D2) свести обе стороны к одной таблице |
 | `equipment_models` | модели техники | `name`, `specialization_id`, `deleted_at` |
 
 ## Служебные таблицы
@@ -32,16 +32,19 @@
 ## Нюансы
 
 - **Деньги** — целые числа в **рублях** (совпадает с клиентом после задачи 2.3).
-- **Удаления:** `deleted_at` реально есть у `clients`, `services`, `categories`,
-  `equipment_models`, `products`, `orders` (`2026_02_11_133000`), `order_service` (`2026_03_04_162502`),
-  но `SyncController::tableHasSoftDeletes()` знает только `clients, products, services, categories`.
-  Итог: удаление заказа через `/sync` — жёсткое, а `sync-updates` отдаёт уже удалённые заказы
-  обратно (на клиенте — фантом).
-- **Владелец:** `/sync` и `/sync-updates` — без auth; `X-Sync-ID` — метка устройства, не авторизация;
-  `orders.user_id` при insert из синка теряется, выдача не фильтруется по пользователю.
-- **Go-сайдкар** `sync/`: альтернативная реализация с **устаревшим** списком таблиц
-  (`service_categories`, `by_product_prices`, `sales_product_prices`), к nginx/Traefik не подключён;
-  решение — единственный транспорт Laravel, Go выносится из `master` (см. `docs/API.md` §7).
+- ✅ **Удаления (задача 3.9):** `SyncController::tableHasSoftDeletes()` спрашивает схему
+  (`Schema::hasColumn($table, 'deleted_at')`), поэтому soft-delete работает для всех таблиц
+  с `deleted_at` (`clients`, `services`, `categories`, `equipment_models`, `products`, `orders`,
+  `order_service`). У таблиц без `deleted_at` факт физического удаления пишется в `sync_tombstones`
+  (`2026_09_14_000000`), а `sync-updates` отдаёт удаления как `deleted: true` — клиент убирает
+  запись у себя.
+- ✅ **Владелец (задача 3.10):** `/sync` и `/sync-updates` — под `auth:sanctum`; `user_id`
+  проставляется при вставке, `update`/`delete` работают только со своими записями, выдача
+  фильтруется по цепочке владельцев (`specializations.user_id` → `orders.user_id` → дети).
+- ✅ **Go-сайдкар вынесен из проекта (решение D1, задача 3.11):** синк — единственный транспорт
+  Laravel; Go-код (`sync/`, `_docker/sync/`) и сервис `sync` в `docker-compose.yaml` удалены
+  (копия — в песочнице `../ledger-craft-go-sync-sandbox`). Из него в Laravel перенесены
+  `SAVEPOINT`-изоляция и вырезание `server_id`/`*_server_id`.
 - **`uuid_id`** — ✅ теперь у **всех** синкаемых таблиц (миграция
   `2026_09_12_000000_add_uuid_id_to_sync_tables`, nullable + unique): это клиентский `local_id`,
   ключ идемпотентности синка (задача 3.5). У `order_service` колонка появилась ещё в
@@ -57,10 +60,14 @@
   применило локально и обратно не получает.
 - **`order_service`** не имеет собственного PK и timestamps изначально; `updated_at`/`uuid_id`
   добавлены отдельными миграциями.
-- `services.price` — строковый тип (историческое), стоит привести к числу.
+- ✅ `services.price` — `integer` (миграция `2026_09_15_000000_services_price_to_integer`,
+  задача 3.12); `CAST(... AS numeric)` из расчётов убран.
 
-## Экспериментальный Go-сайдкар
+## Go-сайдкар — вынесен из проекта
 
-В `sync/` (модуль `ledgercraft/sync`) — отдельный сервис на Go с `POST /sync`,
-работающий напрямую с Postgres через `pgx`. Запускается контейнером `sync` (порт `:8081`).
-Назначение — альтернативная реализация синхронизации; сейчас не интегрирован с Laravel-роутами.
+Экспериментальный Go-сервис синхронизации (`ledgercraft/sync`: `POST /sync` напрямую с Postgres
+через `pgx`) вынесен из репозитория в песочницу `../ledger-craft-go-sync-sandbox` (задача 3.11,
+решение D1): контейнер `sync` и порт `:8081` из проекта удалены. Единственный транспорт синка —
+Laravel (`docs/API.md`); актуальному контракту Go-реализация не соответствовала (устаревший список
+таблиц), а нужное из неё — `SAVEPOINT`-изоляция операций и вырезание `server_id`/`*_server_id` —
+уже в `SyncController`.

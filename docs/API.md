@@ -236,13 +236,12 @@ Headers: X-Sync-ID: <uuid>
   срывает батч, `server_id`/`*_server_id` вырезаются из payload).
 - [x] **P1 · SAVEPOINT-изоляция операций (часть 3.11). Сделано** вместе с 3.5: `SAVEPOINT sync_op`
   на операцию + `ROLLBACK TO SAVEPOINT` при ошибке — одна битая операция не «вешает» транзакцию
-  на PostgreSQL и не откатывает остальной батч. Осталось по 3.11: вынести Go-сайдкар из `master`
-  и убрать сервис `sync` из `docker-compose.yaml`.
-- [ ] **P1 · Go-сайдкар `sync/` (решение D1).** Дублирует контракт с устаревшим `allowedTables`
-  (`service_categories`, `by_product_prices`, `sales_product_prices`) и пустым `tablesWithLastSyncID`;
-  к nginx/Traefik не подключён. Решение: единственный транспорт — Laravel, Go выносится из `master`
-  в песочницу. ✅ Перенос `SAVEPOINT`-изоляции и вырезания `server_id`/`*_server_id` в Laravel уже
-  сделан (задача 3.5); осталось убрать сервис `sync` из `docker-compose.yaml` и вынести код.
+  на PostgreSQL и не откатывает остальной батч. Модуль Go вынесен из проекта (см. следующий пункт).
+- [x] **P1 · Go-сайдкар `sync/` (решение D1). Сделано (задача 3.11).** `/api/sync` и
+  `/api/sync-updates` — единственный транспорт синхронизации. Go-код (`sync/`, `_docker/sync/`)
+  и сервис `sync` из `docker-compose.yaml` удалены из проекта; копия сохранена в песочнице
+  `../ledger-craft-go-sync-sandbox` (с README, почему и как вернуть). Нужное из Go-реализации
+  уже в Laravel: `SAVEPOINT`-изоляция и вырезание `server_id`/`*_server_id` (задача 3.5).
 - [ ] **P1 · `orders` в синке.** При `insert` принимаются только `specialization_id, client_id,
   hours, minutes, total_amount, comments` — теряются `status`, `paid`, `model_id`, `share_token`
   и `user_order_number` (владелец `user_id` проставляется с задачи 3.10). Нужно: расширить список колонок.
