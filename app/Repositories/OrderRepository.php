@@ -16,15 +16,6 @@ use function Laravel\Prompts\table;
 
 class OrderRepository extends Controller
 {
-    public function switchPaidStatus($orderId)
-    {
-        return DB::update("
-            UPDATE orders
-            SET paid = NOT paid
-            WHERE id = :id
-        ", ['id' => $orderId]
-        );
-    }
     public function updatePaidStatus($orderId, $paidStatus)
     {
         $order = Order::find($orderId);

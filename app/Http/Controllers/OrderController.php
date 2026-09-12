@@ -54,14 +54,6 @@ class OrderController extends Controller
         }
     }
 
-    public function switchPaidStatus(Request $request, $id)
-    {
-        $order = $this->orderRepository->switchPaidStatus($id);
-        if ($order){
-            return response()->json(['message' => 'статус оплаты изменен']);
-        }
-        return response(['message' => 'невозможно изменить статус оплаты']);
-    }
     public function updateStatus(Request $request, $id)
     {
         $request->validate([

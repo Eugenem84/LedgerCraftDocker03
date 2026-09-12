@@ -168,6 +168,11 @@ Headers: X-Sync-ID: <uuid>
 Без токена синк отвечает `401`. `GET /api/get_orders_by_user/{id}` удалён: он отдавал заказы
 любого пользователя (IDOR), а публичный `/api/get_orders_by_user` падал в 500 на `Auth::user()`.
 
+`PUT /api/update_paid_status/{id}` с телом `{paid}` — единственная ручка смены статуса
+оплаты; дубль `switch_paid_status` удалён в задаче 7.6 (web-компонент `HistoryOrders.vue`
+переведён на неё). Группа `auth:api` (token-guard без `api_token` у `users`) тоже удалена
+как недостижимая — для API используется `auth:sanctum`.
+
 ## 5. Прочие эндпоинты
 
 | Метод | Путь | Контроллер |
@@ -266,18 +271,24 @@ Headers: X-Sync-ID: <uuid>
   заказа (со склада — из закупки, вручную — из формы) + расчёт маржи.
 - [ ] **P2 · `arrival_product` (задача 9.2).** Нет явного `return`, три записи без транзакции, нет
   идемпотентности (повторный приход удваивает остаток).
-- [ ] **P2 · Гигиена роутов (задача 7.6).** `GET /get_orders_by_user` объявлен трижды (первая,
-  публичная версия падает в 500 на `Auth::user()`, рабочая sanctum-версия недостижима);
-  `update_paid_status` + `switch_paid_status` дублируют операцию; `auth:api` (token-guard без
-  `api_token` у `users`) — тупик; не зароутенный `MaterialController::create` (аргументы перепутаны);
-  scaffold `app/Http/Controllers/Auth/*` при своём `AuthController`.
+- [x] **P2 · Гигиена роутов (задача 7.6). Сделано.** Удалены: недостижимая группа `auth:api`
+  (`/get_all_specializations` без `api_token` у `users` — web-часть по-прежнему использует свой
+  маршрут в `routes/web.php`), дубль `PUT /switch_paid_status/{id}` (вместе с методами
+  `OrderController::switchPaidStatus` и `OrderRepository::switchPaidStatus`; осталась одна ручка
+  `update_paid_status` с `{paid}`, web-компонент переведён на неё), мёртвый
+  `MaterialController::create` (не зароутен, аргументы перепутаны к тому же тянул
+  `SebastianBergmann\CodeCoverage\Driver\Selector`). `get_orders_by_user` оставлен один на группу
+  (API — `/api/get_orders_by_user` под `auth:sanctum`, web — свой маршрут): у них разные middleware,
+  это не дубль. Scaffold `app/Http/Controllers/Auth/*` и `Auth::routes()` **не трогаем** — web-версия
+  признана продуктом (решение по открытому вопросу).
 - [ ] **P2 · Тесты `/sync` (задача 5.6).** PHPUnit: SAVEPOINT-изоляция, идемпотентность, порядок
   «родитель → ребёнок», удаления/tombstones, вырезание `*_server_id`.
 - [ ] **P2 · Лимит выдачи.** `fetchUpdates` без `limit`/пагинации — устройство после долгого
   офлайна получает таблицу целиком.
-- [ ] **P2 · Открытый вопрос: web-версия.** `resources/js` (Vue 3 + Vite + Bootstrap/Vuetify/jQuery),
-  blade'ы + `Auth::routes()` + `order-report` — второй клиент или легаси? От ответа зависит объём
-  задачи 7.6; публичный отчёт `/order-report` связан с share-ссылкой (задача 9.4).
+- [x] **P2 · Открытый вопрос: web-версия. Решён (12.09.2026).** Web-часть (`resources/js`,
+  blade'ы + `Auth::routes()` + `/order-report`) признана **продуктом**, а не легаси: её не удаляем,
+  поэтому объём 7.6 ограничен чисткой мёртвого/дублирующего (см. выше). Публичный отчёт
+  `/order-report` связан с share-ссылкой (задача 9.4).
 - [x] `$tables` приведён к реальным таблицам (`buy_product_prices`, `sales_products_prices`; убрана
   `service_categories`).
 - [x] Удалён `#region agent log` из `SyncController.php`.

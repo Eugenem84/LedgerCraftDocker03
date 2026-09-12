@@ -61,9 +61,10 @@ Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'
 Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
 
-Route::middleware('auth:api')->group(function (){
-    Route::get('/get_all_specializations', [SpecializationController::class, 'getAll']);
-});
+// Задача 7.6: группа `auth:api` удалена. Guard `api` — token-драйвер, а у `users` нет
+// колонки `api_token`, поэтому маршрут был недостижим (всегда 401). Web-часть
+// (`routes/web.php`) пользуется своим `/get_all_specializations`, а клиенту нужен
+// sanctum-вариант ниже (`/get_specializations_by_user`).
 
 //Old version
 //Route::get('/getSpecialization', [ServiceController::class, 'getSpecializations']);
@@ -119,8 +120,11 @@ Route::delete('/delete_order/{orderId}', [OrderController::class, 'deleteOrder']
 Route::post('/update_order', [OrderController::class, 'updateOrder']);
 Route::get('/get_services/{orderId}', [OrderController::class, 'getServices']);
 Route::put('update_order_status/{id}', [OrderController::class, 'updateStatus']);
+// Задача 7.6: одна ручка смены оплаты. `switch_paid_status` дублировал её
+// (переключал статус на сервере) — удалён вместе с методом контроллера и
+// репозитория, а web-компонент `HistoryOrders.vue` переведён на `update_paid_status`
+// с `{paid}` (он и так умел переключать статус на клиенте).
 Route::put('update_paid_status/{id}', [OrderController::class, 'updatePadeStatus']);
-Route::put('switch_paid_status/{id}', [OrderController::class, 'switchPaidStatus']);
 
 Route::post('/order-report/{order}/share-link', [OrderController::class, 'generateShareLink']);
 

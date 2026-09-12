@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Repositories\MaterialRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use SebastianBergmann\CodeCoverage\Driver\Selector;
 
 class MaterialController extends Controller
 {
@@ -38,19 +37,5 @@ class MaterialController extends Controller
         }
 
         return response()->json($materials);
-    }
-
-    public function create(Request $request, $orderId)
-    {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|numeric',
-            'counter' => 'required|integer',
-        ]);
-
-        $data['order_id'] = $orderId;
-
-        $material = $this->materialRepository->createMaterial($data, $orderId);
-        return response()->json($material, 201);
     }
 }
