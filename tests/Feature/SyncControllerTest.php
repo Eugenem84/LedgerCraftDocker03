@@ -1136,4 +1136,54 @@ class SyncControllerTest extends TestCase
             DB::table('materials')->where('uuid_id', 'eeeeeeee-0000-0000-0000-000000000002')->value('buy_price')
         );
     }
+
+    /**
+     * Задача 11.2: «белый список» колонок при вставке заказа выбрасывал `model_id`
+     * (а вместе с ним `status`, `paid` и `user_order_number`), поэтому заказ, созданный
+     * офлайн с ещё не синхронизированной моделью техники, приезжал на сервер (и на второе
+     * устройство) **без модели**, а статус/оплата сбрасывались в дефолты БД.
+     */
+    public function test_order_insert_keeps_model_status_paid_and_user_order_number(): void
+    {
+        [$specializationId, $clientId] = $this->seedOrderDeps();
+
+        $modelId = DB::table('equipment_models')->insertGetId([
+            'name'              => 'Trek Marlin',
+            'specialization_id' => $specializationId,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        $localId = 'abababab-1111-0000-0000-000000000011';
+
+        $result = $this->sync([$this->insertOp('orders', $localId, [
+            'specialization_id'    => $specializationId,
+            'client_id'            => $clientId,
+            'model_id'             => $modelId,
+            'total_amount'         => 1234,
+            'hours'                => 1,
+            'minutes'              => 30,
+            'status'               => 'done',
+            'paid'                 => 1,
+            'user_order_number'    => 42,
+            'equipment_identifier' => 'VIN-123',
+        ])]);
+
+        $this->assertSame([], $result['errors']);
+        $orderId = $result['synced'][0]['server_id'];
+
+        $row = DB::table('orders')->where('id', $orderId)->first();
+        $this->assertSame($modelId, (int) $row->model_id, 'Модель техники не должна теряться при вставке из синка');
+        $this->assertSame('done', $row->status);
+        $this->assertTrue((bool) $row->paid);
+        $this->assertSame(42, (int) $row->user_order_number);
+        $this->assertSame('VIN-123', $row->equipment_identifier);
+
+        // Второе устройство получает заказ с той же моделью.
+        $updates = $this->fetchUpdates('orders', 'test-device-2');
+        $received = collect($updates['records'])->firstWhere('uuid_id', $localId);
+
+        $this->assertNotNull($received);
+        $this->assertSame($modelId, (int) $received['model_id']);
+    }
 }

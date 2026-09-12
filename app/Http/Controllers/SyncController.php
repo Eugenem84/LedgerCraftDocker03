@@ -288,10 +288,26 @@ class SyncController extends Controller
             $data = [
                 'specialization_id' => $payload['specialization_id'] ?? null,
                 'client_id'        => $payload['client_id'] ?? null,
+                // Модель техники (задача 11.2): клиент присылает уже переведённый в серверный
+                // id `model_id`, но «белый список» его выбрасывал → заказ, созданный офлайн
+                // с новой моделью, приезжал на сервер без связи (и на второе устройство тоже).
+                'model_id'         => isset($payload['model_id']) && is_numeric($payload['model_id'])
+                    ? (int) $payload['model_id']
+                    : null,
                 'hours'            => $payload['hours'] ?? null,
                 'minutes'          => $payload['minutes'] ?? null,
                 'total_amount'     => $payload['total_amount'] ?? null,
                 'comments'         => $payload['comments'] ?? null,
+                // Статус, оплата и номер заказа мастера тоже терялись при вставке из синка
+                // (в `update` они проходят generic-путём): офлайн-заказ со статусом «выполнен»
+                // и отметкой «оплачено» приезжал как «в работе»/неоплаченный.
+                'status'           => isset($payload['status']) && is_scalar($payload['status'])
+                    ? (string) $payload['status']
+                    : null,
+                'paid'             => (bool) ($payload['paid'] ?? false),
+                'user_order_number' => isset($payload['user_order_number']) && is_numeric($payload['user_order_number'])
+                    ? (int) $payload['user_order_number']
+                    : null,
                 // Универсальный идентификатор объекта (Фаза 10, задача 10.9):
                 // VIN/госномер, серийник рамы, адрес объекта.
                 'equipment_identifier' => $payload['equipment_identifier'] ?? null,
