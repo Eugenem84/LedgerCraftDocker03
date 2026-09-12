@@ -201,6 +201,61 @@ class SyncControllerTest extends TestCase
         $this->assertSame(777, (int) DB::table('orders')->where('uuid_id', $localId)->value('total_amount'));
     }
 
+    public function test_order_without_client_is_accepted(): void
+    {
+        // Заказ без клиента — штатный офлайн-сценарий: заказ заводят «на приёмке»,
+        // а клиента вписывают позже (в клиенте `client_id` необязательное поле).
+        // Было: `orders.client_id` NOT NULL → `/sync` отвечал DATABASE_ERROR
+        // (not-null violation) и заказ навсегда «залипал» в очереди устройства.
+        [$specializationId] = $this->seedOrderDeps();
+        $localId = '44444444-4444-4444-4444-444444444444';
+
+        $result = $this->sync([$this->insertOp('orders', $localId, [
+            'specialization_id' => $specializationId,
+            'client_id'         => null,
+            'total_amount'      => 0,
+        ])]);
+
+        $this->assertSame([], $result['errors']);
+        $this->assertCount(1, $result['synced']);
+
+        $row = DB::table('orders')->where('uuid_id', $localId)->first();
+
+        $this->assertNotNull($row, 'Заказ без клиента должен попасть в БД');
+        $this->assertNull($row->client_id);
+    }
+
+    public function test_order_client_can_be_cleared_by_update(): void
+    {
+        // Обратный сценарий: клиента привязали, потом убрали — правка должна доехать
+        // (UPDATE с `client_id: null`), иначе на сервере остался бы старый клиент.
+        [$specializationId, $clientId] = $this->seedOrderDeps();
+        $localId = '55555555-5555-5555-5555-555555555555';
+
+        $insert = $this->sync([$this->insertOp('orders', $localId, [
+            'specialization_id' => $specializationId,
+            'client_id'         => $clientId,
+            'total_amount'      => 500,
+        ])]);
+        $serverId = $insert['synced'][0]['server_id'];
+
+        $update = $this->sync([[
+            'id'      => 'op-'.$localId,
+            'type'    => 'update',
+            'table'   => 'orders',
+            'payload' => [
+                'id'                => $serverId,
+                'local_id'          => $localId,
+                'specialization_id' => $specializationId,
+                'client_id'         => null,
+                'total_amount'      => 500,
+            ],
+        ]]);
+
+        $this->assertSame([], $update['errors']);
+        $this->assertNull(DB::table('orders')->where('id', $serverId)->value('client_id'));
+    }
+
     public function test_generic_table_insert_is_idempotent_by_uuid_id(): void
     {
         $localId = '33333333-3333-3333-3333-333333333333';
