@@ -203,6 +203,68 @@ class ArrivalProductTest extends TestCase
         $this->assertSame(2, $this->warehouseState($productId)['arrivals']);
     }
 
+    /**
+     * Задача 11.7 (бывший O-6): ручка больше не открыта всем.
+     * Без токена и без сессии — 401, до записи дело не доходит.
+     */
+    public function test_web_arrival_requires_auth(): void
+    {
+        $productId = $this->seedProduct()['productId'];
+
+        // «Забываем» пользователя, которого поставил setUp (`Sanctum::actingAs`), —
+        // запрос должен быть анонимным, как у стороннего клиента без токена.
+        $this->app['auth']->forgetGuards();
+
+        $this->postJson('/api/arrival_product', [
+            'product_id'       => $productId,
+            'arrival_quantity' => 3,
+            'by_price'         => 100,
+        ])->assertUnauthorized();
+
+        $this->assertNull($this->warehouseState($productId)['stock']);
+        $this->assertSame(0, $this->warehouseState($productId)['arrivals']);
+    }
+
+    /**
+     * Задача 11.7: чужой товар через web-ручку не приходуется. Владелец проверяется
+     * той же цепочкой, что в синке (3.10), и ошибка названа так же (`FORBIDDEN_NOT_OWNER`).
+     */
+    public function test_web_arrival_for_foreign_product_is_rejected(): void
+    {
+        $foreignProductId = $this->seedProduct(User::factory()->create()->id)['productId'];
+
+        $this->postJson('/api/arrival_product', [
+            'product_id'       => $foreignProductId,
+            'arrival_quantity' => 5,
+            'by_price'         => 100,
+        ])->assertForbidden()->assertJsonPath('error', 'FORBIDDEN_NOT_OWNER');
+
+        $this->assertNull($this->warehouseState($foreignProductId)['stock']);
+        $this->assertSame(0, $this->warehouseState($foreignProductId)['arrivals']);
+    }
+
+    /**
+     * Задача 11.7: web-часть входит по сессии (без bearer-токена) — приход работает.
+     * Запрос идёт с «frontend»-Referer (как из браузера), чтобы отработал
+     * first-party путь Sanctum (`EnsureFrontendRequestsAreStateful`).
+     */
+    public function test_web_arrival_works_with_session_user_without_token(): void
+    {
+        $productId = $this->seedProduct()['productId'];
+
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($this->user, 'web');
+
+        $this->postJson('/api/arrival_product', [
+            'product_id'       => $productId,
+            'arrival_quantity' => 6,
+            'by_price'         => 100,
+        ], ['Referer' => 'http://localhost'])->assertCreated()->assertJsonPath('stock_quantity', 6);
+
+        $this->assertSame(6, $this->warehouseState($productId)['stock']);
+        $this->assertSame(1, $this->warehouseState($productId)['arrivals']);
+    }
+
     /** Операция синка: приход товара с клиентским id (ключ идемпотентности). */
     private function arrivalOp(int $productId, string $localId, int $quantity, int $byPrice = 300): array
     {

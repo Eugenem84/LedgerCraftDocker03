@@ -52,6 +52,26 @@ class ProductRepository extends Controller
     }
 
     /**
+     * Принадлежит ли товар пользователю (задача 11.7, бывший O-6).
+     *
+     * Цепочка владельца — та же, что в синке (задача 3.10): `products` →
+     * `product_categories` → `specializations.user_id`. «Ничьи» звенья (категория или
+     * владелец = NULL — данные до 3.10) считаются общими, как в `SyncController`, иначе
+     * legacy-товары стали бы недоступны для прихода.
+     */
+    public function belongsToUser(int $productId, int $userId): bool
+    {
+        return DB::table('products')
+            ->leftJoin('product_categories', 'product_categories.id', '=', 'products.product_category_id')
+            ->leftJoin('specializations', 'specializations.id', '=', 'product_categories.specialization_id')
+            ->where('products.id', $productId)
+            ->where(fn($query) => $query
+                ->where('specializations.user_id', $userId)
+                ->orWhereNull('specializations.user_id'))
+            ->exists();
+    }
+
+    /**
      * Последняя закупочная цена товара — себестоимость для позиций заказа (задачи 9.5/9.6).
      *
      * Источник — `buy_product_prices` (её пишет приход, задача 9.2); если истории закупок

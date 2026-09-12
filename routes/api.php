@@ -110,7 +110,16 @@ Route::get('/get_products/{productCategoryId}', [ProductController::class, 'getB
 Route::post('/add_product', [ProductController::class, 'addNew']);
 Route::post('/delete_store_product', [ProductController::class, 'delete']);
 Route::post('/edit_product', [ProductController::class, 'edit']);
-Route::post('/arrival_product', [ProductController::class, 'arrival']);
+// Приход товара (задача 11.7, бывший O-6). Было: маршрут без `auth` — приходовать
+// чужой товар мог кто угодно. Стало: `auth:sanctum` — без токена/сессии `401`, а
+// владелец товара проверяется в контроллере (`FORBIDDEN_NOT_OWNER`).
+// `EnsureFrontendRequestsAreStateful` сохраняет рабочей web-версию (`resources/js`,
+// вход по сессии + CSRF из meta-тега), а bearer-токену (мобильное приложение)
+// сессия не нужна — для него middleware no-op.
+Route::middleware([
+    \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+    'auth:sanctum',
+])->post('/arrival_product', [ProductController::class, 'arrival']);
 
 Route::get('/orders_by_specialization/{id}', [OrderController::class, 'getBySpecialization']);
 

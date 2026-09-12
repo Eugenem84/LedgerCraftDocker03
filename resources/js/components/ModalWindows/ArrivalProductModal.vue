@@ -30,12 +30,27 @@ export default {
         arrival_quantity: this.arrivalQuantity,
       }
       console.log("данные на отправку" ,requestData)
-      axios.post(this.$Url + '/api/arrival_product', requestData)
+      // Задача 11.7: ручка под `auth:sanctum`. Web-часть входит по сессии
+      // (`Auth::routes()`), поэтому шлём cookie (`withCredentials`) и CSRF-токен из
+      // meta-тега — запрос проходит как «first-party» (Sanctum), без bearer-токена.
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      axios.post(this.$Url + '/api/arrival_product', requestData, {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken,
+        },
+      })
           .then(response => {
             console.log(response.data.message)
             this.$emit('product_arrival_added')
-            this.quantity = ''
+            this.arrivalQuantity = ''
             this.byPrice = ''
+          })
+          .catch(error => {
+            // 401 — сессия истекла, 403 — чужой товар: не молчим в консоли.
+            const reason = error.response?.data?.message || error.message
+            console.error('приход товара не сохранён:', reason)
           })
       this.isVisible = false
     },

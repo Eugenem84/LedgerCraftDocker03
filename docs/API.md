@@ -159,9 +159,12 @@ Headers: X-Sync-ID: <uuid>
   увеличивает; без `uuid_id` два запроса = два прихода (как было — для web-формы);
 - явный ответ: **201** при новом приходе, **200** при повторе —
   `{ message, idempotent, incoming_product_id, product_id, quantity, stock_quantity }`;
-- ⚠️ маршрут **без `auth`** (web-версия вызывает без токена): приходовать чужой товар может
-  кто угодно — закрытие вынесено в отдельную задачу безопасности. Приложение эту ручку
-  **не использует**: приход идёт через `/api/sync` (операция `incoming_products`).
+- 🔒 маршрут под **`auth:sanctum`** (задача 11.7, бывший O-6): без токена/сессии — `401`,
+  чужой товар — `403` `FORBIDDEN_NOT_OWNER` (владелец проверяется той же цепочкой, что в синке,
+  3.10: товар → категория → специализация). Web-версия входит по сессии, поэтому запрос идёт с
+  `withCredentials` + `X-CSRF-TOKEN` (meta-тег) и проходит как first-party через
+  `EnsureFrontendRequestsAreStateful`; bearer-токену (мобильное приложение) сессия не нужна.
+  Приложение эту ручку **не использует**: приход идёт через `/api/sync` (операция `incoming_products`).
 
 Общая логика прихода — `IncomingProductRepository::recordArrival()`; её же вызывает синк, поэтому
 остаток увеличивается ровно один раз в обоих путях. Тест: `tests/Feature/ArrivalProductTest.php`.
@@ -179,6 +182,7 @@ Headers: X-Sync-ID: <uuid>
 | POST | `/api/sync` (sanctum) — задача 3.10 |
 | GET | `/api/sync-updates` (sanctum) — задача 3.10 |
 | GET | `/api/specialization-templates` (sanctum) — пресеты специализаций, Фаза 10 (10.7); контент наполняется сидом `SpecializationTemplateSeeder` (11.3) |
+| POST | `/api/arrival_product` (sanctum) — приход товара (задача 11.7); принимает сессию web-версии и bearer-токен, чужой товар — `403` `FORBIDDEN_NOT_OWNER` |
 
 **`POST /api/register`** (Фаза 10, задача 10.5): кроме `name`/`email`/`password`/`password_confirmation`
 принимает необязательный массив `specializations: [{ name, preset_key }]` (1..10) и создаёт рабочие
@@ -317,9 +321,12 @@ Headers: X-Sync-ID: <uuid>
   `idempotent`, `stock_quantity`). В синке появилась ветка `incoming_products`, а владелец
   `product_stocks` определяется теперь через `product_id` (раньше — только `product_categories_id`).
   Не-UUID `uuid_id` не роняет операцию (колонка типа `uuid` в PostgreSQL — `SQLSTATE 22P02`).
-  Тест: `tests/Feature/ArrivalProductTest.php` (8 тестов). Клиент сохраняет приход офлайн
+  Тест: `tests/Feature/ArrivalProductTest.php` (11 тестов). Клиент сохраняет приход офлайн
   (задача 9.2, `incomingProductsRepo.receiveArrival`).
-  ⚠️ маршрут по-прежнему без `auth` — закрытие отдельной задачей (web вызывает без токена).
+  ✅ **Маршрут закрыт (задача 11.7, бывший O-6):** под `auth:sanctum`, без токена/сессии — `401`,
+  чужой товар — `403` `FORBIDDEN_NOT_OWNER` (цепочка владельца как в синке, 3.10). Web-версия
+  (`ArrivalProductModal.vue`) шлёт сессию (`withCredentials`) и `X-CSRF-TOKEN` и проходит как
+  first-party; bearer-токен тоже принимается.
 - [x] **P2 · Двойной источник «где лежит товар» и мёртвые цены (задача 9.3). Сделано.**
   Миграция `2026_09_16_000000_drop_product_categories_id_from_product_stocks` удалила
   `product_stocks.product_categories_id` — категория товара есть только у товара

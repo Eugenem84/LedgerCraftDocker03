@@ -71,6 +71,18 @@ class ProductController extends Controller
         ]);
 
         $productId = (int) $validated['product_id'];
+
+        // Задача 11.7: товар должен принадлежать владельцу токена/сессии. Раньше
+        // ручка была без `auth` — приходовать чужой товар мог кто угодно. Цепочка
+        // владельца та же, что в синке (3.10): товар → категория → специализация.
+        $userId = $request->user()?->getAuthIdentifier();
+        if ($userId !== null && !$this->productRepository->belongsToUser($productId, (int) $userId)) {
+            return response()->json([
+                'error'   => 'FORBIDDEN_NOT_OWNER',
+                'message' => 'Товар принадлежит другому пользователю',
+            ], 403);
+        }
+
         $quantity = (int) $validated['arrival_quantity'];
         $byPrice = $this->toRubles($request->input('by_price')) ?? 0;
         $supplier = (string) ($request->input('supplier') ?? '');
