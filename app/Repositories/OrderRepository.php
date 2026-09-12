@@ -16,6 +16,17 @@ use function Laravel\Prompts\table;
 
 class OrderRepository extends Controller
 {
+    /**
+     * Товары: у них берём последнюю закупку — себестоимость позиции заказа (9.5/9.6).
+     * Web-форма `buy_price` не присылает, поэтому сервер подставляет закупку сам.
+     */
+    protected ProductRepository $productRepository;
+
+    public function __construct(ProductRepository $productRepository)
+    {
+        $this->productRepository = $productRepository;
+    }
+
     public function updatePaidStatus($orderId, $paidStatus)
     {
         $order = Order::find($orderId);
@@ -116,9 +127,13 @@ class OrderRepository extends Controller
                     $productStock->save();
 
                     // данные для расходного ордера order_product
+                    // `buy_price` — себестоимость на момент продажи (задачи 9.5/9.6):
+                    // из формы, если она её прислала, иначе — последняя закупка товара.
                     $productData[$addedProduct['product_id']] = [
                         'sale_price' => $addedProduct['price'],
-                        'quantity' => $addedProduct['amount']
+                        'quantity' => $addedProduct['amount'],
+                        'buy_price' => $addedProduct['buy_price']
+                            ?? $this->productRepository->lastBuyPrice((int) $addedProduct['product_id']),
                     ];
                 } else {
                     throw new \Exception('недотаточен остаток по товару');
@@ -134,6 +149,8 @@ class OrderRepository extends Controller
                 $material->name = $materialData['name'];
                 $material->price = $materialData['price'];
                 $material->amount = $materialData['amount'];
+                // Себестоимость ручной позиции (задачи 9.5/9.6): её знает только форма.
+                $material->buy_price = $materialData['buy_price'] ?? null;
                 $material->save();
             }
         }
@@ -211,6 +228,8 @@ class OrderRepository extends Controller
                 $material->name = $materialData['name'];
                 $material->price = $materialData['price'];
                 $material->amount = $materialData['amount'];
+                // Себестоимость ручной позиции (задачи 9.5/9.6): её знает только форма.
+                $material->buy_price = $materialData['buy_price'] ?? null;
                 $material->save();
             }
         }
@@ -225,6 +244,10 @@ class OrderRepository extends Controller
                 $product->product_id = $productData['product_id'];
                 $product->sale_price = $productData['price'];
                 $product->quantity = $productData['amount'];
+                // `buy_price` — себестоимость на момент продажи (задачи 9.5/9.6): из формы,
+                // иначе последняя закупка товара (web-форма её не присылает).
+                $product->buy_price = $productData['buy_price']
+                    ?? $this->productRepository->lastBuyPrice((int) $productData['product_id']);
                 $product->save();
             }
         }

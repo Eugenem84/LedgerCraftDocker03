@@ -14,6 +14,7 @@ class Material extends Model
         'name',
         'price',
         'amount',
+        'buy_price',
     ];
 
     public function order()

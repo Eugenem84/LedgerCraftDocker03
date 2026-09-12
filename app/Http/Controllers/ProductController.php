@@ -10,6 +10,7 @@ use App\Repositories\ProductStockRepository;
 use App\Repositories\ProductRepository;
 use App\Models\IncomingProduct;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -41,28 +42,85 @@ class ProductController extends Controller
         $productCategoryId= $request->input('product_category_id');
         $productId = $this->productRepository->addNew($name,$baseSalePrice,$productCategoryId);
 
-        $newProduct = $this->productStockRepository->addNew($productId, $productCategoryId);
+        // Строка остатка — одна на товар; категория больше не дублируется в остатке
+        // (задача 9.3: «где лежит товар» знает products.product_category_id).
+        $newProduct = $this->productStockRepository->addNew($productId);
         return response()->json($newProduct, 201);
     }
 
+    /**
+     * Приход товара (задача 9.2).
+     *
+     * Было: пустой ответ 200 (web читал `response.data.message` — то есть ничего),
+     * три записи без транзакции и без идемпотентности — повторный запрос удваивал
+     * остаток. Стало: явный ответ, всё в одной транзакции и ключ идемпотентности
+     * `uuid_id` (его присылает приложение, поэтому повторная отправка батча синка
+     * склад не удваивает).
+     */
     public function arrival(Request $request)
     {
-        \Log::info($request->all());
-
-        $validatedData = $request->validate([
-          'product_id' => 'required|integer|exists:product_stocks,product_id',
+        $validated = $request->validate([
+            // ⚠️ Строки остатка у товара может ещё не быть (товар создан приложением),
+            // поэтому проверяем сам товар, а не `product_stocks.product_id`.
+            'product_id'       => 'required|integer|exists:products,id',
+            'arrival_quantity' => 'required|integer|min:1',
+            'by_price'         => 'nullable',
+            'base_sale_price'  => 'nullable',
+            'supplier'         => 'nullable|string',
+            'uuid_id'          => 'nullable|string',
         ]);
 
-        $productId = $request->input('product_id');
-        \Log::info($productId);
-        $baseSalePrice = $request->input('base_sale_price');
-        $byPrice = $request->input('by_price');
-        $arrivalQuantity = $request->input('arrival_quantity');
-        $supplier = $request->input('supplier', '');
+        $productId = (int) $validated['product_id'];
+        $quantity = (int) $validated['arrival_quantity'];
+        $byPrice = $this->toRubles($request->input('by_price')) ?? 0;
+        $supplier = (string) ($request->input('supplier') ?? '');
+        $baseSalePrice = $this->toRubles($request->input('base_sale_price'));
 
-        $this->productRepository->arrivalUpdate($productId, $baseSalePrice);
-        $this->productStockRepository->arrival($productId, $arrivalQuantity);
-        $this->incomingProductRepository->newIncome($productId, $arrivalQuantity, $byPrice, $supplier);
+        // Приход + остаток + цена продажи — одной транзакцией: «пришло частично»
+        // быть не должно (раньше три записи жили каждая сама по себе).
+        $result = DB::transaction(function () use ($productId, $quantity, $byPrice, $supplier, $baseSalePrice, $request) {
+            $arrival = $this->incomingProductRepository->recordArrival(
+                $productId,
+                $quantity,
+                $byPrice,
+                $supplier,
+                $request->input('uuid_id')
+            );
+
+            if ($baseSalePrice !== null) {
+                $this->productRepository->arrivalUpdate($productId, $baseSalePrice);
+            }
+
+            return $arrival;
+        });
+
+        return response()->json([
+            'message'             => $result['created'] ? 'Приход сохранён' : 'Приход уже учтён (идемпотентно)',
+            'idempotent'          => !$result['created'],
+            'incoming_product_id' => $result['id'],
+            'product_id'          => $productId,
+            'quantity'            => $quantity,
+            'stock_quantity'      => $result['stock_quantity'],
+        ], $result['created'] ? 201 : 200);
+    }
+
+    /**
+     * Деньги — целыми рублями (единый стандарт, задача 3.12): «1 000,50» → 1001,
+     * пустое/нечисловое → `null`. Логика та же, что в `SyncController::toRubles()`.
+     */
+    private function toRubles($value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (int) round($value);
+        }
+
+        $normalized = str_replace([' ', ','], ['', '.'], trim((string) $value));
+
+        return is_numeric($normalized) ? (int) round((float) $normalized) : null;
     }
 
     public function edit(Request $request){

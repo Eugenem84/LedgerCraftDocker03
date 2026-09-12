@@ -4,18 +4,82 @@ namespace App\Repositories;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-use function Symfony\Component\String\s;
+use Illuminate\Support\Facades\DB;
 
 class ProductRepository extends Controller
 {
+    /**
+     * Товары категории вместе со складом и ценами (задачи 9.2/9.3).
+     *
+     * Раньше отдавались только поля `products`, поэтому web-склад не видел остатка,
+     * а `buy_product_prices`/`sales_products_prices` не читались ни в одном расчёте.
+     * Теперь в ответе: `quantity` (остаток), `buy_price` (последняя закупка) и
+     * `last_sale_price` (последняя цена продажи этого товара) — web-склад показывает
+     * всё три величины.
+     *
+     * `DISTINCT ON` — синтаксис PostgreSQL (сервер всегда на нём): «последняя по
+     * `created_at` строка на товар» для истории цен; оконные функции не используем,
+     * чтобы правило было читаемым.
+     */
     public function getByCategory($categoryId)
     {
-        return Product::where('product_category_id', $categoryId)->get();
+        return DB::select("
+            SELECT products.*,
+                   COALESCE(stock.quantity, 0) AS quantity,
+                   buy.buy_price               AS buy_price,
+                   sales.sale_price            AS last_sale_price
+            FROM products
+            LEFT JOIN product_stocks stock ON stock.product_id = products.id
+            LEFT JOIN (
+                SELECT DISTINCT ON (product_id) product_id, buy_price
+                FROM buy_product_prices
+                ORDER BY product_id, created_at DESC, id DESC
+            ) buy ON buy.product_id = products.id
+            LEFT JOIN (
+                SELECT DISTINCT ON (product_id) product_id, sale_price
+                FROM sales_products_prices
+                ORDER BY product_id, created_at DESC, id DESC
+            ) sales ON sales.product_id = products.id
+            WHERE products.product_category_id = :category_id
+              AND products.deleted_at IS NULL
+            ORDER BY products.name
+        ", ['category_id' => $categoryId]);
     }
 
     public function getProduct($id)
     {
         return Product::find($id);
+    }
+
+    /**
+     * Последняя закупочная цена товара — себестоимость для позиций заказа (задачи 9.5/9.6).
+     *
+     * Источник — `buy_product_prices` (её пишет приход, задача 9.2); если истории закупок
+     * ещё нет, берём цену последнего прихода (`incoming_products.by_price`). `null` — цены
+     * нет вовсе: маржа по позиции не считается, и это честнее, чем подставить 0.
+     *
+     * Нужна там, где заказ создаётся не приложением (web-форма) или старым клиентом,
+     * который `buy_price` в строке заказа ещё не присылает.
+     */
+    public function lastBuyPrice(int $productId): ?int
+    {
+        $price = DB::table('buy_product_prices')
+            ->where('product_id', $productId)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->value('buy_price');
+
+        if ($price !== null) {
+            return (int) $price;
+        }
+
+        $arrivalPrice = DB::table('incoming_products')
+            ->where('product_id', $productId)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->value('by_price');
+
+        return $arrivalPrice === null ? null : (int) $arrivalPrice;
     }
 
     public function addNew($name, $base_sale_price, $productCategoryId)

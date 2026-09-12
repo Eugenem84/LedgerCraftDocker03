@@ -8,6 +8,9 @@ use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use App\Repositories\IncomingProductRepository;
+use App\Repositories\ProductStockRepository;
+use App\Repositories\ProductRepository;
 
 class SyncController extends Controller
 {
@@ -28,6 +31,25 @@ class SyncController extends Controller
         'buy_product_prices',
         'sales_products_prices',
     ];
+
+    /** Приходы: увеличение склада должно происходить ровно один раз (задача 9.2). */
+    private IncomingProductRepository $incomingProducts;
+
+    /** Склад: строка остатка на товар (задачи 9.2/9.3). */
+    private ProductStockRepository $productStocks;
+
+    /** Товары: последняя закупка — себестоимость позиции заказа (задачи 9.5/9.6). */
+    private ProductRepository $products;
+
+    public function __construct(
+        IncomingProductRepository $incomingProducts,
+        ProductStockRepository $productStocks,
+        ProductRepository $products
+    ) {
+        $this->incomingProducts = $incomingProducts;
+        $this->productStocks = $productStocks;
+        $this->products = $products;
+    }
 
     public function sync(Request $request)
     {
@@ -374,9 +396,62 @@ class SyncController extends Controller
             return;
         }
 
+        // Специальная обработка для incoming_products (задача 9.2): приход меняет склад,
+        // и делает это **ровно один раз** — идемпотентность по клиентскому `uuid_id`
+        // (`IncomingProductRepository::recordArrival()`). Поэтому повторная отправка
+        // батча не удваивает `product_stocks.quantity`, а строка прихода остаётся одна.
+        if ($table === 'incoming_products') {
+            $productId = $payload['product_id'] ?? null;
+            $quantity = (int) ($payload['quantity'] ?? 0);
+
+            if ($productId === null) {
+                $results['errors'][] = ['local_id' => $localId, 'error' => 'MISSING_PRODUCT_ID'];
+                return;
+            }
+
+            if ($quantity < 1) {
+                $results['errors'][] = ['local_id' => $localId, 'error' => 'INVALID_QUANTITY'];
+                return;
+            }
+
+            $arrival = $this->incomingProducts->recordArrival(
+                (int) $productId,
+                $quantity,
+                (int) ($payload['by_price'] ?? 0),
+                (string) ($payload['supplier'] ?? ''),
+                $localId
+            );
+
+            // Анти-эхо (задача 3.6): помечаем строку устройством-автором, чтобы оно
+            // не получило свой же приход обратно в `sync-updates`.
+            if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
+                DB::table($table)->where('id', $arrival['id'])->update(['last_sync_id' => $syncId]);
+            }
+
+            $results['synced'][] = [
+                'type'       => 'insert',
+                'local_id'   => $localId,
+                'server_id'  => $arrival['id'],
+                'updated_at' => $now->toJSON(),
+                // Сколько стало на складе — информационно: клиент обновляет остаток и
+                // сам (офлайн), а серверное значение придёт выгрузкой `product_stocks`.
+                'stock_quantity' => $arrival['stock_quantity'],
+            ];
+
+            return;
+        }
+
         // Обработка по умолчанию для остальных таблиц
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
+        }
+
+        // Себестоимость позиции (задачи 9.5/9.6): если клиент её не прислал, берём
+        // последнюю закупку товара (`buy_product_prices`, иначе последний приход).
+        // Иначе маржа заказа считалась бы как «выручка = прибыль» — старая ошибка отчётов.
+        // У ручных позиций (`materials`) источника нет: закупку вводит мастер в форме.
+        if ($table === 'order_product' && ($payload['buy_price'] ?? null) === null) {
+            $payload['buy_price'] = $this->products->lastBuyPrice((int) ($payload['product_id'] ?? 0));
         }
 
         // Владелец данных (задача 3.10): у таблиц с `user_id` (specializations)
@@ -389,6 +464,13 @@ class SyncController extends Controller
         $payload['updated_at'] = $now;
 
         $newId = $this->upsertRecord($table, $payload, $localId);
+
+        // Товар получает строку остатка (задача 9.3): «где лежит товар» — это товар,
+        // а «сколько лежит» — одна строка на товар. Иначе web-склад и выгрузка в
+        // приложение видели бы отсутствующую строку вместо нуля. Повтор — идемпотентен.
+        if ($table === 'products' && $newId !== null) {
+            $this->productStocks->ensureForProduct($newId);
+        }
 
         $results['synced'][] = [
             'type'       => 'insert',
@@ -604,15 +686,19 @@ class SyncController extends Controller
 
     /**
      * Вырезает служебные поля клиента из payload: `id`, `local_id`, `uuid_id`,
-     * `server_id` и сигнальные `*_server_id`. Перенос из Go-сайдкара (D1, 3.11):
-     * иначе `server_id`/`*_server_id` улетали бы в реальные колонки таблиц.
+     * `server_id`, `share_token` и сигнальные `*_server_id`. Перенос из Go-сайдкара
+     * (D1, 3.11): иначе `server_id`/`*_server_id` улетали бы в реальные колонки таблиц.
+     *
+     * `share_token` — серверное поле (задача 9.4): токен публичной ссылки создаёт
+     * только сервер, а клиент прислал бы `null` (он токена не знает) и своим же
+     * обновлением заказа затёр бы уже выданную клиенту ссылку.
      */
     private function stripClientFields(array $payload): array
     {
         $clean = [];
 
         foreach ($payload as $key => $value) {
-            if (in_array($key, ['id', 'local_id', 'uuid_id', 'server_id'], true)) {
+            if (in_array($key, ['id', 'local_id', 'uuid_id', 'server_id', 'share_token'], true)) {
                 continue;
             }
             if (str_ends_with($key, '_server_id')) {
@@ -630,10 +716,10 @@ class SyncController extends Controller
      */
     private const MONEY_COLUMNS = [
         'services'            => ['price'],
-        'materials'           => ['price'],
+        'materials'           => ['price', 'buy_price'],
         'orders'              => ['total_amount'],
         'order_service'       => ['sale_price'],
-        'order_product'       => ['sale_price'],
+        'order_product'       => ['sale_price', 'buy_price'],
         'products'            => ['base_sale_price'],
         'incoming_products'   => ['by_price'],
         'buy_product_prices'  => ['buy_price'],
@@ -703,7 +789,11 @@ class SyncController extends Controller
         'equipment_models'      => ['specialization_id' => 'specializations'],
         'services'              => ['category_id' => 'categories'],
         'products'              => ['product_category_id' => 'product_categories'],
-        'product_stocks'        => ['product_categories_id' => 'product_categories'],
+        // Остаток адресуется товаром (`Product::stock()` — hasOne): владелец и синк идут
+        // цепочкой `product_id` → products → product_categories → specializations.
+        // `product_categories_id` из остатка удалён (задача 9.3): «где лежит товар»
+        // знает только `products.product_category_id`.
+        'product_stocks'        => ['product_id' => 'products'],
         'incoming_products'     => ['product_id' => 'products'],
         'buy_product_prices'    => ['product_id' => 'products'],
         'sales_products_prices' => ['order_id' => 'orders', 'product_id' => 'products'],

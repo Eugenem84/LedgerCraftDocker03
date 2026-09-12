@@ -29,6 +29,27 @@ class StatisticController extends Controller
         return response()->json($this->statisticRepository->getTopProfitClients($specializationId));
     }
 
+    /**
+     * Топ товаров со склада в заказах (задача 9.1) — зеркало клиентского блока
+     * «топ товаров» на странице аналитики, чтобы цифры сходились.
+     */
+    public function getTopProductsBySpecialization(Request $request, $specializationId)
+    {
+        return response()->json($this->statisticRepository->getTopProductsBySpecialization($specializationId));
+    }
+
+    /** Топ ручных позиций заказа (задача 9.1). */
+    public function getTopMaterialsBySpecialization(Request $request, $specializationId)
+    {
+        return response()->json($this->statisticRepository->getTopMaterialsBySpecialization($specializationId));
+    }
+
+    /** Распределение заказов по текущему статусу (задача 9.1). */
+    public function getStatusDistribution(Request $request, $specializationId)
+    {
+        return response()->json($this->statisticRepository->getStatusDistribution($specializationId));
+    }
+
     public function getIncomeByYear(Request $request, $specializationId)
     {
         $data = $this->statisticRepository->getIncomeByYear($specializationId);

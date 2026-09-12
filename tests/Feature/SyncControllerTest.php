@@ -820,12 +820,18 @@ class SyncControllerTest extends TestCase
         $this->assertIsNumeric($salePrice, 'sale_price должен быть числом (без строк/кастов)');
         $this->assertSame(1200, (int) $salePrice);
 
-        // Статистика (задача 3.12): суммы по integer-колонкам без CAST.
+        // Статистика (задача 3.12): суммы по integer-колонкам без CAST. С задачи 9.1
+        // в выручку входят только закрытые и оплаченные заказы, поэтому «закрываем» заказ.
+        DB::table('orders')->where('id', $orderId)->update(['status' => 'done', 'paid' => true]);
+
         $stats = app(\App\Repositories\StatisticRepository::class)->getProfitDWMY($specializationId);
         $this->assertNotEmpty($stats);
+        $this->assertSame(1200, (int) $stats[0]->total_month);
 
         $topServices = app(\App\Repositories\StatisticRepository::class)->getTopServicesBySpecialization($specializationId);
         $this->assertNotEmpty($topServices);
+        $this->assertSame('Работа', $topServices[0]->service);
+        $this->assertSame(1200, (int) $topServices[0]->total);
     }
 
 
@@ -992,7 +998,6 @@ class SyncControllerTest extends TestCase
             'category_name'     => 'Осиротевшая',
             'specialization_id' => 99999999,
         ])], 'device-a');
-
         $this->assertCount(1, $orphan['errors']);
         // Существование чужой/несуществующей записи сервер не подтверждает,
         // поэтому ответ — тот же, что и на чужого родителя (задача 3.10).
@@ -1004,4 +1009,131 @@ class SyncControllerTest extends TestCase
         );
     }
 
+    /**
+     * Задачи 9.5/9.6: себестоимость товара в позиции заказа.
+     *
+     * Клиент присылает `buy_price` (закупка на момент продажи) — деньги нормализуются как
+     * везде (строка «250,60» → 251). Если поля нет (web-форма, старый клиент), сервер берёт
+     * последнюю закупку товара (`buy_product_prices`, иначе последний приход), а при
+     * отсутствии истории оставляет `NULL` — «закупка неизвестна», а не «закупка 0».
+     */
+    public function test_order_product_buy_price_is_normalized_and_taken_from_last_purchase(): void
+    {
+        [$specializationId] = $this->seedOrderDeps();
+
+        $orderId = DB::table('orders')->insertGetId([
+            'specialization_id' => $specializationId,
+            'client_id'         => DB::table('clients')->where('specialization_id', $specializationId)->value('id'),
+            'total_amount'      => 0,
+            'user_id'           => $this->user->id,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        $productCategoryId = DB::table('product_categories')->insertGetId([
+            'name'              => 'Фильтры',
+            'specialization_id' => $specializationId,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        $productWithHistory = DB::table('products')->insertGetId([
+            'name'                => 'Фильтр',
+            'product_category_id' => $productCategoryId,
+            'base_sale_price'     => 1000,
+            'created_at'          => now(),
+            'updated_at'          => now(),
+        ]);
+
+        $productWithoutHistory = DB::table('products')->insertGetId([
+            'name'                => 'Шланг',
+            'product_category_id' => $productCategoryId,
+            'base_sale_price'     => 500,
+            'created_at'          => now(),
+            'updated_at'          => now(),
+        ]);
+
+        // История закупок: её пишет приход (задача 9.2).
+        DB::table('buy_product_prices')->insert([
+            'product_id' => $productWithHistory,
+            'buy_price'  => 700,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $result = $this->sync([
+            // 1) закупку прислал клиент, строкой с разделителями
+            $this->insertOp('order_product', 'cccccccc-0000-0000-0000-000000000001', [
+                'order_id'   => $orderId,
+                'product_id' => $productWithHistory,
+                'sale_price' => 1000,
+                'quantity'   => 1,
+                'buy_price'  => '250,60',
+            ]),
+            // 2) закупки в payload нет — берём последнюю из истории
+            $this->insertOp('order_product', 'cccccccc-0000-0000-0000-000000000002', [
+                'order_id'   => $orderId,
+                'product_id' => $productWithHistory,
+                'sale_price' => 1000,
+                'quantity'   => 2,
+            ]),
+            // 3) истории закупок нет — остаётся NULL
+            $this->insertOp('order_product', 'cccccccc-0000-0000-0000-000000000003', [
+                'order_id'   => $orderId,
+                'product_id' => $productWithoutHistory,
+                'sale_price' => 500,
+                'quantity'   => 1,
+            ]),
+        ], 'device-a');
+
+        $this->assertSame([], $result['errors']);
+
+        $this->assertSame(
+            251,
+            (int) DB::table('order_product')->where('uuid_id', 'cccccccc-0000-0000-0000-000000000001')->value('buy_price')
+        );
+        $this->assertSame(
+            700,
+            (int) DB::table('order_product')->where('uuid_id', 'cccccccc-0000-0000-0000-000000000002')->value('buy_price'),
+            'Без buy_price в payload сервер подставляет последнюю закупку товара'
+        );
+        $this->assertNull(
+            DB::table('order_product')->where('uuid_id', 'cccccccc-0000-0000-0000-000000000003')->value('buy_price'),
+            'Без истории закупок себестоимость остаётся неизвестной (NULL), а не 0'
+        );
+    }
+
+    /**
+     * Задачи 9.5/9.6: у ручной позиции (`materials`) источник закупки один — форма,
+     * поэтому сервер её просто сохраняет (и не выдумывает, если её не прислали).
+     */
+    public function test_materials_buy_price_is_synced_from_the_client(): void
+    {
+        $orderId = $this->seedOrder();
+
+        $result = $this->sync([
+            $this->insertOp('materials', 'eeeeeeee-0000-0000-0000-000000000001', [
+                'order_id'  => $orderId,
+                'name'      => 'Герметик',
+                'price'     => 200,
+                'amount'    => 2,
+                'buy_price' => 50,
+            ]),
+            $this->insertOp('materials', 'eeeeeeee-0000-0000-0000-000000000002', [
+                'order_id' => $orderId,
+                'name'     => 'Скотч',
+                'price'    => 100,
+                'amount'   => 1,
+            ]),
+        ], 'device-a');
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame(
+            50,
+            (int) DB::table('materials')->where('uuid_id', 'eeeeeeee-0000-0000-0000-000000000001')->value('buy_price')
+        );
+        $this->assertNull(
+            DB::table('materials')->where('uuid_id', 'eeeeeeee-0000-0000-0000-000000000002')->value('buy_price')
+        );
+    }
 }

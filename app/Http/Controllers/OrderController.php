@@ -234,9 +234,19 @@ class OrderController extends Controller
         return response()->json(['message' => 'Ордер успешно обновился']);
     }
 
-// Показ отчёта
-    public function showReport(Order $order)
+// Показ отчёта (задача 9.4)
+    //
+    // Страница публичная (ссылка отправляется клиенту), поэтому доступ даёт только
+    // `token` из share-ссылки. Раньше параметр игнорировался и отчёт открывался по
+    // одному id заказа — то есть любой мог прочитать любой отчёт перебором id.
+    public function showReport(Request $request, Order $order)
     {
+        $token = (string) $request->query('token', '');
+
+        if (empty($order->share_token) || $token === '' || !hash_equals((string) $order->share_token, $token)) {
+            abort(404, 'Ссылка недействительна');
+        }
+
         return view('order-report', [
             'order' => $order->load([
                 'client',
@@ -248,8 +258,23 @@ class OrderController extends Controller
         ]);
     }
 
-    public function generateShareLink(Order $order)
+    // Публичная share-ссылка на отчёт (задача 9.4)
+    //
+    // Маршрут закрыт `auth:sanctum`: ссылку получает только владелец заказа. На чужой
+    // (или несуществующий) заказ отвечаем 404 — как в синке (задача 3.10), чтобы
+    // перебором id нельзя было узнать о чужих заказах. «Ничьи» заказы
+    // (`user_id = NULL` — данные до 3.10) своим пользователям доступны: иначе
+    // они потеряли бы возможность поделиться своей же старой записью.
+    public function generateShareLink(Request $request, Order $order)
     {
+        $userId = $request->user()?->getAuthIdentifier();
+
+        if ($userId !== null && $order->user_id !== null && (int) $order->user_id !== (int) $userId) {
+            abort(404, 'Заказ не найден');
+        }
+
+        // Токен создаётся один раз: повторный запрос отдаёт ту же ссылку, иначе
+        // уже отправленные клиенту ссылки переставали бы работать.
         if(!$order->share_token){
             $order->share_token = Str::random(40);
             $order->save();

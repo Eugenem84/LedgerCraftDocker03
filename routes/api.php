@@ -126,7 +126,11 @@ Route::put('update_order_status/{id}', [OrderController::class, 'updateStatus'])
 // с `{paid}` (он и так умел переключать статус на клиенте).
 Route::put('update_paid_status/{id}', [OrderController::class, 'updatePadeStatus']);
 
-Route::post('/order-report/{order}/share-link', [OrderController::class, 'generateShareLink']);
+// Публичная share-ссылка на отчёт (задача 9.4): ссылку выдаёт сервер, но только
+// владельцу заказа — маршрут под `auth:sanctum`. Без авторизации перебором id
+// можно было сгенерировать ссылку на чужой отчёт (IDOR); проверка владельца — в контроллере.
+Route::post('/order-report/{order}/share-link', [OrderController::class, 'generateShareLink'])
+    ->middleware('auth:sanctum');
 
 
 Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'getMaterialsByOrder']);
@@ -134,6 +138,11 @@ Route::get('/get_materials_by_order/{orderId}', [MaterialController::class, 'get
 Route::get('/get_total_DWYM/{specializationId}', [StatisticController::class, 'getTotalDWMY']);
 Route::get('/get_top_services/{specializationId}', [StatisticController::class, 'getTopServicesBySpecialization']);
 Route::get('/get_top_profit_clients/{specializationId}', [StatisticController::class, 'getTopProfitClients']);
+// Зеркала клиентской страницы аналитики (задача 9.1): топы товаров/материалов и
+// распределение заказов по статусам — чтобы цифры на клиенте и сервере сходились.
+Route::get('/get_top_products/{specializationId}', [StatisticController::class, 'getTopProductsBySpecialization']);
+Route::get('/get_top_materials/{specializationId}', [StatisticController::class, 'getTopMaterialsBySpecialization']);
+Route::get('/get_orders_status/{specializationId}', [StatisticController::class, 'getStatusDistribution']);
 Route::get('/income_by_year/{specializationId}', [StatisticController::class, 'getIncomeByYear']);
 Route::post('/incomes_by_period/{specializationId}', [StatisticController::class, 'getStatsByPeriod']);
 //Route::post('/incomes_by_day/{specializationId}', [StatisticController::class, 'getIncomesByDay']);

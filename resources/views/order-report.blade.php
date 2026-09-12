@@ -33,8 +33,10 @@
     <div class="grid grid-cols-2 gap-4 mb-8">
         <div>
             <h2 class="font-semibold">Клиент:</h2>
-            <p>{{ $order->client->name }}</p>
-            <p>{{ $order->client->phone }}</p>
+            {{-- Публичная страница (задача 9.4): клиент у заказа может быть не привязан,
+                 поэтому обращаемся через `?->`, иначе отчёт падал бы с 500. --}}
+            <p>{{ $order->client?->name ?? '—' }}</p>
+            <p>{{ $order->client?->phone ?? '' }}</p>
         </div>
 
     </div>
@@ -47,7 +49,9 @@
             @foreach($order->services as $service)
                 <tr class="border-b">
                     <td class="py-2">{{ $service->service }}</td>
-                    <td class="text-right">{{ number_format($service->pivot->sale_price) }} ₽</td>
+                    {{-- Приводим к int: публичная страница не должна падать/шуметь
+                         deprecation'ами на пустых суммах (задача 9.4). --}}
+                    <td class="text-right">{{ number_format((int) $service->pivot->sale_price) }} ₽</td>
                 </tr>
             @endforeach
         </table>
@@ -61,19 +65,19 @@
             @foreach($order->products as $product)
                 <tr class="border-b">
                     <td class="py-2">{{ $product->name }}</td>
-                    <td class="text-right"> х{{ $product->pivot->quantity }} - {{number_format($product->base_sale_price)}} ₽</td>
+                    <td class="text-right"> х{{ $product->pivot->quantity }} - {{number_format((int) $product->base_sale_price)}} ₽</td>
                 </tr>
             @endforeach
 
             @foreach($order->materials as $material)
                 <tr class="border-b">
                     <td class="py-2">{{$material->name}}</td>
-                    <td class="text-right">x{{ $material->amount }} -  {{number_format($material->price)}} ₽</td>
+                    <td class="text-right">x{{ $material->amount }} -  {{number_format((int) $material->price)}} ₽</td>
                 </tr>
             @endforeach
 
         </table>
-        Всего к оплате: {{$order->total_amount}}₽
+        Всего к оплате: {{(int) $order->total_amount}}₽
     </div>
 {{--    {{dd($order->load('client', 'services', 'materials', 'products'))}}--}}
 {{--    {{$order}}--}}

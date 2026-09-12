@@ -14,14 +14,14 @@
 | `services` | работы (услуги) | `service`, `price` (**string!**), `category_id`, `deleted_at` |
 | `product_categories` | категории товаров | `specialization_id`, связь с товарами |
 | `products` | товары (склад) | `name`, `manufacturer`, `product_number`, `weight` (decimal), `base_sale_price` (int), `deleted_at` |
-| `product_stocks` | остатки на складе | `product_id` (FK), `quantity`, `supplier` (nullable) |
-| `buy_product_prices` | закупочные цены | `product_id` (FK), `buy_price` (int) |
-| `sales_products_prices` | цены продажи по заказам | `product_id`, `order_id`, `sale_price` (int) |
-| `incoming_products` | приходы товара | `product_id` (FK), `supplier` (string), `quantity`, **`by_price`** (int) |
+| `product_stocks` | остатки на складе | `product_id` (FK, NOT NULL), `quantity`, `supplier` (nullable). **Одна строка на товар** (`Product::stock()` — hasOne); «где лежит товар» знает `products.product_category_id` (прежний дубль `product_categories_id` удалён миграцией `2026_09_16_000000`, задача 9.3). Синк/владелец адресуют строку товаром |
+| `buy_product_prices` | закупочные цены (история) | `product_id` (FK), `buy_price` (int); пишет приход (9.2), читается складом и маржой (9.3/9.5) |
+| `sales_products_prices` | цены продажи по заказам | `product_id`, `order_id`, `sale_price` (int), `uuid_id` — пишет приложение в момент продажи товара (9.3); склад читает последнюю цену продажи |
+| `incoming_products` | приходы товара | `product_id` (FK), `supplier` (**NOT NULL**), `quantity`, **`by_price`** (int), `uuid_id` — ключ идемпотентности прихода: повтор не удваивает `product_stocks.quantity` (9.2) |
 | `orders` | заказы | `specialization_id`, `client_id`, `hours`, `minutes`, `total_amount` (**рубли**, int), `comments`, `status`, `paid`, `model_id`, `user_order_number`, `share_token`; колонка `materials` удалена |
 | `order_service` | связка заказ↔работа | `order_id`, `service_id`, `sale_price`, `quantity`, `uuid_id` (миграция 2026), timestamps; **без PK** (композитный ключ закомментирован) |
-| `order_product` | связка заказ↔товар | `order_id`, `product_id`, `sale_price`, `quantity`; планируется `buy_price` (себестоимость для маржи — задача 9.5) |
-| `materials` | **строки материалов заказа** (ручные позиции: «мастер купил на стороне») | `order_id` (FK, NOT NULL), `name`, `price` (bigint), `amount` (smallint); колонок `specialization_id`/`deleted_at` **нет** (удаление — через `sync_tombstones`). Клиентский «справочник материалов» аналога на сервере не имеет — на стороне клиента решено (D2) свести обе стороны к одной таблице |
+| `order_product` | связка заказ↔товар | `order_id`, `product_id`, `sale_price`, `quantity`, `buy_price` (int, nullable — себестоимость на момент продажи, миграция `2026_09_17_000000`, задачи 9.5/9.6) |
+| `materials` | **строки материалов заказа** (ручные позиции: «мастер купил на стороне») | `order_id` (FK, NOT NULL), `name`, `price` (bigint), `amount` (smallint), `buy_price` (int, nullable — себестоимость ручной позиции, миграция `2026_09_17_000000`); колонок `specialization_id`/`deleted_at` **нет** (удаление — через `sync_tombstones`). Клиентский «справочник материалов» аналога на сервере не имеет — обе стороны сведены к одной таблице (D2, задача 9.6) |
 | `equipment_models` | модели техники | `name`, `specialization_id`, `deleted_at` |
 
 ## Служебные таблицы
