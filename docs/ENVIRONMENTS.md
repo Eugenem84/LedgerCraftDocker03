@@ -83,6 +83,7 @@ docker compose restart traefik           # ⚠️ иначе домен отда
 docker exec ledger_craft_app php composer.phar install --no-dev --optimize-autoloader
 chmod -R 777 storage bootstrap/cache
 docker exec ledger_craft_app php artisan migrate --force
+docker exec ledger_craft_app php artisan db:seed --class=SpecializationTemplateSeeder --force   # пресеты специализаций (11.3)
 docker exec ledger_craft_app php artisan config:clear
 docker exec ledger_craft_app php artisan route:clear
 
@@ -103,6 +104,7 @@ docker compose up -d --build
 docker compose restart traefik
 docker exec ledger_craft_app php composer.phar install --no-dev --optimize-autoloader
 docker exec ledger_craft_app php artisan migrate --force
+docker exec ledger_craft_app php artisan db:seed --class=SpecializationTemplateSeeder --force   # пресеты специализаций (11.3)
 docker exec ledger_craft_app php artisan config:clear
 docker exec ledger_craft_app php artisan route:clear
 docker run --rm -v "$PWD":/app -w /app node:20-alpine sh -c "npm ci --no-audit --no-fund && npm run build"
@@ -122,6 +124,8 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<домен>/api/sync  
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<домен>/api/register # 422 (валидация)
 docker exec ledger_craft_app php artisan route:list | grep -E 'sync|register|login|specialization-templates'
 docker exec ledger_craft_app php artisan migrate:status | grep -c Pending      # 0
+docker exec ledger_craft_db psql -U root -d ledger_craft_db -t -c \
+  "SELECT count(*) FROM specialization_templates;"                             # 4 пресета (11.3)
 ```
 
 Живой прогон синка (Фаза 11.5): регистрация → `specializations` с `user_id`; `POST /api/sync`
@@ -153,7 +157,8 @@ docker exec ledger_craft_app php artisan migrate:status | grep -c Pending      #
 - [ ] `.env` на машине контура (not in git) + `letsencrypt/` для TLS;
 - [ ] бэкапы БД по расписанию и **дамп перед каждым выкатом**;
 - [ ] проверить CORS: если SPA будет размещён на домене контура — добавить его origin;
-- [ ] `migrate --force`, сборка ассетов web-части, smoke (см. §6), описанный план откатa;
+- [ ] `migrate --force` + `db:seed --class=SpecializationTemplateSeeder --force` (пресеты, 11.3),
+      сборка ассетов web-части, smoke (см. §6), описанный план откатa;
 - [ ] на prod **не** запускать `down -v` / `git clean` (данные и `.env` там свои).
 
 ## 9. Связь с клиентом

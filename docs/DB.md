@@ -31,12 +31,18 @@
 
 ## Контент (не синкается)
 
-- `specialization_templates` (миграция `2026_09_18_030000`, Фаза 10, задача 10.7) —
-  пресеты специализаций: `preset_key` (unique), `version`, `content` (JSON: категории →
-  услуги с ценами, категории товаров, модели). Отдаётся `GET /api/specialization-templates`
-  под `auth:sanctum`; клиент держит read-only кэш в `meta` и офлайн работает из него,
-  с фолбэком на клиентские JSON (`src/domain/presets/*`). Это контент, а не данные
-  пользователя, поэтому через синк не ходит.
+- `specialization_templates` (миграция `2026_09_18_030000`, Фаза 10, задача 10.7;
+  наполняется сидом — задача **11.3**) — пресеты специализаций: `preset_key` (unique),
+  `version`, `content` (JSON: категории → услуги с ценами, категории товаров, модели).
+  Контент лежит в `database/seeders/SpecializationTemplateSeeder.php` (формат клиентских
+  пресетов `src/domain/presets/*` на клиенте, но **только каталог** — лексикон, акцент и
+  флаги вкладок остаются на клиенте, решение D5). Сид идемпотентен (`updateOrCreate` по
+  `preset_key`) и тянется из `DatabaseSeeder`:
+  `php artisan db:seed --class=SpecializationTemplateSeeder --force`. Отдаётся
+  `GET /api/specialization-templates` под `auth:sanctum`; клиент держит read-only кэш в `meta`
+  и офлайн работает из него, с фолбэком на клиентские JSON (`src/domain/presets/*`).
+  Это контент, а не данные пользователя, поэтому через синк не ходит. Тест —
+  `tests/Feature/SpecializationTemplateSeederTest.php`.
 
 ## Нюансы
 

@@ -178,7 +178,7 @@ Headers: X-Sync-ID: <uuid>
 | POST | `/api/forgot-password`, `/api/reset-password` |
 | POST | `/api/sync` (sanctum) — задача 3.10 |
 | GET | `/api/sync-updates` (sanctum) — задача 3.10 |
-| GET | `/api/specialization-templates` (sanctum) — пресеты специализаций, Фаза 10 (10.7) |
+| GET | `/api/specialization-templates` (sanctum) — пресеты специализаций, Фаза 10 (10.7); контент наполняется сидом `SpecializationTemplateSeeder` (11.3) |
 
 **`POST /api/register`** (Фаза 10, задача 10.5): кроме `name`/`email`/`password`/`password_confirmation`
 принимает необязательный массив `specializations: [{ name, preset_key }]` (1..10) и создаёт рабочие

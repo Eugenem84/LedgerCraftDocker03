@@ -9,14 +9,16 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     *
+     * Пресеты специализаций (Фаза 11, задача 11.3) — это **контент**, без которого
+     * новый пользователь не получит стартовый каталог. Сид идемпотентен, поэтому
+     * его безопасно запускать на любом контуре: `php artisan db:seed --force`
+     * (или точечно `--class=SpecializationTemplateSeeder`).
      */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
-
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        $this->call([
+            SpecializationTemplateSeeder::class,
+        ]);
     }
 }

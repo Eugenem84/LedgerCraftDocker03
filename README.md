@@ -40,7 +40,14 @@ docker-compose up -d --build
 ```bash
 docker exec -it ledger_craft_app php artisan migrate
 docker exec -it ledger_craft_app php artisan key:generate
+docker exec -it ledger_craft_app php artisan db:seed --class=SpecializationTemplateSeeder
 ```
+
+> Пресеты специализаций (`specialization_templates`, Фаза 11/11.3) — это **контент**, не данные
+> пользователя: без них новый пользователь не получит стартовый каталог своей ниши
+> (`GET /api/specialization-templates` отдаёт 4 пресета — `bike`/`aquarium`/`hvac`/`auto`).
+> Сид идемпотентен, поэтому на контурах его можно запускать повторно (`--force`), а правка
+> контента приезжает клиенту без релиза приложения (10.7).
 
 > ⚠️ `docker-compose.yaml` содержит dev-секреты прямо в файле (APP_KEY, пароли БД) —
 > для продакшена вынести в `.env`, не хранить в репозитории.
