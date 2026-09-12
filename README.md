@@ -71,19 +71,60 @@ docker exec -it ledger_craft_app php artisan key:generate
 
 ```bash
 # dev: чистая переустановка (данные песочницы стираются — это и нужно)
-docker compose down -v && rm -rf tmp/db && git pull
-docker compose up -d --build --remove-orphans      # уберёт осиротевшие сервисы (напр. Go-сайдкар)
-docker exec -it ledger_craft_app php artisan migrate --force
-docker exec -it ledger_craft_app php artisan config:clear
-docker exec -it ledger_craft_app php artisan route:clear
+pg_dump ... > /root/backup_$(date +%F_%H%M).sql     # страховка, если данные ещё нужны
+cp .env /root/env.backup_$(date +%F_%H%M)           # .env не в git
+docker compose down && rm -rf tmp/db                # том Postgres сносим, сеть/контейнеры тоже
+git fetch origin && git reset --hard origin/master  # локальные правки на VPS не нужны
+git clean -fdx -e .env -e letsencrypt -e tmp        # сохраняем .env, TLS-сертификаты и том БД
+docker image prune -f                               # освобождаем место (на dev-диске его мало)
+docker compose up -d --build --remove-orphans
+docker compose restart traefik                      # ⚠️ иначе домен отдаёт 404 — см. «Грабли»
+docker exec ledger_craft_app php composer.phar install --no-dev --optimize-autoloader
+chmod -R 777 storage bootstrap/cache
+docker exec ledger_craft_app php artisan migrate --force
+docker exec ledger_craft_app php artisan config:clear
+docker exec ledger_craft_app php artisan route:clear
+# ассеты web-части (@vite в resources/views/layouts/app.blade.php): без них /login → 500
+docker run --rm -v "$PWD":/app -w /app node:20-alpine sh -c "npm ci --no-audit --no-fund && npm run build"
+docker exec ledger_craft_nginx nginx -s reload
 
-# prod: только обновление, БД сохраняем
-pg_dump ... > backup_before_release.sql            # бэкап ДО выката
-git pull && docker compose up -d --build
-docker exec -it ledger_craft_app php artisan migrate --force
-docker exec -it ledger_craft_app php artisan config:clear
-docker exec -it ledger_craft_app php artisan route:clear
+# prod: только обновление, БД сохраняем (никаких down -v и git clean)
+pg_dump ... > backup_before_release.sql             # бэкап ДО выката
+git pull --ff-only && docker compose up -d --build
+docker exec ledger_craft_app php composer.phar install --no-dev --optimize-autoloader
+docker compose restart traefik
+docker exec ledger_craft_app php artisan migrate --force
+docker exec ledger_craft_app php artisan config:clear
+docker exec ledger_craft_app php artisan route:clear
+docker run --rm -v "$PWD":/app -w /app node:20-alpine sh -c "npm ci --no-audit --no-fund && npm run build"
+docker exec ledger_craft_nginx nginx -s reload
 ```
+
+Smoke после выката (так проверяли dev 12.09.2026):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://<домен>/            # 302 (гость → /login)
+curl -s -o /dev/null -w '%{http_code}\n' https://<домен>/login       # 200 (web-часть жива)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<домен>/api/sync     # 401 (нужен токен)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<домен>/api/register # 422 (валидация)
+docker exec ledger_craft_app php artisan route:list | grep -E 'sync|register|login|specialization-templates'
+docker exec ledger_craft_app php artisan migrate:status | grep -c Pending      # 0
+```
+
+### Грабли, найденные на живом dev-контуре (12.09.2026)
+
+- **Домен отдаёт 404, хотя контейнеры Up.** Traefik подхватывает контейнеры, стартовавшие
+  *после* него, не всегда: в его `/api/http/routers` нет `nginx@docker` (проверяется
+  `curl -s localhost:8080/api/http/routers`). Лечится `docker compose restart traefik`.
+- **`GET /` → 403 «directory index is forbidden».** В `nginx.conf` не было `index index.php;`
+  (`try_files $uri $uri/ ...` упирался в каталог). Исправлено коммитом `ed43eb0`.
+- **`/login` → 500 «Vite manifest not found at: /var/www/public/build/manifest.json».**
+  Blade-шаблон использует `@vite(...)`, а `public/build` в `.gitignore` → ассеты надо собирать
+  на сервере (команда выше). В образе `app` стоит Node 16, а Vite 5 требует Node ≥ 18,
+  поэтому сборка вынесена в одноразовый `node:20-alpine`.
+- **222 «изменённых» файла в `git status`** после выкатов «копированием файлов» — история при этом
+  остаётся на месте, но рабочее дерево грязное; `git reset --hard` + `git clean` (с исключениями)
+  приводят копию к `origin/master` и это безопасно, т.к. `.env`, `letsencrypt/` и том БД сохраняются.
 
 **Правило:** фича сначала проверяется на **dev** (чек-лист — `TODO.md`, Фаза 11), и только потом
 уходит на **prod**. Новые фичи прямой выкладкой в бой не отправляем.
