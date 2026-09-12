@@ -18,6 +18,7 @@ use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\SyncController;
+use App\Http\Controllers\SpecializationTemplateController;
 
 /*
 |--------------------------------------------------------------------------
@@ -168,4 +169,8 @@ Route::get('/download-apk', [AppVersionController::class, 'downloadApk']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/sync', [SyncController::class, 'sync']);
     Route::get('/sync-updates', [SyncController::class, 'fetchUpdates']);
+
+    // Пресеты специализаций (Фаза 10, задача 10.7): клиент забирает контент и
+    // держит read-only кэш, поэтому новый пресет приезжает без релиза приложения.
+    Route::get('/specialization-templates', [SpecializationTemplateController::class, 'index']);
 });

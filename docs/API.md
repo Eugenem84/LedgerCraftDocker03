@@ -91,8 +91,12 @@
 
 ### Спец-обработка таблиц
 
-- **`orders`**: принимаются только `specialization_id, client_id, hours, minutes, total_amount, comments`
-  (остальные поля при insert теряются). `total_amount` — **в рублях**, без конверсии.
+- **`orders`**: принимаются только `specialization_id, client_id, hours, minutes, total_amount, comments,
+  equipment_identifier` (остальные поля при insert теряются). `total_amount` — **в рублях**, без конверсии.
+- **`specializations`**: клиент шлёт название в `name` — сервер сопоставляет его с колонкой
+  `specializationName` (Фаза 10, задачи 10.5/10.6); при insert проставляется легаси-колонка
+  `popularCounter = 0` (NOT NULL без default) и `user_id` из токена. Профильные поля
+  `preset_key`/`accent`/`features`/`archived`/`template_version` проходят через синк как есть.
 - **`order_service`**: ждёт `order_id`/`service_id` уже как **серверные** ID, `sale_price`,
   `quantity`; если `sale_price` пуст — берётся `price` из `services`.
   ✅ `insert` дедуплицируется по `order_id + service_id` (у связки нет своего PK), `delete` —
@@ -173,6 +177,13 @@ Headers: X-Sync-ID: <uuid>
 | POST | `/api/forgot-password`, `/api/reset-password` |
 | POST | `/api/sync` (sanctum) — задача 3.10 |
 | GET | `/api/sync-updates` (sanctum) — задача 3.10 |
+| GET | `/api/specialization-templates` (sanctum) — пресеты специализаций, Фаза 10 (10.7) |
+
+**`POST /api/register`** (Фаза 10, задача 10.5): кроме `name`/`email`/`password`/`password_confirmation`
+принимает необязательный массив `specializations: [{ name, preset_key }]` (1..10) и создаёт рабочие
+профили вместе с пользователем (если массив пуст — создаётся один профиль по имени пользователя).
+Ответ: `{ access_token, token_type, user, specializations }` — специализации отдаются с алиасом
+`name` (как в `/sync-updates`), клиент кладёт их локально без операции в очередь. Занятый email → `422`.
 | GET | `/api/get_orders_by_user` (sanctum) — только свои заказы |
 
 Без токена синк отвечает `401`. `GET /api/get_orders_by_user/{id}` удалён: он отдавал заказы

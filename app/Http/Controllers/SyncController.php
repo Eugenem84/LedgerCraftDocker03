@@ -270,6 +270,8 @@ class SyncController extends Controller
         // Деньги приводим к целым рублям (задача 3.12): клиент мог прислать строку,
         // «1 000,50» или пустую строку — в integer-колонку это не влезло бы.
         $payload = $this->normalizeMoney($table, $this->stripClientFields($payload));
+        $payload = $this->mapSpecializationName($table, $payload);
+        $payload = $this->withSpecializationDefaults($table, $payload);
 
         // Чужому пользователю не позволяем писать в свои данные (задача 3.10):
         // проверяем владельца родительских записей из payload.
@@ -290,6 +292,9 @@ class SyncController extends Controller
                 'minutes'          => $payload['minutes'] ?? null,
                 'total_amount'     => $payload['total_amount'] ?? null,
                 'comments'         => $payload['comments'] ?? null,
+                // Универсальный идентификатор объекта (Фаза 10, задача 10.9):
+                // VIN/госномер, серийник рамы, адрес объекта.
+                'equipment_identifier' => $payload['equipment_identifier'] ?? null,
                 // materials сейчас не синкаем с клиента, пусть будет NULL
             ];
 
@@ -505,6 +510,7 @@ class SyncController extends Controller
         }
 
         $payload = $this->normalizeMoney($table, $this->stripClientFields($payload));
+        $payload = $this->mapSpecializationName($table, $payload);
 
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
@@ -708,6 +714,45 @@ class SyncController extends Controller
         }
 
         return $clean;
+    }
+
+    /**
+     * `specializations` хранит название в колонке `specializationName`, а клиент
+     * шлёт `name` (выдача `/sync-updates` отдаёт `specializationName`, и `api.js`
+     * переименовывает его в `name`). Без сопоставления INSERT/UPDATE специализации
+     * падал на «column name does not exist», профиль не получал server_id, и
+     * мульти-профиль Фазы 10 не синкался бы вовсе.
+     */
+    private function mapSpecializationName(string $table, array $payload): array
+    {
+        if (
+            $table === 'specializations'
+            && array_key_exists('name', $payload)
+            && !array_key_exists('specializationName', $payload)
+        ) {
+            $payload['specializationName'] = $payload['name'];
+            unset($payload['name']);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Значения по умолчанию для INSERT специализации из синка.
+     *
+     * У `specializations` есть легаси-колонка `popularCounter` (NOT NULL, без
+     * default в исходной миграции): офлайн созданный профиль приезжал из очереди
+     * без неё, и вся операция падала на «null value in column popularCounter
+     * violates not-null constraint» — специализация не получала server_id.
+     * Ставим 0 только при INSERT (при UPDATE не трогаем, чтобы не затирать значение).
+     */
+    private function withSpecializationDefaults(string $table, array $payload): array
+    {
+        if ($table === 'specializations' && !array_key_exists('popularCounter', $payload)) {
+            $payload['popularCounter'] = 0;
+        }
+
+        return $payload;
     }
 
     /**

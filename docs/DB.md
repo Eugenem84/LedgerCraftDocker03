@@ -8,26 +8,35 @@
 
 | Таблица | Назначение | Ключевые колонки / нюансы |
 |---|---|---|
-| `specializations` | специализации мастерской | `name` (на сервере `specialization_name` → клиент переименовывает) |
+| `specializations` | специализации мастерской | название — в колонке **`specializationName`** (camelCase; `/sync-updates` отдаёт её как есть, клиент переименовывает в `name`); `user_id` (FK, владелец); профиль Фазы 10: `preset_key`, `accent`, `features` (text/JSON), `archived`, `template_version`; легаси `popularCounter` (NOT NULL — синк проставляет `0` при insert) |
 | `clients` | клиенты | `name`, `phone`, `specialization_id`, `deleted_at` (soft) |
-| `categories` | категории работ | `category_name`, `specialization_id` |
-| `services` | работы (услуги) | `service`, `price` (**string!**), `category_id`, `deleted_at` |
-| `product_categories` | категории товаров | `specialization_id`, связь с товарами |
+| `categories` | категории работ | `category_name`, `specialization_id`, `template_key` (nullable — пометка пресета, Фаза 10) |
+| `services` | работы (услуги) | `service`, `price` (**integer** после 3.12), `category_id`, `deleted_at` |
+| `product_categories` | категории товаров | `specialization_id`, `template_key` (nullable — пресет), связь с товарами |
 | `products` | товары (склад) | `name`, `manufacturer`, `product_number`, `weight` (decimal), `base_sale_price` (int), `deleted_at` |
 | `product_stocks` | остатки на складе | `product_id` (FK, NOT NULL), `quantity`, `supplier` (nullable). **Одна строка на товар** (`Product::stock()` — hasOne); «где лежит товар» знает `products.product_category_id` (прежний дубль `product_categories_id` удалён миграцией `2026_09_16_000000`, задача 9.3). Синк/владелец адресуют строку товаром |
 | `buy_product_prices` | закупочные цены (история) | `product_id` (FK), `buy_price` (int); пишет приход (9.2), читается складом и маржой (9.3/9.5) |
 | `sales_products_prices` | цены продажи по заказам | `product_id`, `order_id`, `sale_price` (int), `uuid_id` — пишет приложение в момент продажи товара (9.3); склад читает последнюю цену продажи |
 | `incoming_products` | приходы товара | `product_id` (FK), `supplier` (**NOT NULL**), `quantity`, **`by_price`** (int), `uuid_id` — ключ идемпотентности прихода: повтор не удваивает `product_stocks.quantity` (9.2) |
-| `orders` | заказы | `specialization_id`, `client_id`, `hours`, `minutes`, `total_amount` (**рубли**, int), `comments`, `status`, `paid`, `model_id`, `user_order_number`, `share_token`; колонка `materials` удалена |
+| `orders` | заказы | `specialization_id`, `client_id`, `hours`, `minutes`, `total_amount` (**рубли**, int), `comments`, `status`, `paid`, `model_id`, `user_order_number`, `share_token`, `equipment_identifier` (nullable — VIN/серийник/адрес объекта, Фаза 10); колонка `materials` удалена |
 | `order_service` | связка заказ↔работа | `order_id`, `service_id`, `sale_price`, `quantity`, `uuid_id` (миграция 2026), timestamps; **без PK** (композитный ключ закомментирован) |
 | `order_product` | связка заказ↔товар | `order_id`, `product_id`, `sale_price`, `quantity`, `buy_price` (int, nullable — себестоимость на момент продажи, миграция `2026_09_17_000000`, задачи 9.5/9.6) |
 | `materials` | **строки материалов заказа** (ручные позиции: «мастер купил на стороне») | `order_id` (FK, NOT NULL), `name`, `price` (bigint), `amount` (smallint), `buy_price` (int, nullable — себестоимость ручной позиции, миграция `2026_09_17_000000`); колонок `specialization_id`/`deleted_at` **нет** (удаление — через `sync_tombstones`). Клиентский «справочник материалов» аналога на сервере не имеет — обе стороны сведены к одной таблице (D2, задача 9.6) |
-| `equipment_models` | модели техники | `name`, `specialization_id`, `deleted_at` |
+| `equipment_models` | модели техники | `name`, `specialization_id`, `template_key` (nullable — пресет), `deleted_at` |
 
 ## Служебные таблицы
 
 `users`, `personal_access_tokens` (Sanctum), `password_reset_tokens`, `password_resets`,
 `failed_jobs`, `migrations`.
+
+## Контент (не синкается)
+
+- `specialization_templates` (миграция `2026_09_18_030000`, Фаза 10, задача 10.7) —
+  пресеты специализаций: `preset_key` (unique), `version`, `content` (JSON: категории →
+  услуги с ценами, категории товаров, модели). Отдаётся `GET /api/specialization-templates`
+  под `auth:sanctum`; клиент держит read-only кэш в `meta` и офлайн работает из него,
+  с фолбэком на клиентские JSON (`src/domain/presets/*`). Это контент, а не данные
+  пользователя, поэтому через синк не ходит.
 
 ## Нюансы
 
