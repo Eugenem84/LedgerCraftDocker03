@@ -16,7 +16,7 @@
 | БД | **PostgreSQL** (в `docker-compose`) |
 | Авторизация | Laravel Sanctum (токены) |
 | Идентификация устройства | заголовок `X-Sync-ID` (UUID клиента) |
-| Веб-сервер | nginx + Traefik (TLS, dev-домен `dev.medovf2h.beget.tech`) |
+| Веб-сервер | nginx + Traefik (TLS; домены контуров — см. «Среды: dev-VPS и prod-VPS») |
 | Синхронизация | `SyncController` (PHP) — **единственный транспорт** (`/api/sync`, `/api/sync-updates`), решение D1 |
 | Инфраструктура | `docker-compose.yaml` |
 
@@ -46,6 +46,47 @@ docker exec -it ledger_craft_app php artisan key:generate
 > для продакшена вынести в `.env`, не хранить в репозитории.
 > ⚠️ В `.env.example` указан `DB_CONNECTION=mysql`, а рабочий docker использует `pgsql` —
 > привести к единому.
+
+## Среды: dev-VPS и prod-VPS
+
+Проект живёт на **двух площадках** (с 12.09.2026), и они не взаимозаменяемы:
+
+| Контур | Домен | Назначение | БД |
+|---|---|---|---|
+| **dev-VPS** | `dev.medovf2h.beget.tech` | обкатка новых фич и миграций; БД — песочница, том не жалко | `ledger_craft_db` (том `./tmp/db`) |
+| **prod-VPS** | `<prod-домен>` (уточняется — TODO 11.1) | боевой контур с реальными данными мастерских | отдельный том; бэкап обязателен |
+
+Где что лежит и как выкатывать:
+
+- код — рабочая копия этого репозитория на машине контура, запускается через `docker-compose.yaml`
+  (`traefik` + `nginx` + `app` (php-fpm) + `db`); домен задаётся Traefik-меткой
+  `traefik.http.routers.nginx.rule=Host(...)` и переменной `APP_URL`;
+- БД — том `./tmp/db` (Postgres); TLS-сертификаты — `./letsencrypt/acme.json`
+  (**не удалять**: упрётесь в лимиты Let's Encrypt);
+- миграции — `docker exec -it ledger_craft_app php artisan migrate --force`
+  (на prod **без** `down -v` и с бэкапом до выката);
+- клиентская статика (`dist/spa` из репозитория фронта) выкладывается на хост контура;
+  адрес API у клиента задаётся `VITE_API_URL` (см. `ledger-craft-offline-first-PS/README.md`
+  §«Среды и выкат»).
+
+```bash
+# dev: чистая переустановка (данные песочницы стираются — это и нужно)
+docker compose down -v && rm -rf tmp/db && git pull
+docker compose up -d --build --remove-orphans      # уберёт осиротевшие сервисы (напр. Go-сайдкар)
+docker exec -it ledger_craft_app php artisan migrate --force
+docker exec -it ledger_craft_app php artisan config:clear
+docker exec -it ledger_craft_app php artisan route:clear
+
+# prod: только обновление, БД сохраняем
+pg_dump ... > backup_before_release.sql            # бэкап ДО выката
+git pull && docker compose up -d --build
+docker exec -it ledger_craft_app php artisan migrate --force
+docker exec -it ledger_craft_app php artisan config:clear
+docker exec -it ledger_craft_app php artisan route:clear
+```
+
+**Правило:** фича сначала проверяется на **dev** (чек-лист — `TODO.md`, Фаза 11), и только потом
+уходит на **prod**. Новые фичи прямой выкладкой в бой не отправляем.
 
 ## Конфигурация
 
