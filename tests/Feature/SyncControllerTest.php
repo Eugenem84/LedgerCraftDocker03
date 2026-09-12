@@ -947,4 +947,61 @@ class SyncControllerTest extends TestCase
         );
     }
 
+    /**
+     * Порядок «родитель → ребёнок» (задача 5.6).
+     *
+     * Сервер не переупорядочивает операции в батче и не создаёт родителя
+     * автоматически: `server_id` появляется только в ответе, поэтому клиент
+     * отправляет родителя раньше ребёнка и дожимает ребёнка следующей «волной»
+     * уже с серверным id (`syncService` — топосортировка + волны, задача 3.2).
+     *
+     * Здесь проверяется контракт, на который опирается эта схема:
+     *   • id из ответа пригоден как FK для следующего запроса;
+     *   • ребёнок без родителя (отправленный «слишком рано») отвергается
+     *     и не пишется в БД.
+     */
+    public function test_parent_id_is_usable_by_child_and_orphan_is_rejected(): void
+    {
+        // Волна 1 — родитель (специализация).
+        $parent = $this->sync([$this->insertOp('specializations', 'aaaaaaaa-0000-0000-0000-00000000000a', [
+            'specializationName' => 'Ремонт',
+            'popularCounter'     => 0,
+        ])], 'device-a');
+
+        $this->assertSame([], $parent['errors']);
+        $specializationId = $parent['synced'][0]['server_id'];
+        $this->assertNotNull($specializationId);
+
+        // Волна 2 — ребёнок (категория) со серверным id родителя.
+        $child = $this->sync([$this->insertOp('categories', 'bbbbbbbb-0000-0000-0000-00000000000b', [
+            'category_name'     => 'Электрика',
+            'specialization_id' => $specializationId,
+        ])], 'device-a');
+
+        $this->assertSame([], $child['errors']);
+        $this->assertSame(
+            $specializationId,
+            (int) DB::table('categories')
+                ->where('uuid_id', 'bbbbbbbb-0000-0000-0000-00000000000b')
+                ->value('specialization_id'),
+            'Ребёнок должен ссылаться на серверный id родителя'
+        );
+
+        // Ребёнок без родителя: сервер не создаёт родителя сам — операция отвергается.
+        $orphan = $this->sync([$this->insertOp('categories', 'dddddddd-0000-0000-0000-00000000000d', [
+            'category_name'     => 'Осиротевшая',
+            'specialization_id' => 99999999,
+        ])], 'device-a');
+
+        $this->assertCount(1, $orphan['errors']);
+        // Существование чужой/несуществующей записи сервер не подтверждает,
+        // поэтому ответ — тот же, что и на чужого родителя (задача 3.10).
+        $this->assertSame('FORBIDDEN_NOT_OWNER', $orphan['errors'][0]['error']);
+        $this->assertSame(
+            0,
+            DB::table('categories')->where('uuid_id', 'dddddddd-0000-0000-0000-00000000000d')->count(),
+            'Ребёнок без родителя не должен попасть в БД'
+        );
+    }
+
 }
