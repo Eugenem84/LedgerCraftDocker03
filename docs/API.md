@@ -12,10 +12,12 @@
 | Base URL (dev) | `https://dev.medovf2h.beget.tech/api` |
 | Идентификация устройства | заголовок `X-Sync-ID` (UUID из localStorage клиента) |
 | Формат | JSON |
-| Авторизация | Laravel Sanctum (`/api/register`, `/api/login`, `/api/me`, `/api/logout`) |
+| Авторизация | Laravel Sanctum (`/api/register`, `/api/login`, `/api/me`, `/api/logout`); **синк требует токен** |
 | БД | PostgreSQL (docker); `.env.example` по умолчанию `mysql` — привести к `pgsql` |
 
 `X-Sync-ID` — это **не авторизация**, а метка устройства для анти-эха синхронизации.
+С задачи 3.10 `/api/sync` и `/api/sync-updates` — под `auth:sanctum`: владелец данных
+(`user_id` напрямую или через цепочку родителей) определяет, что устройство видит и меняет.
 
 ## 1. `POST /api/sync` — приём локальных изменений
 
@@ -68,10 +70,24 @@
 - `errors`:
   - `Invalid operation structure or table.` — неизвестная таблица / битая структура;
   - `MISSING_ID_FOR_UPDATE` / `MISSING_ID_FOR_DELETE` — нет `id` (серверного);
-  - `RECORD_NOT_FOUND` — `update` по несуществующему `id`;
+  - `RECORD_NOT_FOUND` — `update` по несуществующему `id` **или** попытка изменить/удалить
+    запись чужого пользователя (задача 3.10 — существование не подтверждаем);
+  - `FORBIDDEN_NOT_OWNER` — вставка привязана к чужому родителю (задача 3.10);
   - `DATABASE_ERROR` / `GENERAL_ERROR` — с `details`;
 - ✅ `last_sync_id` (анти-эхо, задача 3.6): колонка есть у всех синкаемых таблиц, сервер
-  проставляет её значением `X-Sync-ID` при insert/update/soft-delete.
+  проставляет её значением `X-Sync-ID` при insert/update/soft-delete;
+- ✅ **владелец данных** (задача 3.10): маршрут под `auth:sanctum`; `insert` проставляет `user_id`
+  из токена там, где колонка есть (`orders`, `specializations`), и проверяет владельца родителей
+  из payload; `update`/`delete` работают только со своими записями; «ничьи» строки
+  (`user_id`/родитель = NULL — данные до 3.10) считаются общими и видны всем — их нужно разово
+  привязать к пользователю;
+- ✅ **удаления** (задача 3.9): таблицы с `deleted_at` (`clients`, `products`, `services`,
+  `categories`, `equipment_models`, `orders`, `order_service`) удаляются soft-delete'ом; у
+  остальных строка удаляется физически, а факт удаления пишется в `sync_tombstones`
+  (`table_name + record_id` — повторный `DELETE` tombstone не дублирует, задача 3.5);
+- ✅ **деньги — целые рубли** (задача 3.12): `services.price` был VARCHAR → integer; payload
+  нормализуется (`'1 500,50'` → `1501`, `''` у услуги → `0`, нечисловое → `null`), в расчётах
+  больше нет `CAST(... AS numeric)`.
 
 ### Спец-обработка таблиц
 
@@ -102,18 +118,25 @@ Headers: X-Sync-ID: <uuid>
 
 - `since` — миллисекунды (`Carbon::createFromTimestampMs`);
 - таблица не из `$tables` → `400 { "error": "Invalid or missing table" }`;
+- ✅ владелец данных (задача 3.10): выдаются только записи пользователя из токена (цепочка
+  `specializations.user_id` / `orders.user_id`); «ничьи» (legacy) строки тоже отдаются;
 - ✅ анти-эхо (`last_sync_id`, задача 3.6): записи с `last_sync_id == X-Sync-ID` исключаются —
   устройство не получает свои же изменения; правка чужого устройства вернёт запись автору;
-- ✅ soft-delete (`deleted_at IS NULL`) — только для `clients, products, services, categories`;
-  удаление двигает `updated_at`, поэтому «удалено» видно выдаче по курсору (задача 3.9);
+- ✅ **удаления (задача 3.9):**
+  - у таблиц с `deleted_at` soft-deleted строки **больше не отфильтровываются** — они приходят
+    с `deleted: true` и `deleted_at`, по ним клиент удаляет запись у себя;
+  - у таблиц без `deleted_at` добавляются tombstones из `sync_tombstones` в виде
+    `{ id: <server_id>, uuid_id, deleted: true, deleted_at, updated_at }`;
+  - soft-delete двигает `updated_at`, поэтому удаление видно выдаче по курсору;
 - сортировка `ORDER BY updated_at`;
 - ✅ единый стандарт времени (задача 3.8): `created_at`/`updated_at`/`deleted_at` отдаются
   строками **ISO-8601 UTC** (`2026-09-12T10:00:00.000000Z`). «Сырое» `2026-09-12 10:00:00`
   клиентский `Date.parse` трактует как ЛОКАЛЬНОЕ время устройства — версии (last-write-wins)
   и курсор выдачи смещались бы на часовой пояс.
 
-Ответ: `{ "table": "clients", "count": 2, "records": [ { "id": 1, ... } ] }`
-(`id` — **серверный**). Для вставки на клиенте нужны `created_at`/`updated_at` (ISO-8601 UTC).
+Ответ: `{ "table": "clients", "count": 2, "records": [ { "id": 1, "deleted": false, ... } ] }`
+(`id` — **серверный**, `deleted` — признак удаления). Для вставки на клиенте нужны
+`created_at`/`updated_at` (ISO-8601 UTC).
 
 ## 3. `POST /api/arrival_product` — приход товара
 
@@ -138,6 +161,12 @@ Headers: X-Sync-ID: <uuid>
 | GET | `/api/me` (sanctum) |
 | DELETE | `/api/delete-account` (sanctum) |
 | POST | `/api/forgot-password`, `/api/reset-password` |
+| POST | `/api/sync` (sanctum) — задача 3.10 |
+| GET | `/api/sync-updates` (sanctum) — задача 3.10 |
+| GET | `/api/get_orders_by_user` (sanctum) — только свои заказы |
+
+Без токена синк отвечает `401`. `GET /api/get_orders_by_user/{id}` удалён: он отдавал заказы
+любого пользователя (IDOR), а публичный `/api/get_orders_by_user` падал в 500 на `Auth::user()`.
 
 ## 5. Прочие эндпоинты
 
@@ -175,15 +204,29 @@ Headers: X-Sync-ID: <uuid>
 > Номера вида «задача 3.9» — задачи клиентского трекера, где те же работы вплетены с метками
 > `[BE]` / `[FE+BE]`.
 
-- [ ] **P0 · Удаления не доезжают (задача 3.9).** `tableHasSoftDeletes()` знает только
-  `clients, products, services, categories`, а `deleted_at` есть ещё у `orders`
-  (`2026_02_11_133000`), `equipment_models` и `order_service` (`2026_03_04_162502`). Удаление заказа
-  через `/sync` — жёсткое, а `sync-updates` отдаёт уже удалённые заказы обратно — на клиенте фантом.
-  Нужно: расширить список + отдавать tombstones (флаг/`include_deleted`).
-- [ ] **P0 · Владелец данных (задача 3.10).** `/sync` и `/sync-updates` без auth; `X-Sync-ID` — не
-  авторизация; `orders.user_id`/`user_order_number` при insert из синка теряются; выдача не
-  фильтруется по пользователю. Плюс IDOR: `GET /get_orders_by_user/{id}` отдаёт заказы любого
-  пользователя. Нужно: Sanctum, сохранение владельца, фильтр выдачи.
+- [x] **P0 · Удаления не доезжают (задача 3.9). Сделано.** `tableHasSoftDeletes()` больше не список,
+  а проверка схемы (`Schema::hasColumn($table, 'deleted_at')`) — так в soft-delete попали `orders`,
+  `equipment_models` и `order_service`. `fetchUpdates` перестал отфильтровывать soft-deleted строки
+  (они и есть tombstone, приходят с `deleted: true`), а для таблиц без `deleted_at` заведены
+  tombstones: миграция `2026_09_14_000000_create_sync_tombstones_table`, запись при физическом
+  удалении, выдача в `sync-updates`. Повторный `DELETE` tombstone не дублирует. Тесты:
+  `::test_order_deletion_reaches_another_device`, `::test_hard_delete_is_returned_as_tombstone`,
+  `::test_order_service_deletion_reaches_another_device_and_can_be_revived`.
+- [x] **P0 · Владелец данных (задача 3.10). Сделано.** `/api/sync` и `/api/sync-updates` — под
+  `auth:sanctum`; `insert` проставляет `user_id` из токена (`orders`, `specializations`) и проверяет
+  владельца родителей, `update`/`delete` работают только со своими записями, выдача фильтруется по
+  цепочке владельцев (`specializations.user_id`/`orders.user_id`). IDOR закрыт: удалён
+  `GET /get_orders_by_user/{id}` и публичный дубль. Тесты: `::test_sync_requires_authentication`,
+  `::test_device_sees_only_its_owners_data`, `::test_cannot_update_or_delete_foreign_record`,
+  `::test_cannot_insert_child_into_foreign_parent`, `::test_order_insert_sets_owner`.
+  ⚠️ «Ничьи» строки (`user_id`/родитель = NULL, данные до 3.10) видны всем — их нужно разово
+  привязать к пользователю; клиентский вход/токен — задача 7.4.
+- [x] **P1 · Типы денег (задача 3.12). Сделано.** Миграция
+  `2026_09_15_000000_services_price_to_integer`: `services.price` VARCHAR → integer (нечисловое → 0,
+  десятичные округляются). Остальные денежные колонки уже integer/bigint — менять нечего.
+  `CAST(... AS numeric)` из `StatisticRepository` убраны, payload синка нормализуется
+  (`normalizeMoney`/`toRubles`). Тесты: `::test_service_price_is_integer_and_payload_is_normalized`,
+  `::test_order_service_sale_price_is_numeric_and_statistics_work`.
 - [x] **P0 · Идемпотентность (задача 3.5). Сделано.** Миграция
   `2026_09_12_000000_add_uuid_id_to_sync_tables` добавляет `uuid_id` (nullable, unique) всем
   синкаемым таблицам — это клиентский `local_id`. `INSERT` идёт через «найти или
@@ -201,8 +244,8 @@ Headers: X-Sync-ID: <uuid>
   в песочницу. ✅ Перенос `SAVEPOINT`-изоляции и вырезания `server_id`/`*_server_id` в Laravel уже
   сделан (задача 3.5); осталось убрать сервис `sync` из `docker-compose.yaml` и вынести код.
 - [ ] **P1 · `orders` в синке.** При `insert` принимаются только `specialization_id, client_id,
-  hours, minutes, total_amount, comments` — теряются `status`, `paid`, `model_id`, `share_token`,
-  а также `user_id`/`user_order_number`. Нужно: расширить список колонок.
+  hours, minutes, total_amount, comments` — теряются `status`, `paid`, `model_id`, `share_token`
+  и `user_order_number` (владелец `user_id` проставляется с задачи 3.10). Нужно: расширить список колонок.
 - [x] **P1 · `last_sync_id` (задача 3.6). Сделано.** Миграция
   `2026_09_13_000000_add_last_sync_id_to_sync_tables` добавила `last_sync_id` (nullable, index)
   всем синкаемым таблицам. `SyncController` проставляет её при insert (включая `order_service`),
@@ -211,11 +254,8 @@ Headers: X-Sync-ID: <uuid>
   `SyncControllerTest::test_own_changes_are_not_echoed_back_to_the_device`,
   `::test_change_by_another_device_comes_back_to_the_author`,
   `::test_order_service_insert_is_not_echoed_to_the_same_device`.
-- [ ] **P1 · Типы денег (задача 3.12).** `services.price` — VARCHAR (в SQL приходится писать
-  `CAST(... AS numeric)`), `materials.price` — `decimal(10,2)`, суммы заказов — целые рубли.
-  Привести к целым рублям.
 - [ ] **P1 · Методика «выручки» (задача 9.1).** В `StatisticRepository` три разных формулы:
-  `SUM(CAST(services.price AS numeric))`, `SUM(quantity * sale_price)`, `SUM(orders.total_amount)`
+  `SUM(services.price)`, `SUM(quantity * sale_price)`, `SUM(orders.total_amount)`
   (последнее — без фильтров `paid`/`status`) → цифры на одном экране не сойдутся.
 - [ ] **P1 · Материалы (решение D2, задачи 3.4/9.6).** Серверная `materials` — это **строки
   материалов заказа** (`order_id, name, price, amount`); таблицы `order_material` на сервере нет и

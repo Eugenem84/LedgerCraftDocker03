@@ -38,7 +38,11 @@ class SyncController extends Controller
         ];
         $syncId = $request->header('X-Sync-ID');
 
-        DB::transaction(function () use ($operations, &$results, $syncId) {
+        // Владелец данных (задача 3.10): маршрут под `auth:sanctum`, поэтому пользователь
+        // есть всегда; `null` возможен только при внутреннем вызове (тесты/консоль).
+        $userId = $this->userId($request);
+
+        DB::transaction(function () use ($operations, &$results, $syncId, $userId) {
             foreach ($operations as $op) {
                 $table   = $op['table'] ?? null;
                 $type    = $op['type'] ?? null;
@@ -58,13 +62,13 @@ class SyncController extends Controller
                 try {
                     switch ($type) {
                         case 'insert':
-                            $this->insertRecord($table, $payload, $results, $syncId, $localId);
+                            $this->insertRecord($table, $payload, $results, $syncId, $localId, $userId);
                             break;
                         case 'update':
-                            $this->updateRecord($table, $payload, $results, $syncId, $localId);
+                            $this->updateRecord($table, $payload, $results, $syncId, $localId, $userId);
                             break;
                         case 'delete':
-                            $this->deleteRecord($table, $payload, $results, $syncId, $localId);
+                            $this->deleteRecord($table, $payload, $results, $syncId, $localId, $userId);
                             break;
                         default:
                             $results['errors'][] = ['local_id' => $localId, 'error' => "Unsupported operation type: {$type}"];
@@ -113,6 +117,8 @@ class SyncController extends Controller
 
         $query = DB::table($table);
 
+        $sinceCarbon = null;
+
         if ($since !== null && $since !== '') {
             try {
                 $sinceCarbon = Carbon::createFromTimestampMs((int)$since);
@@ -126,19 +132,78 @@ class SyncController extends Controller
             $query->where(fn($q) => $q->where('last_sync_id', '!=', $syncId)->orWhereNull('last_sync_id'));
         }
 
-        if ($this->tableHasSoftDeletes($table)) {
-            $query->whereNull('deleted_at');
-        }
+        // Владелец данных (задача 3.10): устройство видит только записи своего
+        // пользователя — как напрямую (`user_id`), так и через цепочку родителей
+        // (`specializations.user_id` / `orders.user_id`).
+        $userId = $this->userId($request);
 
+        $this->applyOwnerScope($query, $table, $userId);
+
+        // Soft-deleted строки НЕ отфильтровываем (задача 3.9): они и есть tombstone —
+        // клиент по `deleted_at`/`deleted` удаляет запись у себя. Иначе удаление,
+        // сделанное на другом устройстве, не «доехало» бы никогда.
         $records = $query->orderBy('updated_at')->get();
 
         // Единый стандарт времени (задача 3.8): сервер отдаёт timestamps ISO-8601 UTC
         // (`2026-09-12T10:00:00.000000Z`). «Сырое» значение Postgres (`2026-09-12 10:00:00`)
         // клиентский `Date.parse` принимает за ЛОКАЛЬНОЕ время устройства — сравнение версий
         // (last-write-wins) и курсор выдачи смещались бы на часовой пояс.
-        $records->each(fn ($record) => $this->normalizeTimestamps($record));
+        $records->each(function ($record) {
+            $this->normalizeTimestamps($record);
+            // Явный признак удаления: клиенту не нужно самому разбирать `deleted_at`.
+            $record->deleted = isset($record->deleted_at) && $record->deleted_at !== null;
+        });
+
+        // Таблицы без `deleted_at` удаляются физически — их удаления лежат в tombstone'ах.
+        $records = $records->concat($this->fetchTombstones($table, $sinceCarbon, $syncId, $userId));
 
         return response()->json(['table' => $table, 'count' => $records->count(), 'records' => $records]);
+    }
+
+    /**
+     * Отдаёт tombstones таблицы как записи-удаления (задача 3.9).
+     *
+     * Формат записи: `{ id: <server_id>, uuid_id, deleted: true, deleted_at, updated_at }`.
+     * `id`/`uuid_id` позволяют клиенту найти локальную строку (по `server_id`
+     * или по клиентскому UUID у `order_service`-подобных таблиц).
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function fetchTombstones(string $table, ?Carbon $since, ?string $syncId, ?int $userId = null)
+    {
+        if ($this->tableHasSoftDeletes($table) || !Schema::hasTable('sync_tombstones')) {
+            return collect();
+        }
+
+        $query = DB::table('sync_tombstones')->where('table_name', $table);
+
+        // Удаления чужих устройств отдавать нельзя (задача 3.10).
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+
+        if ($since) {
+            $query->where('deleted_at', '>', $since);
+        }
+
+        // Анти-эхо (задача 3.6): автор удаления свой tombstone не получает.
+        if ($syncId) {
+            $query->where(fn($q) => $q->where('last_sync_id', '!=', $syncId)->orWhereNull('last_sync_id'));
+        }
+
+        return $query->orderBy('deleted_at')->get()->map(function ($tombstone) {
+            $deletedAt = $tombstone->deleted_at
+                ? Carbon::parse($tombstone->deleted_at)->toJSON()
+                : null;
+
+            return [
+                'id'         => $tombstone->record_id,
+                'uuid_id'    => $tombstone->uuid_id,
+                'deleted'    => true,
+                'deleted_at' => $deletedAt,
+                'updated_at' => $deletedAt,
+            ];
+        });
     }
 
     /**
@@ -175,12 +240,21 @@ class SyncController extends Controller
         return Carbon::now()->startOfSecond();
     }
 
-    private function insertRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
+    private function insertRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId, ?int $userId = null): void
     {
         // Служебные поля клиента не должны попадать в реальные колонки таблиц:
         // `id`/`local_id`/`uuid_id`, а также `server_id` и сигнальные `*_server_id`
         // (вырезание перенесено из Go-сайдкара, D1/задача 3.11).
-        $payload = $this->stripClientFields($payload);
+        // Деньги приводим к целым рублям (задача 3.12): клиент мог прислать строку,
+        // «1 000,50» или пустую строку — в integer-колонку это не влезло бы.
+        $payload = $this->normalizeMoney($table, $this->stripClientFields($payload));
+
+        // Чужому пользователю не позволяем писать в свои данные (задача 3.10):
+        // проверяем владельца родительских записей из payload.
+        if (!$this->payloadParentsBelongToUser($table, $payload, $userId)) {
+            $results['errors'][] = ['local_id' => $localId, 'error' => 'FORBIDDEN_NOT_OWNER'];
+            return;
+        }
 
         // Одна и та же секунда идёт и в запись, и в ответ (задача 3.8).
         $now = $this->syncNow();
@@ -196,6 +270,12 @@ class SyncController extends Controller
                 'comments'         => $payload['comments'] ?? null,
                 // materials сейчас не синкаем с клиента, пусть будет NULL
             ];
+
+            // Владелец данных (задача 3.10): клиент `user_id` не присылает — проставляем
+            // сами, иначе заказ после синка «терял» владельца и не находился по пользователю.
+            if ($userId !== null && Schema::hasColumn($table, 'user_id')) {
+                $data['user_id'] = $userId;
+            }
 
             if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
                 $data['last_sync_id'] = $syncId;
@@ -247,6 +327,12 @@ class SyncController extends Controller
                 $data['uuid_id'] = $localId;
             }
 
+            // Связку могли удалить раньше (soft-delete), а теперь добавляют снова —
+            // натуральный ключ тот же, поэтому «оживляем» строку (задача 3.9).
+            if (Schema::hasColumn($table, 'deleted_at')) {
+                $data['deleted_at'] = null;
+            }
+
             // Анти-эхо (задача 3.6): помечаем строку устройством-автором, чтобы оно
             // не получило своё же изменение обратно в sync-updates.
             if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
@@ -292,6 +378,13 @@ class SyncController extends Controller
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
         }
+
+        // Владелец данных (задача 3.10): у таблиц с `user_id` (specializations)
+        // проставляем его сами — клиент этого поля не знает.
+        if ($userId !== null && Schema::hasColumn($table, 'user_id')) {
+            $payload['user_id'] = $userId;
+        }
+
         $payload['created_at'] = $now;
         $payload['updated_at'] = $now;
 
@@ -305,7 +398,7 @@ class SyncController extends Controller
         ];
     }
 
-    private function updateRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
+    private function updateRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId, ?int $userId = null): void
     {
         // Для обновления запись на сервере обязана содержать server-side ID
         if (!array_key_exists('id', $payload)) {
@@ -317,10 +410,28 @@ class SyncController extends Controller
         }
 
         $id = $payload['id'];
-        $payload = $this->stripClientFields($payload);
+
+        // Чужую запись не обновляем (задача 3.10). Отвечаем как на несуществующую,
+        // чтобы не подсказывать, что запись вообще есть.
+        if (!$this->recordBelongsToUser($table, $id, $userId)) {
+            $results['errors'][] = [
+                'local_id' => $localId,
+                'error' => 'RECORD_NOT_FOUND',
+                'details' => ['id' => $id],
+            ];
+            return;
+        }
+
+        $payload = $this->normalizeMoney($table, $this->stripClientFields($payload));
 
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
+        }
+
+        // Владелец данных (задача 3.10): запись, созданную до 3.10 («ничья»),
+        // первый же пользователь, который её правит, «забирает» себе.
+        if ($userId !== null && Schema::hasColumn($table, 'user_id')) {
+            $payload['user_id'] = $userId;
         }
 
         // Сервер — источник версии: клиент применит её у себя после ответа (задача 3.8).
@@ -349,9 +460,21 @@ class SyncController extends Controller
         ];
     }
 
-    private function deleteRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId): void
+    private function deleteRecord(string $table, array $payload, array &$results, ?string $syncId, ?string $localId, ?int $userId = null): void
     {
         $id = $payload['id'] ?? null;
+
+        // Чужую запись не удаляем (задача 3.10) — отвечаем как на несуществующую.
+        // Владельца проверяем только у реально существующей строки: повторное удаление
+        // уже удалённой записи — норма (идемпотентность, задача 3.5).
+        if ($id !== null && $this->recordExists($table, $id) && !$this->recordBelongsToUser($table, $id, $userId)) {
+            $results['errors'][] = [
+                'local_id' => $localId,
+                'error' => 'RECORD_NOT_FOUND',
+                'details' => ['id' => $id],
+            ];
+            return;
+        }
 
         // Время операции: у soft-delete это ещё и новая версия записи (задача 3.8).
         $now = $this->syncNow();
@@ -362,11 +485,33 @@ class SyncController extends Controller
             $orderId   = $payload['order_id'] ?? null;
             $serviceId = $payload['service_id'] ?? null;
 
+            // Владелец связки — её заказ (задача 3.10).
+            if ($orderId !== null && $userId !== null
+                && !$this->ownedIds('orders', $userId)->where('id', $orderId)->exists()) {
+                $results['errors'][] = [
+                    'local_id' => $localId,
+                    'error' => 'RECORD_NOT_FOUND',
+                    'details' => ['id' => $orderId],
+                ];
+                return;
+            }
+
             if ($orderId !== null && $serviceId !== null) {
-                $affected = DB::table($table)
+                $lineQuery = DB::table($table)
                     ->where('order_id', $orderId)
-                    ->where('service_id', $serviceId)
-                    ->delete();
+                    ->where('service_id', $serviceId);
+
+                if ($this->tableHasSoftDeletes($table)) {
+                    // У связки есть `deleted_at` — помечаем строку удалённой, чтобы
+                    // удаление «доехало» до других устройств (задача 3.9).
+                    $updateData = ['deleted_at' => $now, 'updated_at' => $now];
+                    if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
+                        $updateData['last_sync_id'] = $syncId;
+                    }
+                    $affected = $lineQuery->update($updateData);
+                } else {
+                    $affected = $lineQuery->delete();
+                }
 
                 // DELETE идемпотентен: отсутствие строки — тоже «применено».
                 $results['synced'][] = [
@@ -400,7 +545,10 @@ class SyncController extends Controller
             }
             $query->update($updateData);
         } else {
+            // Физическое удаление: строка исчезает, поэтому факт удаления
+            // фиксируем в tombstone'ах — иначе второе устройство о нём не узнает.
             $query->delete();
+            $this->recordTombstone($table, $id, $payload['uuid_id'] ?? null, $now, $syncId, $userId);
         }
 
         // Подтверждаем всегда: повторный DELETE уже удалённой записи — норма.
@@ -438,6 +586,12 @@ class SyncController extends Controller
             $update = $data;
             unset($update['created_at']);
 
+            // Повторный INSERT мог быть отправлен уже после удаления записи (офлайн):
+            // «оживляем» строку явным сбросом `deleted_at` (задача 3.9).
+            if (Schema::hasColumn($table, 'deleted_at')) {
+                $update['deleted_at'] = null;
+            }
+
             DB::table($table)->where('uuid_id', $localId)->update($update);
 
             return $existing->id ?? null;
@@ -470,11 +624,246 @@ class SyncController extends Controller
         return $clean;
     }
 
+    /**
+     * Денежные колонки по таблицам (задача 3.12). Все деньги на сервере — целые рубли,
+     * поэтому любые значения клиента (строки, «1 000,50», пустая строка) приводим к int.
+     */
+    private const MONEY_COLUMNS = [
+        'services'            => ['price'],
+        'materials'           => ['price'],
+        'orders'              => ['total_amount'],
+        'order_service'       => ['sale_price'],
+        'order_product'       => ['sale_price'],
+        'products'            => ['base_sale_price'],
+        'incoming_products'   => ['by_price'],
+        'buy_product_prices'  => ['buy_price'],
+        'sales_products_prices' => ['sale_price'],
+    ];
+
+    /**
+     * Приводит денежные поля payload к целым рублям (задача 3.12).
+     *
+     * Раньше клиент мог отправить `price: ''` или `'1 000,50'`, а серверная колонка
+     * была VARCHAR — «как-нибудь да влезет», и потом это кастовалось в каждом расчёте.
+     * Теперь колонки — integer, поэтому нормализуем на входе (одно место, один стандарт).
+     */
+    private function normalizeMoney(string $table, array $payload): array
+    {
+        foreach (self::MONEY_COLUMNS[$table] ?? [] as $column) {
+            if (!array_key_exists($column, $payload)) {
+                continue;
+            }
+
+            // «Цена не задана» у услуги исторически = пустая строка, а колонка NOT NULL.
+            $default = ($table === 'services' && $column === 'price') ? 0 : null;
+            $payload[$column] = $this->toRubles($payload[$column], $default);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Значение → целые рубли. Нечисловое/пустое значение превращается в `$default`
+     * (а не в 0), чтобы не потерять факт «поле не заполнено» там, где колонка nullable.
+     */
+    private function toRubles($value, ?int $default = null): ?int
+    {
+        if ($value === null) {
+            return $default;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (int) round($value);
+        }
+
+        // «1 000,50» → «1000.50»
+        $normalized = str_replace([' ', ','], ['', '.'], trim((string) $value));
+
+        if ($normalized === '' || !is_numeric($normalized)) {
+            return $default;
+        }
+
+        return (int) round((float) $normalized);
+    }
+
+    /**
+     * Таблицы, у которых владелец лежит напрямую в `user_id` (задача 3.10).
+     */
+    private const USER_TABLES = ['orders', 'specializations'];
+
+    /**
+     * Ссылки на «родителя» — через них определяется владелец записи (задача 3.10).
+     * Первая пара — основная цепочка: по ней фильтруется выдача. Остальные проверяются
+     * при записи: нельзя привязать свою запись к чужому заказу/услуге/категории.
+     */
+    private const OWNER_REFS = [
+        'clients'               => ['specialization_id' => 'specializations'],
+        'categories'            => ['specialization_id' => 'specializations'],
+        'product_categories'    => ['specialization_id' => 'specializations'],
+        'equipment_models'      => ['specialization_id' => 'specializations'],
+        'services'              => ['category_id' => 'categories'],
+        'products'              => ['product_category_id' => 'product_categories'],
+        'product_stocks'        => ['product_categories_id' => 'product_categories'],
+        'incoming_products'     => ['product_id' => 'products'],
+        'buy_product_prices'    => ['product_id' => 'products'],
+        'sales_products_prices' => ['order_id' => 'orders', 'product_id' => 'products'],
+        'orders'                => ['specialization_id' => 'specializations', 'client_id' => 'clients'],
+        'order_service'         => ['order_id' => 'orders', 'service_id' => 'services'],
+        'order_product'         => ['order_id' => 'orders', 'product_id' => 'products'],
+        'materials'             => ['order_id' => 'orders'],
+    ];
+
+    /**
+     * id пользователя из токена (задача 3.10). `null` — только внутренние вызовы.
+     */
+    private function userId(Request $request): ?int
+    {
+        $user = $request->user();
+
+        return $user ? (int) $user->getAuthIdentifier() : null;
+    }
+
+    /**
+     * Подзапрос «id строк таблицы, доступных пользователю» (задача 3.10).
+     * Идёт по цепочке родителей до таблицы с `user_id`.
+     *
+     * «Ничьи» звенья (`user_id`/родитель = NULL — данные до 3.10) считаются общими:
+     * иначе записи без владельца исчезли бы из выдачи, а услуга без категории
+     * не дала бы добавить её в заказ.
+     */
+    private function ownedIds(string $table, int $userId)
+    {
+        if (in_array($table, self::USER_TABLES, true)) {
+            return DB::table($table)
+                ->select('id')
+                ->where(fn($q) => $q->where('user_id', $userId)->orWhereNull('user_id'));
+        }
+
+        $refs = self::OWNER_REFS[$table] ?? null;
+
+        if (!$refs) {
+            // Владельца нет — не сужаем (служебные таблицы).
+            return DB::table($table)->select('id');
+        }
+
+        $fk = array_key_first($refs);
+
+        return DB::table($table)
+            ->select('id')
+            ->where(fn($q) => $q->whereIn($fk, $this->ownedIds($refs[$fk], $userId))->orWhereNull($fk));
+    }
+
+    /**
+     * Сужает выборку до данных пользователя (задача 3.10).
+     *
+     * «Ничьи» строки (родитель/`user_id` = NULL — данные до 3.10) остаются видимыми:
+     * их нельзя выкинуть из выдачи, не потеряв данные пользователя; разовая привязка
+     * legacy-записей к пользователю — отдельная операция, а не молчаливая фильтрация.
+     */
+    private function applyOwnerScope($query, string $table, ?int $userId): void
+    {
+        if ($userId === null) {
+            return;
+        }
+
+        if (in_array($table, self::USER_TABLES, true)) {
+            $query->where(fn($q) => $q->where('user_id', $userId)->orWhereNull('user_id'));
+
+            return;
+        }
+
+        $refs = self::OWNER_REFS[$table] ?? null;
+
+        if (!$refs) {
+            return;
+        }
+
+        $fk = array_key_first($refs);
+
+        $query->where(
+            fn($q) => $q->whereIn($fk, $this->ownedIds($refs[$fk], $userId))->orWhereNull($fk)
+        );
+    }
+
+    /**
+     * Существует ли строка (только для таблиц с `id`).
+     */
+    private function recordExists(string $table, $id): bool
+    {
+        return Schema::hasColumn($table, 'id') && DB::table($table)->where('id', $id)->exists();
+    }
+
+    /**
+     * Принадлежит ли запись пользователю (задача 3.10).
+     * При `user_id = null` (внутренний вызов) проверка не выполняется.
+     */
+    private function recordBelongsToUser(string $table, $id, ?int $userId): bool
+    {
+        if ($userId === null || $id === null || !Schema::hasColumn($table, 'id')) {
+            return true;
+        }
+
+        $query = DB::table($table)->where('id', $id);
+        $this->applyOwnerScope($query, $table, $userId);
+
+        return $query->exists();
+    }
+
+    /**
+     * Проверяет владельца всех родительских ссылок из payload при вставке (задача 3.10):
+     * нельзя создать запись внутри чужой специализации/заказа/категории.
+     */
+    private function payloadParentsBelongToUser(string $table, array $payload, ?int $userId): bool
+    {
+        if ($userId === null) {
+            return true;
+        }
+
+        foreach (self::OWNER_REFS[$table] ?? [] as $fk => $parent) {
+            if (!array_key_exists($fk, $payload) || $payload[$fk] === null) {
+                continue;
+            }
+
+            if (!$this->ownedIds($parent, $userId)->where('id', $payload[$fk])->exists()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private function tableHasSoftDeletes(string $table): bool
     {
-        // Важно: у таблицы orders в миграции нет deleted_at,
-        // поэтому здесь перечисляем только реально soft-deletable таблицы.
-        $softDeleteTables = ['clients', 'products', 'services', 'categories'];
-        return in_array($table, $softDeleteTables, true);
+        // Схема — источник истины (задача 3.9): раньше список был захардкожен
+        // (`clients, products, services, categories`) и не знал про `orders`,
+        // `equipment_models` и `order_service` — их удаления уходили в hard-delete
+        // и не «доезжали» до других устройств.
+        return Schema::hasColumn($table, 'deleted_at');
+    }
+
+    /**
+     * Запоминает факт физического удаления строки (задача 3.9), чтобы его
+     * увидели другие устройства через `/sync-updates`.
+     *
+     * Идемпотентно: повторный DELETE не создаёт второй tombstone (unique
+     * `table_name + record_id`), а лишь обновляет время/автора.
+     */
+    private function recordTombstone(string $table, $recordId, ?string $uuidId, Carbon $moment, ?string $syncId, ?int $userId = null): void
+    {
+        if ($recordId === null || !Schema::hasTable('sync_tombstones')) {
+            return;
+        }
+
+        DB::table('sync_tombstones')->updateOrInsert(
+            ['table_name' => $table, 'record_id' => $recordId],
+            [
+                'uuid_id'      => $uuidId,
+                'user_id'      => $userId,
+                'deleted_at'   => $moment,
+                'last_sync_id' => $syncId,
+                'updated_at'   => $moment,
+                'created_at'   => $moment,
+            ]
+        );
     }
 }

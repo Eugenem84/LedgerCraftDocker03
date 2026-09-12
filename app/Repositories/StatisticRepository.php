@@ -13,22 +13,22 @@ class StatisticRepository
     {
         return DB::select("
             SELECT
-                sum(CAST(services.price as numeric))
+                sum(services.price)
                     FILTER ( WHERE date_trunc('day', orders.updated_at) = date_trunc('day', current_date)
                                 AND status = 'done'
                                 AND paid = true)
                     as total_day,
-                sum(CAST(services.price as numeric))
+                sum(services.price)
                     FILTER ( WHERE date_trunc('week', orders.updated_at) = date_trunc('week', current_date)
                                 AND status = 'done'
                                 AND paid = true)
                     as total_week,
-                sum(CAST(services.price as numeric))
+                sum(services.price)
                     FILTER ( WHERE date_trunc('month', orders.updated_at) = date_trunc('month', current_date)
                                 AND status = 'done'
                                 AND paid = true)
                     as total_month,
-                sum(CAST(services.price as numeric)) FILTER ( WHERE date_trunc('year', orders.updated_at) = date_trunc('year', current_date)
+                sum(services.price) FILTER ( WHERE date_trunc('year', orders.updated_at) = date_trunc('year', current_date)
                                 AND status = 'done'
                                 AND paid = true)
                     as total_year
@@ -47,7 +47,7 @@ class StatisticRepository
                 services.service,
                 count(*) as service_count,
                 services.price,
-                count(*) * cast(services.price as numeric ) as total
+                count(*) * services.price as total
             from order_service
             join services on order_service.service_id = services.id
             where order_id in (select orders.id

@@ -121,7 +121,6 @@ Route::get('/get_services/{orderId}', [OrderController::class, 'getServices']);
 Route::put('update_order_status/{id}', [OrderController::class, 'updateStatus']);
 Route::put('update_paid_status/{id}', [OrderController::class, 'updatePadeStatus']);
 Route::put('switch_paid_status/{id}', [OrderController::class, 'switchPaidStatus']);
-Route::get('/get_orders_by_user', [OrderController::class, 'getByUser']);
 
 Route::post('/order-report/{order}/share-link', [OrderController::class, 'generateShareLink']);
 
@@ -136,8 +135,9 @@ Route::post('/incomes_by_period/{specializationId}', [StatisticController::class
 //Route::post('/incomes_by_day/{specializationId}', [StatisticController::class, 'getIncomesByDay']);
 
 
-Route::get('/get_orders_by_user/{id}', [OrderController::class, 'getOrdersByUser']);
-//Route::get('/get_orders_by_user', [OrderController::class, 'getByUser']);
+// IDOR (задача 3.10): `/get_orders_by_user/{id}` отдавал заказы ЛЮБОГО пользователя,
+// а публичный `/get_orders_by_user` падал в 500 на `Auth::user()`. Оставляем один
+// маршрут — под `auth:sanctum` и без параметра id (пользователь берётся из токена).
 Route::middleware('auth:sanctum')->get('/get_orders_by_user', [OrderController::class, 'getByUser']);
 Route::middleware('auth:sanctum')->get('/get_specializations_by_user', [SpecializationController::class, 'getAll']);
 Route::middleware('auth:sanctum')->post('/save_order', [OrderController::class, 'saveOrder']);
@@ -149,5 +149,10 @@ Route::get('/hcp/chcp.manifest', [AppVersionController::class, 'getChcpManifest'
 
 Route::get('/download-apk', [AppVersionController::class, 'downloadApk']);
 
-Route::post('/sync', [SyncController::class, 'sync']);
-Route::get('/sync-updates', [SyncController::class, 'fetchUpdates']);
+// Синк — под `auth:sanctum` (задача 3.10): сервер знает владельца данных,
+// проставляет `user_id` при вставке и отдаёт/меняет только записи этого пользователя.
+// Без токена (401) синхронизация не работает — клиентский вход/токен — задача 7.4.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/sync', [SyncController::class, 'sync']);
+    Route::get('/sync-updates', [SyncController::class, 'fetchUpdates']);
+});

@@ -2,17 +2,22 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Идемпотентность, изоляция и версии операций синка.
+ * Идемпотентность, изоляция, версии и владелец данных в синке.
  *
  * Задача 3.5: «повторная отправка того же батча не создаёт дублей».
  * Задача 3.8: сервер — источник версии записи (`updated_at`), клиент её применяет
  * локально (last-write-wins); время отдаётся в одном стандарте — ISO-8601 UTC.
+ * Задача 3.9: удаления доезжают до других устройств (soft-delete/tombstones).
+ * Задача 3.10: `/sync` и `/sync-updates` под `auth:sanctum`, у данных есть владелец.
+ * Задача 3.12: деньги — целые рубли (integer-колонки, без `CAST` в запросах).
  *
  * Дополнительно проверяем контракт, на который опирается клиент:
  *   • каждая операция получает **явный** ответ (`synced`) — клиент считает
@@ -32,6 +37,9 @@ class SyncControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Пользователь-владелец данных «по умолчанию» для теста. */
+    private User $user;
+
     protected function setUp(): void
     {
         $database = $_ENV['DB_DATABASE'] ?? $_SERVER['DB_DATABASE'] ?? getenv('DB_DATABASE');
@@ -45,6 +53,18 @@ class SyncControllerTest extends TestCase
         }
 
         parent::setUp();
+
+        // Синк — под `auth:sanctum` (задача 3.10): без пользователя 401.
+        $this->user = User::factory()->create();
+        Sanctum::actingAs($this->user);
+    }
+
+    /**
+     * Второй пользователь — для проверки изоляции данных (задача 3.10).
+     */
+    private function anotherUser(): User
+    {
+        return User::factory()->create();
     }
 
     /**
@@ -100,6 +120,8 @@ class SyncControllerTest extends TestCase
         $specializationId = DB::table('specializations')->insertGetId([
             'specializationName' => 'Тестовая специализация',
             'popularCounter'     => 0,
+            // Владелец данных (задача 3.10): записи принадлежат пользователю.
+            'user_id'            => $this->user->id,
             'created_at'         => now(),
             'updated_at'         => now(),
         ]);
@@ -123,6 +145,7 @@ class SyncControllerTest extends TestCase
             'specialization_id' => $specializationId,
             'client_id'         => $clientId,
             'total_amount'      => 1000,
+            'user_id'           => $this->user->id,
             'created_at'        => now(),
             'updated_at'        => now(),
         ]);
@@ -252,7 +275,13 @@ class SyncControllerTest extends TestCase
 
         $this->assertSame([], $result['errors']);
         $this->assertCount(1, $result['synced']);
-        $this->assertSame(0, DB::table('order_service')->count());
+
+        // У `order_service` есть `deleted_at`, поэтому удаление — soft (задача 3.9):
+        // «живой» строки нет, но остался tombstone для других устройств.
+        $this->assertSame(0, DB::table('order_service')->whereNull('deleted_at')->count());
+        $this->assertNotNull(
+            DB::table('order_service')->where('order_id', $orderId)->where('service_id', $serviceId)->value('deleted_at')
+        );
     }
 
     public function test_broken_operation_does_not_break_the_batch(): void
@@ -336,7 +365,11 @@ class SyncControllerTest extends TestCase
 
         $this->assertSame([], $first['errors']);
         $this->assertSame([], $second['errors']);
-        $this->assertSame(0, DB::table('orders')->where('id', $orderId)->count());
+
+        // У `orders` есть `deleted_at`, значит удаление — soft (задача 3.9):
+        // строка остаётся как tombstone, но «живых» заказов с таким id нет.
+        $this->assertSame(0, DB::table('orders')->where('id', $orderId)->whereNull('deleted_at')->count());
+        $this->assertNotNull(DB::table('orders')->where('id', $orderId)->value('deleted_at'));
     }
 
     public function test_server_id_fields_are_stripped_from_payload(): void
@@ -571,5 +604,347 @@ class SyncControllerTest extends TestCase
         $this->assertIsoUtc($records[0]['updated_at']);
     }
 
+
+
+    /**
+     * Задача 3.9: удаление заказа доезжает до другого устройства.
+     * У `orders` есть `deleted_at`, поэтому удаление — soft, и выдача отдаёт
+     * ту же строку с `deleted`/`deleted_at` (tombstone).
+     */
+    public function test_order_deletion_reaches_another_device(): void
+    {
+        [$specializationId, $clientId] = $this->seedOrderDeps();
+        $localId = '55555555-0000-0000-0000-000000000001';
+
+        $created = $this->sync([$this->insertOp('orders', $localId, [
+            'specialization_id' => $specializationId,
+            'client_id'         => $clientId,
+            'total_amount'      => 100,
+        ])], 'device-a');
+
+        $orderId = $created['synced'][0]['server_id'];
+
+        $this->sync([[
+            'id'      => 'op-del-orders',
+            'type'    => 'delete',
+            'table'   => 'orders',
+            'payload' => ['id' => $orderId],
+        ]], 'device-a');
+
+        // Автор удаления свой tombstone не получает (анти-эхо, 3.6).
+        $this->assertSame(0, $this->fetchUpdates('orders', 'device-a')['count']);
+
+        // Второе устройство узнаёт об удалении.
+        $other = $this->fetchUpdates('orders', 'device-b');
+        $this->assertSame(1, $other['count']);
+        $this->assertTrue($other['records'][0]['deleted']);
+        $this->assertNotNull($other['records'][0]['deleted_at']);
+    }
+
+    /**
+     * Таблицы без `deleted_at` удаляются физически — их удаления лежат
+     * в `sync_tombstones` и тоже доезжают до других устройств (задача 3.9).
+     */
+    public function test_hard_delete_is_returned_as_tombstone(): void
+    {
+        $orderId = $this->seedOrder();
+
+        $created = $this->sync([$this->insertOp('materials', '66666666-0000-0000-0000-000000000001', [
+            'order_id' => $orderId,
+            'name'     => 'Клей',
+            'price'    => 300,
+            'amount'   => 1,
+        ])], 'device-a');
+
+        $materialId = $created['synced'][0]['server_id'];
+        $this->assertSame(1, DB::table('materials')->where('id', $materialId)->count());
+
+        $deleteOp = [
+            'id'      => 'op-del-materials',
+            'type'    => 'delete',
+            'table'   => 'materials',
+            'payload' => ['id' => $materialId],
+        ];
+
+        $this->sync([$deleteOp], 'device-a');
+
+        // Строки на сервере больше нет...
+        $this->assertSame(0, DB::table('materials')->where('id', $materialId)->count());
+
+        // ...а другое устройство получает tombstone.
+        $other = $this->fetchUpdates('materials', 'device-b');
+        $this->assertSame(1, $other['count']);
+        $this->assertSame($materialId, $other['records'][0]['id']);
+        $this->assertTrue($other['records'][0]['deleted']);
+
+        // Повторное удаление tombstone не дублирует (идемпотентность, 3.5).
+        $second = $this->sync([$deleteOp], 'device-a');
+        $this->assertSame([], $second['errors']);
+        $this->assertSame(1, DB::table('sync_tombstones')->where('table_name', 'materials')->count());
+        $this->assertSame(0, $this->fetchUpdates('materials', 'device-a')['count']);
+    }
+
+
+    /**
+     * Связка `order_service` (натуральный ключ, нет своего PK): удаление —
+     * soft, поэтому доезжает до другого устройства и несёт `uuid_id`, по
+     * которому клиент находит свою локальную строку (задачи 3.5/3.9).
+     */
+    public function test_order_service_deletion_reaches_another_device_and_can_be_revived(): void
+    {
+        $orderId = $this->seedOrder();
+        $serviceId = DB::table('services')->insertGetId([
+            'service'    => 'Работа',
+            'price'      => '1000',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $lineUuid = '77777777-0000-0000-0000-000000000001';
+
+        $insertOp = $this->insertOp('order_service', $lineUuid, [
+            'order_id'   => $orderId,
+            'service_id' => $serviceId,
+            'sale_price' => 900,
+            'quantity'   => 1,
+        ]);
+
+        $this->sync([$insertOp], 'device-a');
+        $this->assertSame(1, $this->fetchUpdates('order_service', 'device-b')['count']);
+
+        // Удаление по натуральному ключу — soft (у связки есть `deleted_at`).
+        $this->sync([[
+            'id'      => 'op-del-line',
+            'type'    => 'delete',
+            'table'   => 'order_service',
+            'payload' => ['order_id' => $orderId, 'service_id' => $serviceId],
+        ]], 'device-a');
+
+        $deleted = $this->fetchUpdates('order_service', 'device-b');
+        $this->assertSame(1, $deleted['count']);
+        $this->assertTrue($deleted['records'][0]['deleted']);
+        $this->assertSame($lineUuid, $deleted['records'][0]['uuid_id']);
+
+        // Работу добавили снова — натуральный ключ тот же, строка «оживает».
+        $this->sync([$this->insertOp('order_service', $lineUuid, [
+            'order_id'   => $orderId,
+            'service_id' => $serviceId,
+            'sale_price' => 950,
+            'quantity'   => 2,
+        ])], 'device-a');
+
+        $alive = $this->fetchUpdates('order_service', 'device-b');
+        $this->assertSame(1, $alive['count']);
+        $this->assertFalse($alive['records'][0]['deleted']);
+        $this->assertSame(950, (int) $alive['records'][0]['sale_price']);
+        $this->assertSame(2, (int) $alive['records'][0]['quantity']);
+    }
+
+
+    /**
+     * Задача 3.12: деньги на сервере — целые рубли.
+     * `services.price` был VARCHAR и кастовался в каждом расчёте (`CAST(... AS numeric)`);
+     * теперь это integer, а payload синка нормализуется на входе.
+     */
+    public function test_service_price_is_integer_and_payload_is_normalized(): void
+    {
+        $column = DB::selectOne(
+            "select data_type from information_schema.columns
+             where table_schema = 'public' and table_name = 'services' and column_name = 'price'"
+        );
+
+        $this->assertSame('integer', $column->data_type, 'services.price должен быть целым числом');
+
+        // Строка с разделителями и копейками: «1 500,50» → 1501 (целые рубли).
+        $this->sync([$this->insertOp('services', '88888888-0000-0000-0000-000000000001', [
+            'service' => 'Стрижка',
+            'price'   => '1 500,50',
+        ])], 'device-a');
+
+        // Пустая строка у услуги — «цена не задана» (колонка NOT NULL → 0).
+        $this->sync([$this->insertOp('services', '88888888-0000-0000-0000-000000000002', [
+            'service' => 'Без цены',
+            'price'   => '',
+        ])], 'device-a');
+
+        $this->assertSame(
+            1501,
+            (int) DB::table('services')->where('uuid_id', '88888888-0000-0000-0000-000000000001')->value('price')
+        );
+        $this->assertSame(
+            0,
+            (int) DB::table('services')->where('uuid_id', '88888888-0000-0000-0000-000000000002')->value('price')
+        );
+
+        // Update тоже нормализуется: строка вместо числа.
+        $serviceId = DB::table('services')->where('uuid_id', '88888888-0000-0000-0000-000000000001')->value('id');
+        $this->sync([[
+            'id'      => 'op-update-price',
+            'type'    => 'update',
+            'table'   => 'services',
+            'payload' => ['id' => $serviceId, 'price' => '2000'],
+        ]], 'device-a');
+
+        $this->assertSame(2000, (int) DB::table('services')->where('id', $serviceId)->value('price'));
+    }
+
+    /**
+     * Задача 3.12 (продолжение): `sale_price` связки — всегда число, а статистика
+     * считает по integer-колонкам без `CAST` (иначе запрос падал бы на новых типах).
+     */
+    public function test_order_service_sale_price_is_numeric_and_statistics_work(): void
+    {
+        $orderId = $this->seedOrder();
+        // Берём специализацию именно этого заказа: `seedOrder()` создаёт свою.
+        $specializationId = (int) DB::table('orders')->where('id', $orderId)->value('specialization_id');
+        $serviceId = DB::table('services')->insertGetId([
+            'service'    => 'Работа',
+            'price'      => 1200,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $result = $this->sync([$this->insertOp('order_service', '99999999-0000-0000-0000-000000000001', [
+            'order_id'   => $orderId,
+            'service_id' => $serviceId,
+            'quantity'   => 1,
+            // sale_price не передан → сервер берёт цену услуги
+        ])], 'device-a');
+
+        $this->assertSame([], $result['errors']);
+
+        $salePrice = DB::table('order_service')
+            ->where('order_id', $orderId)
+            ->where('service_id', $serviceId)
+            ->value('sale_price');
+
+        $this->assertIsNumeric($salePrice, 'sale_price должен быть числом (без строк/кастов)');
+        $this->assertSame(1200, (int) $salePrice);
+
+        // Статистика (задача 3.12): суммы по integer-колонкам без CAST.
+        $stats = app(\App\Repositories\StatisticRepository::class)->getProfitDWMY($specializationId);
+        $this->assertNotEmpty($stats);
+
+        $topServices = app(\App\Repositories\StatisticRepository::class)->getTopServicesBySpecialization($specializationId);
+        $this->assertNotEmpty($topServices);
+    }
+
+
+    /**
+     * Задача 3.10: без токена синк недоступен — иначе данные остаются «ничьими»
+     * и смешиваются между устройствами.
+     */
+    public function test_sync_requires_authentication(): void
+    {
+        // Снимаем «вход» из setUp: запросы уходят без пользователя.
+        $this->app['auth']->forgetGuards();
+
+        $this->postJson('/api/sync', ['operations' => []])->assertUnauthorized();
+        $this->getJson('/api/sync-updates?table=clients&since=0')->assertUnauthorized();
+    }
+
+    /**
+     * Задача 3.10: устройство видит только данные своего пользователя.
+     */
+    public function test_device_sees_only_its_owners_data(): void
+    {
+        [$specializationId, $clientId] = $this->seedOrderDeps();
+
+        $created = $this->sync([$this->insertOp('orders', 'aaaaaaaa-0000-0000-0000-00000000000a', [
+            'specialization_id' => $specializationId,
+            'client_id'         => $clientId,
+            'total_amount'      => 500,
+        ])], 'device-a');
+
+        $this->assertNotNull($created['synced'][0]['server_id']);
+
+        // Владелец свои данные видит (без анти-эхо-заголовка).
+        $this->assertSame(1, $this->fetchUpdates('orders', null)['count']);
+
+        // Другому пользователю не отдаём ни заказ, ни клиента, ни специализацию.
+        Sanctum::actingAs($this->anotherUser());
+
+        $this->assertSame(0, $this->fetchUpdates('orders', null)['count']);
+        $this->assertSame(0, $this->fetchUpdates('clients', null)['count']);
+        $this->assertSame(0, $this->fetchUpdates('specializations', null)['count']);
+    }
+
+    /**
+     * Задача 3.10: чужую запись нельзя ни обновить, ни удалить.
+     */
+    public function test_cannot_update_or_delete_foreign_record(): void
+    {
+        $orderId = $this->seedOrder();
+
+        Sanctum::actingAs($this->anotherUser());
+
+        $update = $this->sync([[
+            'id'      => 'op-foreign-update',
+            'type'    => 'update',
+            'table'   => 'orders',
+            'payload' => ['id' => $orderId, 'comments' => 'чужая правка'],
+        ]]);
+
+        $this->assertSame('RECORD_NOT_FOUND', $update['errors'][0]['error']);
+
+        $delete = $this->sync([[
+            'id'      => 'op-foreign-delete',
+            'type'    => 'delete',
+            'table'   => 'orders',
+            'payload' => ['id' => $orderId],
+        ]]);
+
+        $this->assertSame('RECORD_NOT_FOUND', $delete['errors'][0]['error']);
+
+        $order = DB::table('orders')->where('id', $orderId)->first();
+        $this->assertNull($order->deleted_at, 'Чужой заказ не должен быть удалён');
+        $this->assertNotSame('чужая правка', $order->comments);
+    }
+
+    /**
+     * Задача 3.10: нельзя привязать свою запись к чужому родителю.
+     */
+    public function test_cannot_insert_child_into_foreign_parent(): void
+    {
+        $orderId = $this->seedOrder(); // заказ пользователя A
+        $serviceId = DB::table('services')->insertGetId([
+            'service'    => 'Работа',
+            'price'      => 100,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Sanctum::actingAs($this->anotherUser());
+
+        $result = $this->sync([$this->insertOp('order_service', 'bbbbbbbb-0000-0000-0000-00000000000b', [
+            'order_id'   => $orderId,
+            'service_id' => $serviceId,
+            'quantity'   => 1,
+        ])]);
+
+        $this->assertSame('FORBIDDEN_NOT_OWNER', $result['errors'][0]['error']);
+        $this->assertSame(0, DB::table('order_service')->where('order_id', $orderId)->count());
+    }
+
+    /**
+     * Задача 3.10: `user_id` заказа больше не теряется при вставке из синка.
+     */
+    public function test_order_insert_sets_owner(): void
+    {
+        [$specializationId, $clientId] = $this->seedOrderDeps();
+
+        $created = $this->sync([$this->insertOp('orders', 'cccccccc-0000-0000-0000-00000000000c', [
+            'specialization_id' => $specializationId,
+            'client_id'         => $clientId,
+            'total_amount'      => 100,
+        ])], 'device-a');
+
+        $orderId = $created['synced'][0]['server_id'];
+
+        $this->assertSame(
+            $this->user->id,
+            (int) DB::table('orders')->where('id', $orderId)->value('user_id'),
+            'Заказ из синка должен принадлежать пользователю из токена'
+        );
+    }
 
 }
