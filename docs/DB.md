@@ -29,6 +29,25 @@
 `users`, `personal_access_tokens` (Sanctum), `password_reset_tokens`, `password_resets`,
 `failed_jobs`, `migrations`.
 
+### `feedback_reports` — отчёты «Сообщить об ошибке» (Фаза 14, задачи 14.4/14.6)
+
+Миграция `2026_09_20_000000`. Отдельный контур, **не** таблица синка (решение D7): отчёты приходят
+ручкой `POST /api/feedback`, читаются выгрузкой (`GET /api/feedback` под pull-токеном) и не уезжают
+на другие устройства владельца.
+
+Колонки: `uuid_id` (unique — клиентский id отчёта, по нему идемпотентность повторов), `user_id`
+(nullable — владелец из токена), `kind`, `message`, `contact`, `screen`, `app_version`, `platform`,
+`platform_version`, `device`, `api_url`, `schema_version`, `schema_stored`, `account_email`,
+`profile_name`, `payload`/`sync`/`errors`/`logs` (jsonb), `client_created_at` (время на устройстве),
+`status` (`new`/`read`/`accepted`/`rejected` — ставит разработчик/агент), `resolution_note`,
+`ip`, `user_agent`, `created_at`/`updated_at` (время приёма сервером).
+
+`payload` — источник правды для выгрузки: клиент (`scripts/pull-feedback.mjs` в репозитории
+приложения) раскладывает его в `feedback/INBOX.md` и `feedback/inbox/*.md`. Данных мастерской
+(заказы, клиенты, суммы) в отчёте нет: клиент собирает отчёт по закрытому списку полей
+(`src/utils/feedbackView.js`), сервер принимает только поля контракта
+(`docs/API.md` §5, `FeedbackController`). Тесты — `tests/Feature/FeedbackTest.php` (9 тестов).
+
 ## Контент (не синкается)
 
 - `specialization_templates` (миграция `2026_09_18_030000`, Фаза 10, задача 10.7;

@@ -64,5 +64,7 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        // Выгрузка отчётов «Сообщить об ошибке» (Фаза 14): отдельный pull-токен.
+        'feedback.pull' => \App\Http\Middleware\EnsureFeedbackPullToken::class,
     ];
 }

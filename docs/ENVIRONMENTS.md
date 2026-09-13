@@ -183,3 +183,40 @@ docker exec ledger_craft_db psql -U root -d ledger_craft_db -t -c \
 На dev клиент удобнее всего держать запущенным локально (`npm run dev` → `localhost:9000`), потому
 что этот origin уже разрешён в `config/cors.php`.
 
+## 10. Публикация Android-релиза (Фаза 13)
+
+Клиент самообновления (`/api/app-version` + `/api/download-apk`) читает **манифест релизов**:
+`storage/app/public/releases/releases.json` рядом с APK. Руками в этот каталог ничего не кладём —
+файл и манифест пишет команда.
+
+```bash
+# на машине разработчика (нужны JDK + Android SDK), из репозитория клиента:
+#   src-capacitor/android/gradle.properties → APP_VERSION_CODE += 1, APP_VERSION_NAME=1.2
+RELEASE_SERVER=dev-vps npm run release:android -- --notes "Чиним склад"
+# (скрипт сам: сборка → npx cap sync → assembleRelease → apksigner verify → scp → app:publish-apk)
+
+# то же вручную на контуре:
+scp app-release.apk dev-vps:/var/www/LedgerCraftDocker03/storage/app/releases/
+ssh dev-vps "cd /var/www/LedgerCraftDocker03 && php artisan app:publish-apk \
+  storage/app/releases/app-release.apk --version-code=2 --version-name=1.1 --notes='Чиним склад'"
+
+# проверка
+curl -s https://dev.medovf2h.beget.tech/api/app-version
+curl -sI https://dev.medovf2h.beget.tech/api/download-apk | grep -i x-apk
+```
+
+Что важно:
+
+- **`versionCode` только растёт** — Android не ставит APK с меньшим или равным значением.
+  Откат «на предыдущую сборку» технически невозможен: выпускаем новую версию с исправлением.
+- **Подпись.** APK подписывается ключом разработчика (`keystore.properties`, в git не хранится).
+  Другой ключ → «Приложение не установлено». Ключ обязан лежать в двух местах (бэкап).
+- **Команда проверяет, что это APK** (ZIP + `AndroidManifest.xml`) и считает sha256; при отсутствии
+  подписи — предупреждает (неподписанный APK клиент не установит).
+- **Права на каталог.** `storage/app/public/releases` должен быть доступен веб-серверу на чтение
+  (и `storage/app/public` — стандартная публичная папка Laravel, симлинк `public/storage` уже нужен).
+- **Порядок сред неизменен:** сначала dev-VPS (проверяем обновление на живом устройстве),
+  затем prod (задача 11.12). Прямой выкладки APK в бой нет.
+- **Клиент без Play:** система покажет диалог подтверждения установки — это нормальное поведение
+  Android; «тихая» установка возможна только для Play или Device Owner (MDM).
+

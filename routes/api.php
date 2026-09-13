@@ -19,6 +19,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SpecializationTemplateController;
+use App\Http\Controllers\FeedbackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -165,6 +166,10 @@ Route::middleware('auth:sanctum')->get('/get_orders_by_user', [OrderController::
 Route::middleware('auth:sanctum')->get('/get_specializations_by_user', [SpecializationController::class, 'getAll']);
 Route::middleware('auth:sanctum')->post('/save_order', [OrderController::class, 'saveOrder']);
 
+// Версия приложения для самообновления (Фаза 13, задача 13.1): клиент сверяет
+// свой `versionCode` и предлагает скачать APK. Старый путь
+// `/app-quasar-android-version` оставлен для уже собранных сборок.
+Route::get('/app-version', [AppVersionController::class, 'checkQuasarAndroidVersion']);
 Route::get('/app-quasar-android-version', [AppVersionController::class, 'checkQuasarAndroidVersion']);
 
 Route::get('/hcp/chcp.json', [AppVersionController::class, 'getChcpManifest']);
@@ -182,4 +187,18 @@ Route::middleware('auth:sanctum')->group(function () {
     // Пресеты специализаций (Фаза 10, задача 10.7): клиент забирает контент и
     // держит read-only кэш, поэтому новый пресет приезжает без релиза приложения.
     Route::get('/specialization-templates', [SpecializationTemplateController::class, 'index']);
+
+    // Отчёты «Сообщить об ошибке» (Фаза 14, задача 14.4, решение D7): кнопка ручная,
+    // поэтому лимит — 10 отчётов в час на пользователя. Идемпотентность по `uuid_id`
+    // внутри контроллера: повтор отправки не создаёт дубль.
+    Route::post('/feedback', [FeedbackController::class, 'store'])
+        ->middleware('throttle:'.max(1, (int) config('feedback.rate_limit_per_hour')).',60');
+});
+
+// Выгрузка отчётов для разработки/ИИ-агента (Фаза 14, задача 14.6). Отдельный
+// pull-токен (`X-Feedback-Token`), а не пользовательский: обычный токен мастерской
+// чужие отчёты не отдаёт, поэтому маршрут живёт ВНЕ `auth:sanctum`.
+Route::middleware('feedback.pull')->group(function () {
+    Route::get('/feedback', [FeedbackController::class, 'index']);
+    Route::patch('/feedback/{uuidId}', [FeedbackController::class, 'update']);
 });

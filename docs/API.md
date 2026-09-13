@@ -215,7 +215,45 @@ Headers: X-Sync-ID: <uuid>
 | POST | `/api/order-report/{order}/share-link` | `OrderController::generateShareLink` — под `auth:sanctum`, только владелец заказа; отдаёт `{ "url": "..." }` (задача 9.4) |
 | GET | `/api/get_total_DWYM/{id}`, `/api/income_by_year/{id}` | `StatisticController` |
 | GET | `/api/get_top_services/{id}`, `/api/get_top_profit_clients/{id}`, `/api/get_top_products/{id}`, `/api/get_top_materials/{id}`, `/api/get_orders_status/{id}` | `StatisticController` (одна методика выручки — см. §7, задача 9.1) |
-| GET | `/api/app-quasar-android-version`, `/api/download-apk`, `/api/hcp/chcp.json` | `AppVersionController` |
+| GET | `/api/app-version`, `/api/app-quasar-android-version` | `AppVersionController::checkQuasarAndroidVersion` — актуальная версия Android-сборки для самообновления клиента (Фаза 13, задача 13.1); читает манифест релизов |
+| GET | `/api/download-apk[?versionCode=N]` | `AppVersionController::downloadApk` — файл релиза (без параметра — последний); заголовки `X-Apk-Version-Code`, `X-Apk-Version-Name`, `X-Apk-Sha256` |
+| GET | `/api/hcp/chcp.json`, `/api/hcp/chcp.manifest` | `AppVersionController::getChcpManifest` — **легаси** Cordova hot-code-push (клиент `ledger-craft-quasar-spa`); Capacitor-клиент его не использует (решение D6) |
+| POST | `/api/feedback` | `FeedbackController::store` — отчёты «Сообщить об ошибке» (Фаза 14, задача 14.4): под `auth:sanctum` + `throttle:10,60`; идемпотентность по `uuid_id`, ответ `{ ok, server_id, uuid_id }` |
+| GET | `/api/feedback?since=&limit=&status=` | `FeedbackController::index` — выгрузка отчётов для разработчика/агента (задача 14.6): **не** под `auth:sanctum`, доступ по заголовку `X-Feedback-Token` |
+| PATCH | `/api/feedback/{uuid_id}` | `FeedbackController::update` — статус разбора отчёта (`new`/`read`/`accepted`/`rejected`) + заметка; тот же pull-токен |
+
+### Обратная связь: отчёты «Сообщить об ошибке» (Фаза 14, задачи 14.4/14.6)
+
+Решение **D7**: отчёты — **отдельный контур**, не таблица синка. Причина: «полный сброс» и
+восстановление из бэкапа не должны тащить их за собой, а второе устройство владельца не должно
+видеть чужие отчёты. Канонический контракт payload — в клиентском репозитории,
+`docs/FEEDBACK.md` §3.
+
+- **Приём** `POST /api/feedback` — `auth:sanctum` (владелец = `user_id` из токена) + `throttle`
+  (по умолчанию 10/час, `config/feedback.php`). Валидация по контракту, повторная обрезка лимитов
+  (≤ 50 error-записей, ≤ 100 log-записей, сообщение ≤ 500, текст ≤ 4000) и отбрасывание «лишних»
+  полей — на случай, если отчёт собрал не наш клиент. Повтор с тем же `uuid_id` возвращает
+  `server_id` уже принятого отчёта (`duplicate: true`) — тот же приём идемпотентности, что в синке
+  (задача 3.5).
+- **Выгрузка** `GET /api/feedback` — **вне** `auth:sanctum`: отчёты читает разработчик/агент, а не
+  мастер, поэтому доступ по отдельному pull-токену `X-Feedback-Token`
+  (`FEEDBACK_PULL_TOKEN`, middleware `feedback.pull`). Пустой токен в конфиге = выгрузка выключена
+  (`503`), неверный — `403`. Пользовательский bearer сам по себе отчёты не отдаёт.
+  Ответ: `{ count, reports: [{ server_id, uuid_id, user_id, status, created_at, payload }] }` —
+  `payload` в том виде, в каком отчёт собрал клиент.
+- **Статус разбора** `PATCH /api/feedback/{uuid_id}` — `new`/`read`/`accepted`/`rejected` плюс
+  `note`; нужен, чтобы один отчёт не заводили дважды.
+- **Запасной путь по SSH** — `php artisan feedback:export [--since=] [--md] [--out=]`: пишет JSON и
+  (с `--md`) короткий дайджест в `storage/app/feedback/`.
+- Хранение — таблица `feedback_reports` (см. `docs/DB.md`), модель `App\Models\FeedbackReport`.
+  Данных мастерской в отчёте нет по построению: клиент собирает его поле за полем, сервер принимает
+  только поля контракта.
+
+Клиентская сторона: `src/services/feedbackService.js`, `src/repositories/feedbackRepo.js`,
+`src/utils/feedbackView.js`, `src/utils/errorLog.js`, диалог
+`src/pages/dialogs/FeedbackDialogPage.vue`, выгрузка в инбокс репозитория —
+`npm run feedback:pull` → `feedback/INBOX.md` (`scripts/pull-feedback.mjs`).
+
 
 ## 6. Ожидания по FK (клиент конвертирует локальные id → server_id)
 
