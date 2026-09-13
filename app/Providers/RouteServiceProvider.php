@@ -25,7 +25,15 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            // Лимит на весь `/api/*` (включая preflight `OPTIONS`): ключ — пользователь
+            // или IP (за одним роутером мастерской бывает несколько устройств).
+            //
+            // 60/мин оказалось мало: один проход синка — это 15 запросов выдачи плюс
+            // столько же preflight'ов, то есть 30 обращений; два устройства за одним
+            // IP уже выбирали лимит и получали «мигающие» 429 — синк «то идёт, то нет»
+            // (дефект живого прогона 14.11). Preflight'ы кэшируются (`cors.max_age`),
+            // а лимит поднят с запасом на несколько устройств и ручные действия.
+            return Limit::perMinute(240)->by($request->user()?->id ?: $request->ip());
         });
 
         $this->routes(function () {
