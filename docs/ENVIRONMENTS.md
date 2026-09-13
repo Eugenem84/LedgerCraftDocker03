@@ -28,13 +28,27 @@
 | Домен приложения | `docker-compose.yaml` → метка `traefik.http.routers.nginx.rule=Host(\`…\`)` | на каждом контуре своё значение |
 | URL приложения (Laravel) | `docker-compose.yaml` → `environment.APP_URL` (или `.env`) | влияет на генерируемые ссылки (share-ссылка, письма) |
 | Адрес API у клиента | репозиторий фронта → `VITE_API_URL` (`.env`, `.env.local`, `.env.prod`) | нигде не зашит в код (задача 7.1) |
-| Разрешённые origins | `config/cors.php` → `allowed_origins` | сейчас `http://localhost:9000`, `:9001` |
+| Разрешённые origins | `config/cors.php` → `allowed_origins` | `http://localhost:9000`, `:9001` (dev-SPA) + `https://localhost`, `capacitor://localhost` (мобильный клиент Capacitor) |
 | Форсированный https | `app/Providers/AppServiceProvider.php` → `URL::forceScheme('https')` | поэтому все ссылки всегда `https://` |
 
-⚠️ **CORS — причина №1 «клиент не ходит на API».** В `allowed_origins` только локальные порты
-dev-сервера. Если клиент открывается с другого origin (другой порт/хост, размещённый SPA) —
-сначала добавьте этот origin в `config/cors.php`, иначе запросы блокирует браузер ещё до Laravel
-(в консоли CORS-ошибка, на сервере — тишина).
+⚠️ **CORS — причина №1 «клиент не ходит на API».** Если клиент открывается с origin, которого нет
+в `allowed_origins` (другой порт/хост, размещённый SPA) — сначала добавьте этот origin в
+`config/cors.php`, иначе запросы блокирует браузер ещё до Laravel (в консоли CORS-ошибка,
+на сервере — тишина).
+
+📱 **Мобильный клиент (Capacitor).** WebView отдаёт origin `https://localhost` (`androidScheme`
+по умолчанию `https`), поэтому этот origin обязан быть в списке. Симптом без него очень
+характерный: на телефоне с рабочим интернетом регистрация/вход показывают «Нет связи с сервером —
+для регистрации нужен интернет» (axios не получает ответа), а в логах сервера **нет** запроса —
+preflight `OPTIONS /api/register` приходит и уходит с `204` **без** `Access-Control-Allow-Origin`.
+Проверка из терминала:
+
+```bash
+curl -s -o /dev/null -D - -X OPTIONS -H 'Origin: https://localhost' \
+  -H 'Access-Control-Request-Method: POST' https://dev.medovf2h.beget.tech/api/register \
+  | grep -i access-control-allow-origin     # должно быть: access-control-allow-origin: https://localhost
+```
+
 
 ## 3. Доступ к dev-VPS
 

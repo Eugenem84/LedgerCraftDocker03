@@ -19,7 +19,20 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:9000', 'http://localhost:9001'],
+    // `http://localhost:9000` / `:9001` — локальный dev-сервер Quasar (`npm run dev`).
+    // `https://localhost` / `http://localhost` / `capacitor://localhost` — мобильный клиент
+    // Capacitor: WebView отдаёт origin `https://localhost` (`androidScheme` по умолчанию
+    // `https`, см. CapConfig.java), iOS — `capacitor://localhost`.
+    // ⚠️ Без origin приложения Laravel отвечает на preflight `204` **без**
+    // `Access-Control-Allow-Origin`, WebView блокирует запрос ещё до Laravel, и клиент
+    // показывает «Нет связи с сервером» — хотя интернет на телефоне есть.
+    'allowed_origins' => [
+        'http://localhost:9000',
+        'http://localhost:9001',
+        'https://localhost',
+        'http://localhost',
+        'capacitor://localhost',
+    ],
 
     'allowed_origins_patterns' => [],
 
