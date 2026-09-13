@@ -292,6 +292,39 @@ class SyncControllerTest extends TestCase
         $this->assertSame(1, (int) $row->paid);
     }
 
+    /**
+     * Дефект живого прогона (11.6): клиент шлёт `created_at`/`updated_at`
+     * UNIX-секундами (число), а в PostgreSQL это колонки `timestamp` →
+     * `SQLSTATE[22008] Datetime field overflow`, операция висела в очереди навсегда.
+     * Серверные timestamps из клиентского payload вырезаются.
+     */
+    public function test_order_update_ignores_client_timestamps(): void
+    {
+        $serverId = $this->seedOrder();
+        $createdBefore = DB::table('orders')->where('id', $serverId)->value('created_at');
+
+        $result = $this->sync([[
+            'id'      => 'op-client-timestamps',
+            'type'    => 'update',
+            'table'   => 'orders',
+            'payload' => [
+                'id'         => $serverId,
+                'status'     => 'done',
+                'created_at' => 1789253336, // UNIX-секунды (число), а не timestamp
+                'updated_at' => 1789253734,
+                'deleted_at' => null,
+            ],
+        ]]);
+
+        $this->assertSame([], $result['errors']);
+        $this->assertCount(1, $result['synced']);
+
+        $row = DB::table('orders')->where('id', $serverId)->first();
+        $this->assertSame('done', $row->status);
+        // `created_at` не перезаписан клиентским числом.
+        $this->assertEquals($createdBefore, $row->created_at);
+    }
+
     public function test_generic_table_insert_is_idempotent_by_uuid_id(): void
     {
         $localId = '33333333-3333-3333-3333-333333333333';

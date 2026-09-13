@@ -272,6 +272,9 @@ class SyncController extends Controller
         $payload = $this->normalizeMoney($table, $this->stripClientFields($payload));
         $payload = $this->mapSpecializationName($table, $payload);
         $payload = $this->withSpecializationDefaults($table, $payload);
+        // Клиентское время — UNIX-секунды, а в Postgres это `timestamp`: без вырезания
+        // INSERT/UPDATE падает `SQLSTATE[22008] Datetime field overflow` (дефект 11.6).
+        $payload = $this->stripServerTimestamps($payload);
 
         // Чужому пользователю не позволяем писать в свои данные (задача 3.10):
         // проверяем владельца родительских записей из payload.
@@ -531,6 +534,10 @@ class SyncController extends Controller
         // из JOIN с `clients`). `update(...)` строит SET из всех ключей, и PostgreSQL
         // падал с `42703 undefined column`, а операция навсегда застревала в очереди.
         $payload = $this->keepKnownColumns($table, $payload);
+        // Время принадлежит серверу: `created_at` неизменяем, `updated_at` проставим
+        // ниже, `deleted_at` ведёт путь удаления. Клиентское значение — UNIX-секунды,
+        // и Postgres его не принимает (`22008 Datetime field overflow`, дефект 11.6).
+        $payload = $this->stripServerTimestamps($payload);
 
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
@@ -755,6 +762,27 @@ class SyncController extends Controller
         $columns = Schema::getColumnListing($table);
 
         return array_intersect_key($payload, array_flip($columns));
+    }
+
+    /**
+     * Убирает из клиентского payload'а серверные timestamps.
+     *
+     * Клиент хранит время UNIX-секундами (целое), а в PostgreSQL это колонки
+     * `timestamp`: INSERT/UPDATE падал `SQLSTATE[22008] Datetime field overflow`
+     * (`date/time field value out of range: "1789253336"`), и операция навсегда
+     * оставалась в очереди синка (дефект живого прогона 11.6).
+     *
+     * `created_at` неизменяем, `updated_at` сервер проставляет сам, `deleted_at`
+     * ведёт путь удаления (soft-delete/tombstones) — клиенту они не нужны.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function stripServerTimestamps(array $payload): array
+    {
+        unset($payload['created_at'], $payload['updated_at'], $payload['deleted_at']);
+
+        return $payload;
     }
 
     /**
