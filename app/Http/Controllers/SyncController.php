@@ -527,6 +527,10 @@ class SyncController extends Controller
 
         $payload = $this->normalizeMoney($table, $this->stripClientFields($payload));
         $payload = $this->mapSpecializationName($table, $payload);
+        // Страховка: клиент может прислать вычисляемые поля (например, `client_name`
+        // из JOIN с `clients`). `update(...)` строит SET из всех ключей, и PostgreSQL
+        // падал с `42703 undefined column`, а операция навсегда застревала в очереди.
+        $payload = $this->keepKnownColumns($table, $payload);
 
         if ($syncId && Schema::hasColumn($table, 'last_sync_id')) {
             $payload['last_sync_id'] = $syncId;
@@ -730,6 +734,27 @@ class SyncController extends Controller
         }
 
         return $clean;
+    }
+
+    /**
+     * Оставляет в payload'е только реальные колонки таблицы.
+     *
+     * Клиент может прислать вычисляемые поля: например, `ordersRepo.getAll()` делает
+     * `JOIN clients` и отдаёт `client_name`/`client_phone`, а стор затем шлёт заказ
+     * наверх вместе с ними. В таблице `orders` таких колонок нет, и
+     * `DB::table(...)->update($payload)` падал `SQLSTATE[42703] undefined column` —
+     * операция помечалась pending и оставалась в очереди навсегда (дефект живого
+     * прогона 11.6). INSERT для `orders` защищён «белым списком» с 11.2, здесь —
+     * общая страховка для UPDATE любой таблицы синка.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function keepKnownColumns(string $table, array $payload): array
+    {
+        $columns = Schema::getColumnListing($table);
+
+        return array_intersect_key($payload, array_flip($columns));
     }
 
     /**

@@ -256,6 +256,42 @@ class SyncControllerTest extends TestCase
         $this->assertNull(DB::table('orders')->where('id', $serverId)->value('client_id'));
     }
 
+    /**
+     * Дефект живого прогона (11.6): клиент шлёт заказ вместе с вычисляемыми полями
+     * из JOIN-выборки (`client_name`/`client_phone`). Этих колонок в таблице `orders`
+     * нет, и `DB::table(...)->update($payload)` падал
+     * `SQLSTATE[42703] undefined column`, а операция оставалась в очереди навсегда —
+     * статус и оплата не доезжали до сервера.
+     *
+     * Теперь `updateRecord` оставляет только реальные колонки таблицы.
+     */
+    public function test_order_update_ignores_columns_missing_in_table(): void
+    {
+        $serverId = $this->seedOrder();
+
+        $result = $this->sync([[
+            'id'      => 'op-extra-columns',
+            'type'    => 'update',
+            'table'   => 'orders',
+            'payload' => [
+                'id'           => $serverId,
+                'status'       => 'done',
+                'paid'         => 1,
+                // Вычисляемые поля JOIN — колонок `client_name`/`client_phone` в
+                // таблице `orders` не существует.
+                'client_name'  => 'Клиент',
+                'client_phone' => '+7 900 000-00-00',
+            ],
+        ]]);
+
+        $this->assertSame([], $result['errors']);
+        $this->assertCount(1, $result['synced']);
+
+        $row = DB::table('orders')->where('id', $serverId)->first();
+        $this->assertSame('done', $row->status);
+        $this->assertSame(1, (int) $row->paid);
+    }
+
     public function test_generic_table_insert_is_idempotent_by_uuid_id(): void
     {
         $localId = '33333333-3333-3333-3333-333333333333';
