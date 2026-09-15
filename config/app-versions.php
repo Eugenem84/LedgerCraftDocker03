@@ -24,4 +24,21 @@ return [
     */
     'legacy_directory' => env('APP_VERSIONS_LEGACY_DIR', storage_path('app/public')),
 
+    /*
+    |--------------------------------------------------------------------------
+    | OTA-бандлы веб-слоя (Фаза 15)
+    |--------------------------------------------------------------------------
+    |
+    | Обновление без установки APK: клиент скачивает zip с веб-сборкой, сверяет
+    | sha256 (в base64) и применяет его при следующем запуске. Здесь лежат сами zip
+    | и манифест `bundles.json` — его пишет `php artisan app:publish-bundle`
+    | (`App\Repositories\BundleReleaseRepository`), а `/api/app-version` отдаёт
+    | последний бандл полем `bundle` (см. `docs/API-INTEGRATION.md` §2.5).
+    |
+    | Каталог в config — чтобы тесты подменяли его через `config()` и не трогали
+    | реальный storage (см. `tests/Feature/BundleReleaseTest.php`).
+    |
+    */
+    'bundles_directory' => env('APP_BUNDLES_DIR', storage_path('app/public/bundles')),
+
 ];

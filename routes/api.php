@@ -177,6 +177,11 @@ Route::get('/hcp/chcp.manifest', [AppVersionController::class, 'getChcpManifest'
 
 Route::get('/download-apk', [AppVersionController::class, 'downloadApk']);
 
+// OTA-бандлы веб-слоя (Фаза 15, задача 15.7): zip с веб-сборкой. Клиент скачивает его
+// плагином OTA, сверяет sha256 из `/api/app-version` (`bundle.checksum`) и применяет
+// при следующем запуске — обновление интерфейса и логики без установки APK.
+Route::get('/download-bundle', [AppVersionController::class, 'downloadBundle']);
+
 // Синк — под `auth:sanctum` (задача 3.10): сервер знает владельца данных,
 // проставляет `user_id` при вставке и отдаёт/меняет только записи этого пользователя.
 // Без токена (401) синхронизация не работает — клиентский вход/токен — задача 7.4.

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Repositories\ApkReleaseRepository;
+use App\Repositories\BundleReleaseRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -22,8 +23,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class AppVersionController extends Controller
 {
-    public function __construct(private readonly ApkReleaseRepository $releases)
-    {
+    public function __construct(
+        private readonly ApkReleaseRepository $releases,
+        private readonly BundleReleaseRepository $bundles,
+    ) {
     }
 
     /** GET /api/app-version (исторический путь — /api/app-quasar-android-version). */
@@ -99,6 +102,56 @@ class AppVersionController extends Controller
     }
 
     /**
+     * GET /api/download-bundle[?version=<id>] — zip с веб-сборкой (OTA, Фаза 15).
+     *
+     * Клиент скачивает этот файл плагином OTA, сверяет `checksum` из манифеста
+     * (sha256 в base64) и применяет бандл при следующем запуске. Заголовки дублируют
+     * метаданные — по ним удобно проверять раздачу руками.
+     */
+    public function downloadBundle(Request $request)
+    {
+        try {
+            $requested = $request->query('version');
+            $bundle = null;
+
+            if ($requested !== null && $requested !== '') {
+                $bundle = $this->bundles->findByVersion((string) $requested);
+
+                if ($bundle === null) {
+                    return response()->json(['error' => "Бандл версии {$requested} не найден"], 404);
+                }
+            } else {
+                $bundle = $this->bundles->latest();
+            }
+
+            if ($bundle === null) {
+                return response()->json(['error' => 'OTA-бандл не опубликован'], 404);
+            }
+
+            $path = $this->bundles->filePath($bundle);
+
+            if ($path === null) {
+                return response()->json(['error' => 'Файл бандла не найден'], 404);
+            }
+
+            $fileName = basename($path);
+            $response = response()->download($path, $fileName, [
+                'Content-Type' => 'application/zip',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+            ]);
+
+            $response->headers->set('X-Bundle-Version', (string) $bundle['version']);
+            $response->headers->set('X-Bundle-Checksum', (string) ($bundle['checksum'] ?? ''));
+
+            return $response;
+        } catch (\Exception $e) {
+            \Log::error('Error downloading OTA bundle: '.$e->getMessage());
+
+            return response()->json(['error' => 'Internal Server Error'], 500);
+        }
+    }
+
+    /**
      * Ответ по манифесту: новый контракт + поля, которые контроллер отдавал до
      * Фазы 13 (`version`, `apk_name`) — чтобы уже собранные сборки не сломались.
      *
@@ -110,7 +163,7 @@ class AppVersionController extends Controller
         $versionCode = (int) $release['versionCode'];
         $versionName = (string) ($release['versionName'] ?? (string) $versionCode);
 
-        return [
+        $payload = [
             'versionCode' => $versionCode,
             'versionName' => $versionName,
             'apkUrl' => url('/api/download-apk?versionCode='.$versionCode),
@@ -124,6 +177,52 @@ class AppVersionController extends Controller
             // Совместимость со старым ответом.
             'version' => $versionName,
             'apk_name' => (string) ($release['fileName'] ?? ''),
+        ];
+
+        // OTA веб-слоя (Фаза 15): ключ появляется, только когда бандл опубликован.
+        // APK остаётся важнее — если новее `versionCode`, клиент предложит установку.
+        $bundle = $this->bundlePayload();
+
+        if ($bundle !== null) {
+            $payload['bundle'] = $bundle;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Поле `bundle` ответа `/api/app-version` (Фаза 15, задача 15.7).
+     *
+     * `checksum` — sha256 **в base64**: именно в таком виде его сверяет плагин OTA на
+     * клиенте (`@capawesome/capacitor-live-update`), поэтому hex тут не подойдёт.
+     * `minNativeVersionCode` сообщает клиенту, с какого APK бандл имеет смысл: на более
+     * старом `versionCode` он его не предложит (страховка «старый APK + новый JS»).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function bundlePayload(): ?array
+    {
+        $bundle = $this->bundles->latest();
+
+        if ($bundle === null) {
+            return null;
+        }
+
+        $version = (string) $bundle['version'];
+
+        return [
+            'version' => $version,
+            'url' => url('/api/download-bundle?version='.rawurlencode($version)),
+            // ⚠️ `checksum` — sha256 zip в **hex**: именно это значение клиент передаёт плагину
+            // OTA, а тот сравнивает его с hex-хэшем скачанного файла. Base64 он отвергает
+            // («Checksum mismatch», отчёт мастера №5), поэтому оно лежит отдельным полем.
+            'checksum' => (string) ($bundle['checksum'] ?? ''),
+            'checksumBase64' => (string) ($bundle['checksumBase64'] ?? ''),
+            'sha256' => (string) ($bundle['sha256'] ?? ''),
+            'sizeBytes' => (int) ($bundle['sizeBytes'] ?? 0),
+            'minNativeVersionCode' => (int) ($bundle['minNativeVersionCode'] ?? 0),
+            'notes' => (string) ($bundle['notes'] ?? ''),
+            'publishedAt' => $bundle['publishedAt'] ?? null,
         ];
     }
 
