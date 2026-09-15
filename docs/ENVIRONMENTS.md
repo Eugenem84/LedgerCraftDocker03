@@ -205,6 +205,43 @@ curl -s https://dev.medovf2h.beget.tech/api/app-version
 curl -sI https://dev.medovf2h.beget.tech/api/download-apk | grep -i x-apk
 ```
 
+### OTA-бандлы: обновление веб-слоя без установки APK (Фаза 15)
+
+Правки интерфейса и логики приезжают на устройство **без установки APK**: клиент скачивает zip
+с веб-сборкой (~1,2 МБ), сверяет sha256 и применяет его при следующем запуске. Манифест бандлов —
+`storage/app/public/bundles/bundles.json`, рядом лежат сами zip.
+
+```bash
+# на машине разработчика (из репозитория клиента): сборка UI → zip → sha256 → публикация
+RELEASE_SERVER=dev-vps npm run release:web -- --channel dev --min-native-version 15 --notes "Правки склада"
+
+# нативная правка + бандл из того же кода одной командой (после APP_VERSION_CODE += 1)
+RELEASE_SERVER=dev-vps npm run release:android -- --channel dev --with-bundle --notes "Чиним склад"
+
+# вручную на контуре:
+php artisan app:publish-bundle storage/app/bundles/bundle-1.14.260915-1318.zip \
+  --bundle-version=1.14.260915-1318 --checksum=<sha256 в hex> --min-native-version=15 --notes='…'
+
+# проверка
+curl -s https://dev.medovf2h.beget.tech/api/app-version | grep -o '"bundle":{[^}]*}'
+```
+
+Что важно:
+
+- **Источник правды — `bundles.json`**, руками в каталог ничего не кладём: его пишет только команда
+  (проверяет, что это zip с `index.html` в корне, и сама считает хэши).
+- **`checksum` — sha256 в HEX**, а не base64: плагин OTA на устройстве считает sha256 скачанного zip
+  и приводит его к hex, а base64 отвергает ошибкой `Checksum mismatch` (живой прогон 15.09.2026).
+  Base64 лежит рядом полем `checksumBase64` — только для справки.
+- **Опция называется `--bundle-version`, а не `--version`**: `--version` у Symfony Console
+  глобальный — печатает версию фреймворка и выходит, не доходя до команды.
+- **`minNativeVersionCode` — код сборки, для которой бандл собран**: клиент не предложит бандл ни на
+  более старом APK (`native < min`), ни на более новом (`0 < min < native`) — во втором случае
+  встроенный веб-слой APK уже не старее, и «обновление» откатило бы мастеру интерфейс.
+- **Откат бандла — на стороне клиента**: если бандл не «оживёт» за `readyTimeout` (10 с),
+  приложение вернётся к встроенному веб-слою; после установки нового APK Capacitor сбрасывает
+  веб-слой сам (`Bridge.isNewBinary()`), а клиент снимает «применится при перезапуске».
+
 Что важно:
 
 - **`versionCode` только растёт** — Android не ставит APK с меньшим или равным значением.
