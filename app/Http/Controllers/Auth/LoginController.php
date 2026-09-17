@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Foundation\Auth\ThrottlesLogins;
 
 class LoginController extends Controller
 {
@@ -18,7 +19,7 @@ class LoginController extends Controller
     |
     */
 
-    use AuthenticatesUsers;
+    use AuthenticatesUsers, ThrottlesLogins;
 
     /**
      * Where to redirect users after login.
@@ -26,6 +27,19 @@ class LoginController extends Controller
      * @var string
      */
     protected $redirectTo = '/history';
+
+    /**
+     * Ограничение попыток входа (защита от подбора пароля):
+     * 5 попыток, затем блокировка на 5 минут (ключ — email + IP).
+     *
+     * @var int
+     */
+    protected $maxAttempts = 5;
+
+    /**
+     * @var int
+     */
+    protected $decayMinutes = 5;
 
     /**
      * Create a new controller instance.
