@@ -36,6 +36,26 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(240)->by($request->user()?->id ?: $request->ip());
         });
 
+        // --- Аутентификация и восстановление доступа (Фаза 10/16) ----------------
+        // Отдельный жёсткий лимит на попытки входа: 5 в минуту на email+IP
+        // (защита от перебора паролей).
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)
+            ->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()));
+
+        // Регистрация: 5 в минуту на IP — форма не должна становиться инструментом
+        // массового создания аккаунтов.
+        RateLimiter::for('register', fn (Request $request) => Limit::perMinute(5)
+            ->by($request->ip()));
+
+        // Повторная отправка письма подтверждения: 3 в минуту на пользователя+IP.
+        RateLimiter::for('verification', fn (Request $request) => Limit::perMinute(3)
+            ->by(($request->user()?->id ?: $request->ip()).'|'.$request->ip()));
+
+        // Восстановление пароля: 5 в минуту на email+IP — форма не должна
+        // становиться инструментом спама письмами по чужому адресу.
+        RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)
+            ->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()));
+
         $this->routes(function () {
             Route::middleware('api')
                 ->prefix('api')

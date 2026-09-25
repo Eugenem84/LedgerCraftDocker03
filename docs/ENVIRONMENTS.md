@@ -344,6 +344,89 @@ ssh dev-vps 'curl -sS  https://ledgercraft.dev.medovf2h.beget.tech/api/app-versi
 с нужным `VITE_API_URL`; подробности — `ledger-craft-offline-first-PS/README.md` §«Среды и выкат».
 На dev клиент удобнее всего держать запущенным локально (`npm run dev` → `localhost:9000`), потому
 что этот origin уже разрешён в `config/cors.php`.
+## 9.1. Почта и ссылки в приложение (Фаза 16)
+
+Регистрация и восстановление пароля шлют письма, а письма открывают **приложение**: веб-версии
+клиента нет, поэтому ссылка ведёт на https-адрес бэкенда, а страница (`/app/reset`, `/app/verified`,
+`/email/verify/{id}/{hash}`) уводит в приложение — Android App Links или схема `ledgercraft://`.
+Пути и схема — `config/app-links.php` (env `APP_DEEP_LINK_SCHEME`).
+
+### SMTP
+
+| Контур | Настройки |
+|---|---|
+| local (Mac) | `MAIL_MAILER=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025` (`docker compose up -d mailpit`) → http://localhost:8025 |
+| local, быстрый вариант | `MAIL_MAILER=log` → `storage/logs/laravel.log` |
+| dev / prod | `smtp.beget.com`, `MAIL_PORT=465`, `MAIL_ENCRYPTION=ssl`, `MAIL_USERNAME=no-reply@ledgercraft.ru` |
+
+```dotenv
+# в backend/.env контура (права 640, в git не попадает)
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.beget.com
+MAIL_PORT=465
+MAIL_ENCRYPTION=ssl
+MAIL_USERNAME=no-reply@ledgercraft.ru
+MAIL_PASSWORD=<пароль ящика>            # только в .env и не в отчётах
+MAIL_FROM_ADDRESS=no-reply@ledgercraft.ru
+MAIL_FROM_NAME=Ledger Craft
+MAIL_REPLY_TO_ADDRESS=<живой ящик>      # ответы пользователей
+APP_DEEP_LINK_SCHEME=ledgercraft
+APP_LINKS_VERIFICATION_EXPIRE=60
+```
+
+Своего `sendmail` в образе нет, поэтому вариант только SMTP (как в locsy).
+
+### DNS домена (ledgercraft.ru)
+
+- **MX** — `mx1.beget.com`, `mx2.beget.com` (входящая почта домена).
+- **SPF** — TXT на корне: `v=spf1 redirect=beget.com`.
+- **DKIM** — включается в панели beget («Почта» → домен → цифровая подпись); в DNS появляется TXT `mail._domainkey`.
+- **DMARC** — TXT `_dmarc`: `v=DMARC1; p=none; rua=mailto:<живой ящик>`.
+
+Без SPF/DKIM письма уходят, но чаще попадают в «Спам» — а для письма сброса пароля это критично.
+
+### Android App Links
+
+Домен верифицируется статикой `public/.well-known/assetlinks.json`: `package_name` —
+`com.ledgercraft.app`, `sha256_cert_fingerprints` — отпечаток **release**-ключа подписи APK.
+Посчитать:
+
+```bash
+keytool -list -v -keystore ~/keystores/ledger-craft-release.jks -alias ledgercraft | grep SHA256
+```
+
+Если ключ подписи сменился — файл обновляют вместе с новым APK. Пока домен не верифицирован,
+ссылки всё равно работают: bridge-страница уводит по схеме `ledgercraft://`.
+
+### Проверка
+
+```bash
+# письмо локально
+docker compose up -d mailpit && open http://localhost:8025
+
+# письмо и страницы на контуре
+curl -sS -X POST https://ledgercraft.dev.medovf2h.beget.tech/api/forgot-password \
+  -H 'Content-Type: application/json' -d '{"email":"твой@ящик"}' | head -c 200
+curl -sS -o /dev/null -w '%{http_code}\n' "https://ledgercraft.dev.medovf2h.beget.tech/app/reset?token=x"
+curl -sS https://ledgercraft.dev.medovf2h.beget.tech/.well-known/assetlinks.json | head -c 200
+
+# доставка и подписи — в оригинале письма (Gmail/Яндекс → «показать оригинал»)
+```
+
+⚠️ `route:cache` фиксирует пути bridge-страниц: после смены `app-links.*` в `.env` выполните
+`php artisan route:clear && php artisan route:cache`.
+
+### Тесты
+
+```bash
+# тестовая БД — контейнер `db` (порт 5433, `ledgercraft_test`)
+php vendor/bin/phpunit --filter 'PasswordResetTest|EmailVerificationTest|AppLinkTest'
+```
+
+⚠️ Правки `AndroidManifest.xml` (intent-filter'ы) — **нативные**: нужен новый APK
+(`APP_VERSION_CODE += 1`), OTA-бандл их не привезёт.
+
+
 
 ## 10. Публикация Android-релиза (Фаза 13)
 

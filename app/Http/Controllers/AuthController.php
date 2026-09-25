@@ -5,8 +5,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Specialization;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -41,6 +44,17 @@ class AuthController extends Controller
 
             return $user;
         });
+
+        // Письмо со ссылкой на подтверждение адреса (мягкая верификация). Событие
+        // Registered слушает Laravel (`EventServiceProvider`) и отправляет
+        // `VerifyEmailNotification`, потому что `User` реализует `MustVerifyEmail`.
+        // Сбой почты не должен ломать регистрацию — пишем в лог и продолжаем:
+        // работа и синк без подтверждения доступны.
+        try {
+            event(new Registered($user));
+        } catch (Throwable $e) {
+            Log::warning('Verification email failed: '.$e->getMessage(), ['user_id' => $user->id]);
+        }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

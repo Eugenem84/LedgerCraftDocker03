@@ -178,7 +178,10 @@ Headers: X-Sync-ID: <uuid>
 | POST | `/api/logout` (sanctum) |
 | GET | `/api/me` (sanctum) |
 | DELETE | `/api/delete-account` (sanctum) |
-| POST | `/api/forgot-password`, `/api/reset-password` |
+| POST | `/api/forgot-password`, `/api/reset-password` — восстановление пароля (Фаза 16) |
+| POST | `/api/email/verification-notification` (sanctum) — повторная отправка письма подтверждения (Фаза 16) |
+| GET | `/email/verify/{id}/{hash}` (web) — переход по ссылке подтверждения из письма |
+| GET | `/app/reset`, `/app/verified` (web) — bridge-страницы ссылок из писем (открывают приложение) |
 | POST | `/api/sync` (sanctum) — задача 3.10 |
 | GET | `/api/sync-updates` (sanctum) — задача 3.10 |
 | GET | `/api/specialization-templates` (sanctum) — пресеты специализаций, Фаза 10 (10.7); контент наполняется сидом `SpecializationTemplateSeeder` (11.3) |
@@ -196,6 +199,28 @@ Headers: X-Sync-ID: <uuid>
 
 `PUT /api/update_paid_status/{id}` с телом `{paid}` — единственная ручка смены статуса
 оплаты; дубль `switch_paid_status` удалён в задаче 7.6 (web-компонент `HistoryOrders.vue`
+### Восстановление пароля и подтверждение почты (Фаза 16)
+
+Клиент — Android-приложение (веб-версии нет), поэтому ссылки из писем ведут на https-адреса
+бэкенда, а те открывают приложение: Android App Links (домен верифицируется статикой
+`public/.well-known/assetlinks.json`) либо своя схема `ledgercraft://`
+(`AppLinkController` + `resources/views/app-link.blade.php`). Пути и схема — в
+`config/app-links.php` (env `APP_DEEP_LINK_SCHEME`).
+
+| Метод | Путь | Поведение |
+|---|---|---|
+| POST | `/api/forgot-password` | `{ email }` → письмо `ResetPasswordNotification` со ссылкой на `/app/reset?token=…&email=…`. Нет пользователя → `404`; повтор чаще 60 с → `200` «уже отправлено»; `throttle:password-reset` (5/мин на email+IP) |
+| POST | `/api/reset-password` | `{ token, email, password, password_confirmation }` (пароль `min:6`, как при регистрации) → `Password::reset`, `Hash::make`, отзыв всех токенов (`tokens()->delete()`), событие `PasswordReset` и письмо `PasswordChangedNotification`. Неверная ссылка → `422` |
+| POST | `/api/email/verification-notification` | под `auth:sanctum`; уже подтверждено → `200`; иначе `202` и письмо `VerifyEmailNotification`; `throttle:verification` (3/мин) |
+| GET | `/email/verify/{id}/{hash}` | подпись проверяется в `EmailVerificationController::verify` (не `signed`-middleware, чтобы истёкшая ссылка давала понятный статус) → `markEmailAsVerified()` + `WelcomeNotification` → редирект на `/app/verified?status=verified\|invalid` |
+
+`User` реализует `MustVerifyEmail`, но верификация **мягкая**: `verified`-middleware на синк и
+работу не стоит — офлайн-первое приложение не должно упираться в почту. `email_verified_at`
+отдаётся клиенту в объекте `user`; подтверждение требуется только для восстановления пароля.
+`POST /api/register` отправляет письмо подтверждения (сбой SMTP логируется и не ломает
+регистрацию: `EventServiceProvider` слушает `Registered`).
+
+
 переведён на неё). Группа `auth:api` (token-guard без `api_token` у `users`) тоже удалена
 как недостижимая — для API используется `auth:sanctum`.
 

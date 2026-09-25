@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.ledgercraft.app",
+      "sha256_cert_fingerprints": [
+        "AF:54:90:FB:D8:56:28:51:12:03:55:62:B0:06:3C:96:D2:53:B6:63:89:E2:63:36:84:AA:46:01:B4:83:32:1F"
+      ]
+    }
+  }
+]

@@ -16,6 +16,7 @@ use App\Http\Controllers\ProductStockController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SpecializationTemplateController;
@@ -50,17 +51,28 @@ use App\Http\Controllers\FeedbackController;
 //   ]);
 //});
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+// Регистрация и вход: жёсткие лимиты (защита от массового создания аккаунтов и
+// перебора пароля) — см. `RouteServiceProvider` (login/register).
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::delete('/delete-account', [AuthController::class, 'deleteAccount']);
+
+    // Повторная отправка письма подтверждения (мягкая верификация: почта не
+    // блокирует работу и синк, поэтому лимит — только от спама письмами).
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
+        ->middleware('throttle:verification');
 });
 
-Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
-Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+// Восстановление доступа: письмо со ссылкой и установка нового пароля.
+// Лимит по email+IP — чтобы через форму не спамили письмами на чужой адрес.
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])
+    ->middleware('throttle:password-reset');
+Route::post('/reset-password', [PasswordResetController::class, 'reset'])
+    ->middleware('throttle:password-reset');
 
 
 // Задача 7.6: группа `auth:api` удалена. Guard `api` — token-драйвер, а у `users` нет

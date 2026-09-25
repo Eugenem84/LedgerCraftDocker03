@@ -88,3 +88,15 @@ services:
       - '5433:5432' # Проксируем порт 5432 из контейнера в локальную
     container_name: ledger_craft_db
 
+  # Локальный «почтовый ящик» для разработки: письма (подтверждение почты и сброс
+  # пароля) видны в веб-интерфейсе http://localhost:8025, наружу ничего не уходит.
+  # В `.env`: MAIL_MAILER=smtp, MAIL_HOST=mailpit, MAIL_PORT=1025.
+  # На контурах сервис не нужен — там реальный SMTP beget.
+  mailpit:
+    image: axllent/mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    container_name: ledger_craft_mailpit
+

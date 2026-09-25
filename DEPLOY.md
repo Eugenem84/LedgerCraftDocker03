@@ -30,6 +30,20 @@
   и файл прочитать не может — Laravel отвечает 500 «No application encryption key has been specified».
 - Никогда не печатать содержимое `.env`, ключей, паролей и токенов в логах и отчётах.
 
+## Почта и ссылки в приложение (Фаза 16)
+
+`backend/.env` контура кроме `DB_*` держит почту: `MAIL_MAILER=smtp`, `MAIL_HOST=smtp.beget.com`,
+`MAIL_PORT=465`, `MAIL_ENCRYPTION=ssl`, `MAIL_USERNAME`/`MAIL_FROM_ADDRESS=no-reply@ledgercraft.ru`,
+`MAIL_REPLY_TO_ADDRESS` (живой ящик для ответов). Ссылки из писем ведут на bridge-страницы
+(`/app/reset`, `/app/verified`) и открывают Android-приложение; домен верифицируется статикой
+`backend/public/.well-known/assetlinks.json`. Подробности и проверки —
+[`docs/ENVIRONMENTS.md`](docs/ENVIRONMENTS.md) §9.1.
+
+⚠️ После правок `config/app-links.php`/env — `php artisan route:clear` (иначе `route:cache`
+оставит старые пути bridge-страниц). Правки `AndroidManifest.xml` требуют нового APK: OTA-бандл
+нативные изменения не привозит.
+
+
 ## Миграции и деплой
 
 ```bash

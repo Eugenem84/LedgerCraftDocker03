@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AppLinkController;
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\SpecializationController;
 use App\Http\Controllers\OrderController;
@@ -43,4 +45,28 @@ Route::post('/save_order', [OrderController::class, 'saveOrder']);
 
 Route::get('/order-report/{order}', [OrderController::class, 'showReport'])
     ->name('order-report');
+
+/*
+|--------------------------------------------------------------------------
+| Ссылки из писем → приложение (deep links)
+|--------------------------------------------------------------------------
+|
+| Клиент — Android-приложение, веб-версии пока нет, поэтому ссылки в письмах
+| ведут на эти https-адреса. Подтверждение почты — с побочным эффектом (сервер
+| помечает адрес), поэтому это серверный роут; сброс пароля — просто bridge.
+|
+| Если домен верифицирован для Android App Links, `/app/*` открывается сразу в
+| приложении и bridge-страница не показывается.
+*/
+
+// Подтверждение почты по ссылке из письма. Подпись проверяется внутри контроллера
+// (`hasValidSignature`), а не `signed`-middleware — иначе истёкшая ссылка давала бы
+// 403 без объяснения. Лимит — чтобы подписанные URL не перебирали.
+Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+    ->middleware('throttle:6,1')
+    ->name('verification.verify');
+
+// Bridge-страницы: переносят параметры из https-ссылки в схему приложения.
+Route::get(config('app-links.reset_path'), [AppLinkController::class, 'reset']);
+Route::get(config('app-links.verified_path'), [AppLinkController::class, 'verified']);
 
