@@ -188,7 +188,7 @@ Headers: X-Sync-ID: <uuid>
 | POST | `/api/arrival_product` (sanctum) — приход товара (задача 11.7); принимает сессию web-версии и bearer-токен, чужой товар — `403` `FORBIDDEN_NOT_OWNER` |
 
 **`POST /api/register`** (Фаза 10, задача 10.5): кроме `name`/`email`/`password`/`password_confirmation`
-принимает необязательный массив `specializations: [{ name, preset_key }]` (1..10) и создаёт рабочие
+принимает необязательный массив `specializations: [{ name, preset_key }]` (1..12) и создаёт рабочие
 профили вместе с пользователем (если массив пуст — создаётся один профиль по имени пользователя).
 Ответ: `{ access_token, token_type, user, specializations }` — специализации отдаются с алиасом
 `name` (как в `/sync-updates`), клиент кладёт их локально без операции в очередь. Занятый email → `422`.

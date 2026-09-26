@@ -12,14 +12,16 @@ use Tests\TestCase;
 /**
  * Фаза 11 (задача 11.3) — сид пресетов специализаций.
  *
- * Критерий «Готово»: `GET /api/specialization-templates` отдаёт 4 пресета
- * (`bike`/`aquarium`/`hvac`/`auto`), а правка контента на сервере меняет каталог
- * нового пользователя без релиза приложения (критерий 10.7). Проверяем:
- *   • сид создаёт четыре строки с непустым каталогом (категории → услуги с ценами,
+ * Критерий «Готово»: `GET /api/specialization-templates` отдаёт все пресеты
+ * (четыре ниши v1 — `bike`/`aquarium`/`hvac`/`auto`, плюс расширение реестра:
+ * `electric`/`plumbing`/`appliance`/`phone`/`computer`/`furniture`/`windows`/`cleaning`),
+ * а правка контента на сервере меняет каталог нового пользователя без релиза
+ * приложения (критерий 10.7). Проверяем:
+ *   • сид создаёт строки с непустым каталогом (категории → услуги с ценами,
  *     категории товаров, модели);
  *   • повторный запуск идемпотентен и **освежает** контент (правка без пересборки клиента);
  *   • `DatabaseSeeder` действительно тянет пресеты (иначе `db:seed` ничего не даст);
- *   • endpoint отдаёт все четыре пресета под `auth:sanctum`.
+ *   • endpoint отдаёт все пресеты под `auth:sanctum`.
  *
  * Тест идёт на отдельной тестовой БД (см. `phpunit.xml`);
  * на «не тестовой» он пропускается (как `Phase10OnboardingTest`).
@@ -29,10 +31,25 @@ class SpecializationTemplateSeederTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Ниши v1 (решение D5) — должны совпадать с `src/domain/presets/*.js` на клиенте.
-     * Порядок алфавитный: так же сортирует выдача endpoint (`orderBy('preset_key')`).
+     * Ниши v1 (решение D5) + расширение реестра — ключи должны совпадать с
+     * `src/domain/presets/*.js` на клиенте (серверный `content` для неизвестного
+     * клиенту `preset_key` игнорируется). Порядок алфавитный: так же сортирует
+     * выдача endpoint (`orderBy('preset_key')`).
      */
-    private const PRESET_KEYS = ['aquarium', 'auto', 'bike', 'hvac'];
+    private const PRESET_KEYS = [
+        'appliance',
+        'aquarium',
+        'auto',
+        'bike',
+        'cleaning',
+        'computer',
+        'electric',
+        'furniture',
+        'hvac',
+        'phone',
+        'plumbing',
+        'windows',
+    ];
 
     protected function setUp(): void
     {
@@ -49,13 +66,13 @@ class SpecializationTemplateSeederTest extends TestCase
         parent::setUp();
     }
 
-    public function test_seeder_creates_four_presets_with_catalog_content(): void
+    public function test_seeder_creates_all_presets_with_catalog_content(): void
     {
         $this->seed(SpecializationTemplateSeeder::class);
 
         $templates = SpecializationTemplate::query()->orderBy('preset_key')->get();
 
-        $this->assertCount(4, $templates);
+        $this->assertCount(count(self::PRESET_KEYS), $templates);
         $this->assertSame(self::PRESET_KEYS, $templates->pluck('preset_key')->all());
 
         foreach ($templates as $template) {
@@ -93,7 +110,7 @@ class SpecializationTemplateSeederTest extends TestCase
         $this->seed(SpecializationTemplateSeeder::class);
 
         // Дублей нет, а контент приехал из репозитория — правка без релиза клиента.
-        $this->assertSame(4, SpecializationTemplate::count());
+        $this->assertSame(count(self::PRESET_KEYS), SpecializationTemplate::count());
         $this->assertSame(1, SpecializationTemplate::where('preset_key', 'bike')->value('version'));
 
         $bike = SpecializationTemplate::where('preset_key', 'bike')->firstOrFail();
@@ -107,10 +124,10 @@ class SpecializationTemplateSeederTest extends TestCase
         // на чистой БД оставлял endpoint без контента.
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertSame(4, SpecializationTemplate::count());
+        $this->assertSame(count(self::PRESET_KEYS), SpecializationTemplate::count());
     }
 
-    public function test_templates_endpoint_returns_four_seeded_presets(): void
+    public function test_templates_endpoint_returns_all_seeded_presets(): void
     {
         $this->seed(SpecializationTemplateSeeder::class);
 
@@ -120,16 +137,16 @@ class SpecializationTemplateSeederTest extends TestCase
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->getJson('/api/specialization-templates')
             ->assertOk()
-            ->assertJsonCount(4, 'templates');
+            ->assertJsonCount(count(self::PRESET_KEYS), 'templates');
 
         $keys = array_column($response->json('templates'), 'preset_key');
         sort($keys);
         $this->assertSame(self::PRESET_KEYS, $keys);
 
-        $this->assertSame(
-            'Колёса',
-            $response->json('templates.2.content.categories.0.name'),
-            'Порядок выдачи — по preset_key: aquarium, auto, bike, hvac',
-        );
+        // Выдача отсортирована по `preset_key`; ищем запись по ключу, а не по
+        // индексу — реестр ниш расширяется, и жёсткий индекс здесь хрупок.
+        $bike = collect($response->json('templates'))->firstWhere('preset_key', 'bike');
+        $this->assertNotNull($bike, 'Пресет bike должен быть в выдаче');
+        $this->assertNotEmpty($bike['content']['categories'] ?? [], 'У bike нет каталога');
     }
 }

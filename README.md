@@ -50,7 +50,8 @@ docker exec -it ledger_craft_app php artisan db:seed --class=SpecializationTempl
 
 > Пресеты специализаций (`specialization_templates`, Фаза 11/11.3) — это **контент**, не данные
 > пользователя: без них новый пользователь не получит стартовый каталог своей ниши
-> (`GET /api/specialization-templates` отдаёт 4 пресета — `bike`/`aquarium`/`hvac`/`auto`).
+> (`GET /api/specialization-templates` отдаёт 12 пресетов: `bike`/`aquarium`/`hvac`/`auto`
+> (ниши v1) и `electric`/`plumbing`/`appliance`/`phone`/`computer`/`furniture`/`windows`/`cleaning`).
 > Сид идемпотентен, поэтому на контурах его можно запускать повторно (`--force`), а правка
 > контента приезжает клиенту без релиза приложения (10.7).
 

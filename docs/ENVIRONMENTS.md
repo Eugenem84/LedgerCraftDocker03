@@ -276,7 +276,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<домен>/api/sync  
 docker exec ledgercraft-app php artisan route:list | grep -E 'sync|register|login|specialization-templates'
 docker exec ledgercraft-app php artisan migrate:status | grep -c Pending      # 0
 docker compose exec -T ledgercraft-db psql -U root -d ledger_craft_db -t -c \
-  "SELECT count(*) FROM specialization_templates;"                             # 4 пресета (11.3)
+  "SELECT count(*) FROM specialization_templates;"                             # 12 пресетов (11.3 + расширение реестра)
 ```
 
 Снаружи (с независимого хоста — §1.3):

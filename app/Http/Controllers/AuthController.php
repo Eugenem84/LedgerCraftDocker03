@@ -28,7 +28,9 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|min:6|confirmed', // пароль + подтверждение
-            'specializations' => 'sometimes|array|max:10',
+            // Лимит = число доступных ниш в реестре пресетов (12), см.
+            // `src/domain/presets/index.js` на клиенте и `SpecializationTemplateSeeder`.
+            'specializations' => 'sometimes|array|max:12',
             'specializations.*.name' => 'required_with:specializations|string|max:255',
             'specializations.*.preset_key' => 'nullable|string|max:64',
         ]);
