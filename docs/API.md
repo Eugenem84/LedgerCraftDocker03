@@ -192,6 +192,14 @@ Headers: X-Sync-ID: <uuid>
 профили вместе с пользователем (если массив пуст — создаётся один профиль по имени пользователя).
 Ответ: `{ access_token, token_type, user, specializations }` — специализации отдаются с алиасом
 `name` (как в `/sync-updates`), клиент кладёт их локально без операции в очередь. Занятый email → `422`.
+
+**`DELETE /api/delete-account`** (sanctum, Фаза 17) — безвозвратно удаляет пользователя вместе со всеми
+его данными: профили (`specializations`), заказы с позициями (`orders`, `order_service`,
+`order_product`, `sales_products_prices`, `materials`), клиентов, каталог работ и товаров, склад
+(`product_stocks`, `incoming_products`, `buy_product_prices`), модели техники, `sync_tombstones` и
+`feedback_reports`, а также все токены (`personal_access_tokens`) и токены сброса пароля. Чистка идёт
+в одной транзакции и только по владельцу (данные других пользователей не трогаются). Ответ
+`{ message }`. Тест: `tests/Feature/AccountDeletionTest.php`.
 | GET | `/api/get_orders_by_user` (sanctum) — только свои заказы |
 
 Без токена синк отвечает `401`. `GET /api/get_orders_by_user/{id}` удалён: он отдавал заказы
