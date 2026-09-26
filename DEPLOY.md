@@ -1,8 +1,25 @@
-# DEPLOY — Ledger Craft (ledgercraft.dev.medovf2h.beget.tech)
+# DEPLOY — Ledger Craft (dev: ledgercraft.dev.medovf2h.beget.tech · prod: ledgercraft.ru)
 
 Регламент проекта в инфраструктуре домашнего сервера. Контуры и вся инфраструктура стенда —
 репозиторий `home-server-vps` (`docs/09-ledgercraft.md`); среды контуров — [`docs/ENVIRONMENTS.md`](docs/ENVIRONMENTS.md).
-Тот же файл лежит в инфра-репозитории: `projects/ledgercraft/DEPLOY.md`.
+Копии регламента в инфра-репозитории: `projects/ledgercraft/DEPLOY.md` (dev) и
+`projects/ledgercraft-prod/DEPLOY.md` (**prod**).
+
+## Два контура на одном сервере (с 26.09.2026)
+
+| Контур | Домен | Каталог | Назначение |
+|---|---|---|---|
+| **dev** | `ledgercraft.dev.medovf2h.beget.tech` | `/opt/projects/ledgercraft` | обкатка фич; БД — песочница |
+| **prod** | `ledgercraft.ru` (+`www` → apex) | `/opt/projects/ledgercraft-prod` | боевой контур мастерских; **реальные данные** |
+
+Контуры изолированы: свои контейнеры (`ledgercraft-*` / `ledgercraft-prod-*`), своя сеть, **свой том
+БД**, свой `APP_KEY` и пароль БД. Порядок железный: **сначала dev → проверка → только потом prod**;
+на prod — **дамп до выката** и **никогда** `down -v` / `git clean`. Команды выката prod —
+`docs/ENVIRONMENTS.md` §5, регламент — `home-server-vps/projects/ledgercraft-prod/DEPLOY.md`.
+
+> Всё описанное ниже («Где живёт», секреты, миграции, промо, релизы, проверка, бэкап) — для **dev**;
+> для **prod** те же шаги, но каталог `/opt/projects/ledgercraft-prod`, контейнеры `ledgercraft-prod-app`/`-db`,
+> журнал — [`docs/ENVIRONMENTS.md`](docs/ENVIRONMENTS.md) §5/§8.
 
 ## Где живёт
 

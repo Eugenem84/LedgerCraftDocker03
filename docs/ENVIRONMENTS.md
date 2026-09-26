@@ -1,4 +1,4 @@
-# Среды и выкат: домашний сервер (бывший dev-VPS) и prod-VPS
+# Среды и выкат: dev и prod (оба на домашнем сервере)
 
 > Канонический документ по контурам (задача **11.1**): всё, что нужно, чтобы выкатить и проверить
 > и dev, и prod, не читая историю коммитов и TODO.
@@ -9,20 +9,25 @@
 
 ## 1. Контуры
 
-| | **dev (домашний сервер)** | **prod-VPS** |
-|---|---|---|
-| Домен | `ledgercraft.dev.medovf2h.beget.tech` (A → `90.156.169.123`) | `<prod-домен>` — **ещё не выбран** (задача 11.12) |
-| Где живёт | домашний Ubuntu `192.168.2.207`, `/opt/projects/ledgercraft` (код — `backend/`) | — |
-| Маршрут | интернет → VPS `90.156.169.123` (DNAT 80/443) → WireGuard-туннель → Caddy дома (`10.10.0.2:80` / `:8443`) → `ledgercraft-web:80` → php-fpm `ledgercraft-app:9000` | отдельный контур со своим доменом/БД |
-| Назначение | обкатка новых фич, миграций и синка | боевой контур мастерских |
-| Данные | песочница: БД не жалко (том можно снести) | реальные данные: только с бэкапом |
-| Кто обновляет | свободно, в любой момент | только проверенное на dev, по чек-листу |
-| БД | Postgres 17, том `ledgercraft_db_data` (наружу не публикуется) | отдельный том на своей машине |
-| TLS | Caddy дома, Let's Encrypt (HTTP-01 через внешний `:80`) | Caddy/аналог на своей машине |
-| Клиент | запускается **локально** (`npm run dev` → `http://localhost:9000`) | собранный клиент с prod-адресом |
+С **26.09.2026** на домашнем сервере работают **два** контура: **dev** (песочница) и **prod**
+(боевой, домен `ledgercraft.ru`, задача 11.12). Оба — на одном сервере `192.168.2.207` и за общим
+Caddy, но это **разные проекты**: свои контейнеры, своя сеть, **свой том БД**, свой `APP_KEY`.
 
-**Прежний dev-VPS (`dev.medovf2h.beget.tech`, `217.114.0.27`) — страховка и откат** (см. §1.2):
-контур с Traefik остановлен не был, его БД и `storage` остались нетронутыми.
+| | **dev** | **prod (боевой)** |
+|---|---|---|
+| Домен | `ledgercraft.dev.medovf2h.beget.tech` (A → `90.156.169.123`) | `ledgercraft.ru` (A → `90.156.169.123`; `www.ledgercraft.ru` → редирект на apex) |
+| Где живёт | `/opt/projects/ledgercraft` (код — `backend/`) | `/opt/projects/ledgercraft-prod` (код — `backend/`) |
+| Маршрут | интернет → VPS `90.156.169.123` (DNAT 80/443) → WireGuard-туннель → Caddy дома (`10.10.0.2:80` / `:8443`) → `ledgercraft-web:80` → php-fpm `ledgercraft-app:9000` | то же, но `ledgercraft-prod-web:80` → php-fpm `ledgercraft-prod-app:9000` |
+| Назначение | обкатка новых фич, миграций и синка | боевой контур мастерских |
+| Данные | песочница: БД не жалко (том можно снести) | реальные данные: только с бэкапом, `down -v`/`git clean` запрещены |
+| Кто обновляет | свободно, в любой момент | только проверенное на dev, по чек-листу |
+| БД | Postgres 17, том `ledgercraft_db_data` (наружу не публикуется) | Postgres 17, **свой** том `ledgercraft-prod_ledgercraft_db_data` |
+| TLS | Caddy дома, Let's Encrypt (HTTP-01 через внешний `:80`) | то же (сертификаты с 26.09.2026) |
+| Клиент | запускается **локально** (`npm run dev` → `http://localhost:9000`) | собранный клиент с prod-адресом (`--channel prod`) |
+| Регламент | `home-server-vps/projects/ledgercraft/DEPLOY.md` | `home-server-vps/projects/ledgercraft-prod/DEPLOY.md` |
+
+**Прежний dev-VPS (`dev.medovf2h.beget.tech`, `217.114.0.27`) удалён владельцем 17.09.2026** —
+страховочного контура нет; остаётся локальный дамп `/opt/backups/pg/ledgercraft-dev-2026-09-17.dump`.
 
 **Правило:** фича сначала проверяется на **dev** (чек-лист — трекер `ledger-craft-offline-first-PS/TODO.md`,
 Фаза 11), и только потом
@@ -68,21 +73,24 @@
 
 ## 1.3. Внешние проверки — только с независимого хоста
 
-С Mac (активный VPN) и с домашнего сервера (провайдер подменяет SYN-ACK на закрытых портах)
-проверять «снаружи» нельзя. Независимая точка входа — **`dev-vps`**:
+Проверять «снаружи» **с домашнего сервера нельзя**: провайдер подменяет SYN-ACK на закрытых портах,
+и результат врёт. Прежний наблюдатель `dev-vps` удалён владельцем 17.09.2026.
+Независимые точки входа — **Mac** (трафик идёт через внешний VPN-выход, `remote_ip` виден) и
+сервис **check-host.net** (несколько узлов, VPS не нужен).
 
 ```bash
-ssh dev-vps 'curl -sSI https://ledgercraft.dev.medovf2h.beget.tech/ | head -3'
-ssh dev-vps 'curl -sS  https://ledgercraft.dev.medovf2h.beget.tech/api/app-version'
+curl -sSI https://ledgercraft.ru/ | head -3
+curl -sS  https://ledgercraft.ru/api/app-version
+curl -sS  https://ledgercraft.dev.medovf2h.beget.tech/api/app-version
 ```
 
 ## 2. Где прописан домен контура
 
 | Место | Файл / переменная | Комментарий |
 |---|---|---|
-| Домен приложения (маршрутизация) | домашний контур — `/opt/server/caddy/Caddyfile`, блок `ledgercraft.dev.medovf2h.beget.tech { reverse_proxy ledgercraft-web:80 }`; прежний VPS — метка `traefik.http.routers.nginx.rule=Host(\`…\`)` | на каждом контуре своё значение |
-| Имя сайта в nginx проекта | `/opt/projects/ledgercraft/nginx/ledgercraft.conf` → `server_name` | только «своё» имя, TLS здесь не терминируется |
-| URL приложения (Laravel) | `backend/.env` → `APP_URL` (на прежнем VPS — `environment.APP_URL` в compose) | влияет на генерируемые ссылки (share-ссылка, письма); в ответах `/api/app-version` ссылки строит `url()` от текущего домена |
+| Домен приложения (маршрутизация) | дома — `/opt/server/caddy/Caddyfile`: `ledgercraft.dev.medovf2h.beget.tech { reverse_proxy ledgercraft-web:80 }` (dev) и `ledgercraft.ru` (+ `www` → apex) `{ reverse_proxy ledgercraft-prod-web:80 }` (prod) | на каждом контуре своё значение |
+| Имя сайта в nginx проекта | dev — `/opt/projects/ledgercraft/nginx/ledgercraft.conf`; prod — `/opt/projects/ledgercraft-prod/nginx/ledgercraft-prod.conf` → `server_name` | только «своё» имя, TLS здесь не терминируется |
+| URL приложения (Laravel) | `backend/.env` → `APP_URL` (dev — `https://ledgercraft.dev.medovf2h.beget.tech`, prod — `https://ledgercraft.ru`) | влияет на генерируемые ссылки (share-ссылка, письма, `apkUrl`/`bundle.url`); в `/api/app-version` ссылки строит `url()` от текущего домена |
 | Адрес API у клиента | репозиторий фронта → `VITE_API_URL` (`.env`, `.env.local`, окружение релизного скрипта) | нигде не зашит в код (задача 7.1) |
 | Разрешённые origins | `config/cors.php` → `allowed_origins` | `http://localhost:9000`, `:9001` (dev-SPA) + `https://localhost`, `capacitor://localhost` (мобильный клиент Capacitor); домен контура в списке **не нужен** — клиент не ходит с него в браузере |
 | Форсированный https | `app/Providers/AppServiceProvider.php` → `URL::forceScheme('https')` | поэтому все ссылки всегда `https://` |
@@ -229,13 +237,41 @@ docker exec ledger_craft_nginx nginx -s reload
 
 ## 5. Выкат: prod (обновление без сноса)
 
-Отличия: **никаких** `down -v`, `rm -rf tmp/db`, `git clean`; обязательный дамп до выката.
+Prod живёт на **том же домашнем сервере**, каталог `/opt/projects/ledgercraft-prod`, домен
+`ledgercraft.ru`. Отличия от dev: **никаких** `down -v`, `rm -rf tmp/db`, `git clean` — данные боевые,
+поэтому **дамп до выката обязателен**.
 
-Prod может жить и на том же домашнем сервере (второй домен, свой каталог
-`/opt/projects/ledgercraft-prod`, своя БД и свой блок в Caddyfile), и на отдельном VPS.
-Для домашнего варианта команды выката — как в §4 (только `git pull` + `migrate --force` + сборка
-ассетов при необходимости), но с дампом **до** выката и без сноса тома. Ниже — вариант выката
-на VPS с Traefik:
+Правило железное: **сначала dev → проверка (§6) → только потом prod.**
+
+```bash
+# 0) ДАМП ДО ВЫКАТА
+cd /opt/projects/ledgercraft-prod
+docker compose exec -T ledgercraft-prod-db pg_dump -U root -d ledger_craft_db -Fc \
+  > /opt/backups/pg/ledgercraft-prod-$(date +%F_%H%M).dump
+
+# 1) код и зависимости
+cd backend && git pull --ff-only
+docker exec ledgercraft-prod-app composer install --no-dev --optimize-autoloader --no-interaction
+
+# 2) схема и пресеты
+docker exec ledgercraft-prod-app php artisan migrate --force
+docker exec ledgercraft-prod-app php artisan db:seed --class=SpecializationTemplateSeeder --force
+docker exec ledgercraft-prod-app php artisan config:clear
+docker exec ledgercraft-prod-app php artisan route:clear
+
+# 3) если менялся Dockerfile — пересобрать образ:
+cd /opt/projects/ledgercraft-prod && docker compose up -d --build ledgercraft-prod-app
+```
+
+**Правки nginx-конфига:** файл смонтирован одиночным bind-mount, поэтому его замена **не**
+подхватывается `nginx -s reload` (контейнер держит старый inode). После правки конфига —
+`docker compose up -d --force-recreate ledgercraft-prod-web`.
+
+**Откат:** `git -C backend checkout <предыдущий-коммит>` + `docker compose up -d --build ledgercraft-prod-app`;
+при необходимости `php artisan migrate:rollback` или восстановить дамп.
+
+<details>
+<summary>Историческая справка: выкат на VPS с Traefik (прежний dev-VPS, удалён)</summary>
 
 ```bash
 pg_dump ... > /root/backup_before_$(date +%F_%H%M).sql    # бэкап ДО
@@ -244,16 +280,12 @@ docker compose up -d --build
 docker compose restart traefik
 docker exec ledger_craft_app php composer.phar install --no-dev --optimize-autoloader
 docker exec ledger_craft_app php artisan migrate --force
-docker exec ledger_craft_app php artisan db:seed --class=SpecializationTemplateSeeder --force   # пресеты специализаций (11.3)
-docker exec ledger_craft_app php artisan config:clear
-docker exec ledger_craft_app php artisan route:clear
+docker exec ledger_craft_app php artisan db:seed --class=SpecializationTemplateSeeder --force
+docker exec ledger_craft_app php artisan config:clear && docker exec ledger_craft_app php artisan route:clear
 docker run --rm -v "$PWD":/app -w /app node:20-alpine sh -c "npm ci --no-audit --no-fund && npm run build"
 docker exec ledger_craft_nginx nginx -s reload
 ```
-
-**Откат:** вернуть предыдущий коммит (`git checkout <tag|commit>`), при необходимости
-`php artisan migrate:rollback` для последней партии (или восстановить дамп), затем `up -d`,
-`nginx -s reload`.
+</details>
 
 ## 6. Smoke после любого выката
 
@@ -325,17 +357,26 @@ ssh dev-vps 'curl -sS  https://ledgercraft.dev.medovf2h.beget.tech/api/app-versi
 - **Ответ приложения на `/api/sync` без токена — `401`, а не `500`:** с 3.10 синк под `auth:sanctum`.
   Клиент без токена вообще не ходит в сеть (индикатор показывает «требуется вход»).
 
-## 8. Что нужно, чтобы поднять prod (задача 11.12)
+## 8. Prod поднят на домашнем сервере (задача 11.12) — ✅ 26.09.2026
 
-- [ ] домен боевого контура + A-запись на IP prod-VPS;
-- [ ] копия `docker-compose.yaml` с **своими** `Host(...)` и `APP_URL`, отдельный том `tmp/db`,
-      свой `APP_KEY` и пароли БД (не dev-значения из файла);
-- [ ] `.env` на машине контура (not in git) + `letsencrypt/` для TLS;
-- [ ] бэкапы БД по расписанию и **дамп перед каждым выкатом**;
-- [ ] проверить CORS: если SPA будет размещён на домене контура — добавить его origin;
-- [ ] `migrate --force` + `db:seed --class=SpecializationTemplateSeeder --force` (пресеты, 11.3),
-      сборка ассетов web-части, smoke (см. §6), описанный план откатa;
-- [ ] на prod **не** запускать `down -v` / `git clean` (данные и `.env` там свои).
+Боевой контур `https://ledgercraft.ru` поднят на том же домашнем сервере (`/opt/projects/ledgercraft-prod`),
+TLS выпущен Caddy, промо и первый релиз (APK + OTA-бандл) опубликованы. Чек-лист:
+
+- [x] домен боевого контура + A-запись: `ledgercraft.ru` (+`www.ledgercraft.ru`) → `90.156.169.123`;
+- [x] свой проект `home-server-vps/projects/ledgercraft-prod/` (`compose.yml`, `nginx/`, `DEPLOY.md`,
+      `smoke.sh`), блок `ledgercraft.ru` в `/opt/server/caddy/Caddyfile`, запись в `projects/REGISTRY.md`;
+- [x] **свой** `APP_KEY` и пароль БД (не dev-значения), отдельный том `ledgercraft-prod_ledgercraft_db_data`;
+- [x] `backend/.env` на контуре (not in git, права `640 euegene:www-data`), почта beget;
+- [x] `migrate --force` + `db:seed --class=SpecializationTemplateSeeder --force` (12 пресетов);
+- [x] промо на `/promo/` и первый релиз: APK `1.17` (`versionCode 18`, подписан) + OTA-бандл
+      `1.17.7.260926-2021` (`minNativeVersionCode 18`);
+- [x] smoke зелёный (`bash /opt/projects/ledgercraft-prod/smoke.sh`, 13 проверок), проверено снаружи с Mac;
+- [ ] бэкапы БД по расписанию (автоматизация — этап 9 инфры); **дамп перед каждым выкатом — обязателен**;
+- [ ] CORS: клиентские origin'ы (`https://localhost`, `capacitor://localhost`) уже разрешены; домен
+      контура нужен только если появится браузерный SPA на нём.
+
+⚠️ На prod **нельзя** `down -v` / `git clean` — данные и `.env` там свои. nginx-конфиг после правки
+требует `--force-recreate` контейнера `ledgercraft-prod-web` (см. §5).
 
 ## 9. Связь с клиентом
 
@@ -519,17 +560,19 @@ curl -s https://<домен>/api/app-version | grep -o '"bundle":{[^}]*}'
   впервые сработала бы у мастера. Адрес контура задаёт клиентский скрипт (иначе нельзя: сборка
   Capacitor всегда buildType=prod, и `.env.prod` не отличает контуры):
   ```bash
-  RELEASE_SERVER=dev-vps npm run release:android -- --channel dev    # сборка + проверка адреса в APK
-  RELEASE_SERVER=prod-vps RELEASE_REMOTE_DIR=/var/www/<prod-репо> \
-    RELEASE_API_URL=https://<prod-домен>/api \
+  RELEASE_SERVER=ledgercraft-home npm run release:android -- --channel dev    # сборка + проверка адреса в APK
+  RELEASE_SERVER=ledgercraft-home RELEASE_REMOTE_DIR=/opt/projects/ledgercraft-prod/backend \
+    RELEASE_REMOTE_PHP='docker exec ledgercraft-prod-app php' \
+    RELEASE_API_URL=https://ledgercraft.ru/api \
     npm run release:android -- --channel prod
   ```
   Манифест релизов на каждом контуре свой (`releases.json`), поэтому контуры не мешают друг другу;
   `versionCode` обязан расти **внутри** контура — скрипт отказывает, если он не выше опубликованного
   (Android не поставит APK «вниз»). Промо-страница выкатывается с адресом своего контура:
   `publish-landing.sh --server … --url … --api https://<домен>/api`.
-  ⚠️ prod-VPS пока не поднят (§8) — prod-путь в клиенте заготовлен и включается вместе с контуром
-  (трекер: задача **13.17**).
+  Первый релиз на пустой контур (`/api/app-version` = 404) распознаётся скриптом как «первый» —
+  проверка «версия растёт» его не блокирует, но отсутствие ответа контура выкат запрещает
+  (трекер: задачи **11.12**, **13.17**).
 - **Клиент без Play:** система покажет диалог подтверждения установки — это нормальное поведение
   Android; «тихая» установка возможна только для Play или Device Owner (MDM).
 

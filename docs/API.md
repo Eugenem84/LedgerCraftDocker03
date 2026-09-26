@@ -9,8 +9,8 @@
 
 | Параметр | Значение |
 |---|---|
-| Base URL (dev-VPS) | `https://dev.medovf2h.beget.tech/api` — песочница, обкатка новых фич |
-| Base URL (prod-VPS) | `https://<prod-домен>/api` — боевой контур (домен уточняется, TODO 11.1) |
+| Base URL (dev) | `https://ledgercraft.dev.medovf2h.beget.tech/api` — песочница, обкатка новых фич |
+| Base URL (prod) | `https://ledgercraft.ru/api` — боевой контур (задача 11.12, поднят 26.09.2026) |
 | Идентификация устройства | заголовок `X-Sync-ID` (UUID из localStorage клиента) |
 | Формат | JSON |
 | Авторизация | Laravel Sanctum (`/api/register`, `/api/login`, `/api/me`, `/api/logout`); **синк требует токен** |
