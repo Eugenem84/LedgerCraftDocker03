@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Repositories\ProductStockRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -86,11 +87,11 @@ class ArrivalProductTest extends TestCase
         ];
     }
 
-    /** @return array{stock:int|null, arrivals:int, salePrice:int|null} */
+    /** @return array{stock:int, arrivals:int, salePrice:int|null} */
     private function warehouseState(int $productId): array
     {
         return [
-            'stock'     => DB::table('product_stocks')->where('product_id', $productId)->value('quantity'),
+            'stock'     => app(ProductStockRepository::class)->quantityForProduct($productId),
             'arrivals'  => DB::table('incoming_products')->where('product_id', $productId)->count(),
             'salePrice' => DB::table('products')->where('id', $productId)->value('base_sale_price'),
         ];
@@ -221,7 +222,7 @@ class ArrivalProductTest extends TestCase
             'by_price'         => 100,
         ])->assertUnauthorized();
 
-        $this->assertNull($this->warehouseState($productId)['stock']);
+        $this->assertSame(0, $this->warehouseState($productId)['stock']);
         $this->assertSame(0, $this->warehouseState($productId)['arrivals']);
     }
 
@@ -239,7 +240,7 @@ class ArrivalProductTest extends TestCase
             'by_price'         => 100,
         ])->assertForbidden()->assertJsonPath('error', 'FORBIDDEN_NOT_OWNER');
 
-        $this->assertNull($this->warehouseState($foreignProductId)['stock']);
+        $this->assertSame(0, $this->warehouseState($foreignProductId)['stock']);
         $this->assertSame(0, $this->warehouseState($foreignProductId)['arrivals']);
     }
 
@@ -318,7 +319,7 @@ class ArrivalProductTest extends TestCase
         $this->assertSame('INVALID_QUANTITY', $result['errors'][0]['error']);
         $this->assertSame('MISSING_PRODUCT_ID', $result['errors'][1]['error']);
 
-        $this->assertNull($this->warehouseState($productId)['stock']);
+        $this->assertSame(0, $this->warehouseState($productId)['stock']);
         $this->assertSame(0, $this->warehouseState($productId)['arrivals']);
     }
 
@@ -331,7 +332,7 @@ class ArrivalProductTest extends TestCase
         ]);
 
         $this->assertSame('FORBIDDEN_NOT_OWNER', $result['errors'][0]['error']);
-        $this->assertNull($this->warehouseState($foreignProductId)['stock']);
+        $this->assertSame(0, $this->warehouseState($foreignProductId)['stock']);
         $this->assertSame(0, $this->warehouseState($foreignProductId)['arrivals']);
     }
 

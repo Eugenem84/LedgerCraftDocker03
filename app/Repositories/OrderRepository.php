@@ -8,7 +8,6 @@ use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderProduct;
 use App\Models\OrderService;
-use App\Models\ProductStock;
 use App\Models\Service;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,10 +20,14 @@ class OrderRepository extends Controller
      * Web-форма `buy_price` не присылает, поэтому сервер подставляет закупку сам.
      */
     protected ProductRepository $productRepository;
+    protected ProductStockRepository $productStockRepository;
 
-    public function __construct(ProductRepository $productRepository)
-    {
+    public function __construct(
+        ProductRepository $productRepository,
+        ProductStockRepository $productStockRepository
+    ) {
         $this->productRepository = $productRepository;
+        $this->productStockRepository = $productStockRepository;
     }
 
     public function updatePaidStatus($orderId, $paidStatus)
@@ -121,23 +124,25 @@ class OrderRepository extends Controller
             $productData = [];
 
             foreach ($data['addedProducts'] as $addedProduct) {
-                $productStock = ProductStock::where('product_id', $addedProduct['product_id'])->first();
-                if ($productStock && $productStock->quantity >= $addedProduct['amount']) {
-                    $productStock->quantity -= $addedProduct['amount'];
-                    $productStock->save();
+                // Остаток — производная величина (Σ приходов − Σ продаж), поэтому продажа
+                // ничего не списывает из `product_stocks`: она сама входит в `order_product`
+                // и учитывается расчётом. Проверяем только доступность — продать больше,
+                // чем есть, по-прежнему нельзя.
+                $remaining = $this->productStockRepository->quantityForProduct((int) $addedProduct['product_id']);
 
-                    // данные для расходного ордера order_product
-                    // `buy_price` — себестоимость на момент продажи (задачи 9.5/9.6):
-                    // из формы, если она её прислала, иначе — последняя закупка товара.
-                    $productData[$addedProduct['product_id']] = [
-                        'sale_price' => $addedProduct['price'],
-                        'quantity' => $addedProduct['amount'],
-                        'buy_price' => $addedProduct['buy_price']
-                            ?? $this->productRepository->lastBuyPrice((int) $addedProduct['product_id']),
-                    ];
-                } else {
+                if ($remaining < (int) $addedProduct['amount']) {
                     throw new \Exception('недотаточен остаток по товару');
                 }
+
+                // данные для расходного ордера order_product
+                // `buy_price` — себестоимость на момент продажи (задачи 9.5/9.6):
+                // из формы, если она её прислала, иначе — последняя закупка товара.
+                $productData[$addedProduct['product_id']] = [
+                    'sale_price' => $addedProduct['price'],
+                    'quantity' => $addedProduct['amount'],
+                    'buy_price' => $addedProduct['buy_price']
+                        ?? $this->productRepository->lastBuyPrice((int) $addedProduct['product_id']),
+                ];
             }
             $order->products()->attach($productData);
         }
@@ -164,14 +169,8 @@ class OrderRepository extends Controller
             throw new \Exception('Order not found');
         }
 
-        foreach ($order->products as $product) {
-            $orderedQuantity = $product->pivot->quantity;
-            $productStock = ProductStock::where('product_id', $product->id)->first();
-            if($productStock) {
-                $productStock->quantity += $orderedQuantity;
-                $productStock->save();
-            }
-        }
+        // Остаток ничего не возвращаем: он производный (Σ приходов − Σ продаж), а строки
+        // `order_product` уходят вместе с заказом (soft-delete отсекается расчётом).
         OrderService::where('order_id', $id)->delete();
         $order->delete();
     }

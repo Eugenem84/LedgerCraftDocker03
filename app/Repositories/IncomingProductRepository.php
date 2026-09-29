@@ -50,7 +50,7 @@ class IncomingProductRepository extends Controller
             return [
                 'id' => $existing->id,
                 'created' => false,
-                'stock_quantity' => (int) $this->productStockRepository->ensureForProduct($productId)->quantity,
+                'stock_quantity' => $this->productStockRepository->quantityForProduct($productId),
             ];
         }
 
@@ -67,12 +67,10 @@ class IncomingProductRepository extends Controller
 
         $income->save();
 
-        $stock = $this->productStockRepository->arrival($productId, $quantity);
-
         return [
             'id' => $income->id,
             'created' => true,
-            'stock_quantity' => (int) $stock->quantity,
+            'stock_quantity' => $this->productStockRepository->quantityForProduct($productId),
         ];
     }
 

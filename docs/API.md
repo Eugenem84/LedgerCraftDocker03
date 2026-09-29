@@ -153,8 +153,9 @@ Headers: X-Sync-ID: <uuid>
 
 - валидация: `product_id` — обязателен и должен существовать в **`products`** (строки остатка у
   товара может не быть: товар создан приложением и уехал синком), `arrival_quantity` — целое ≥ 1;
-- всё в **одной транзакции** (задача 9.2): `incoming_products` + `product_stocks.quantity`
-  (строка остатка создаётся по требованию) + `products.base_sale_price`, если передана цена продажи;
+- всё в **одной транзакции** (задача 9.2): `incoming_products` + `products.base_sale_price`,
+  если передана цена продажи. Остаток — производная величина (Σ приходов − Σ продаж) и отдельно
+  не хранится (правка 29.09.2026): `stock_quantity` в ответе считается на месте;
 - идемпотентность — по `uuid_id`: повтор (ретрай/двойной клик) строку правит, но остаток **не**
   увеличивает; без `uuid_id` два запроса = два прихода (как было — для web-формы);
 - явный ответ: **201** при новом приходе, **200** при повторе —
@@ -167,7 +168,7 @@ Headers: X-Sync-ID: <uuid>
   Приложение эту ручку **не использует**: приход идёт через `/api/sync` (операция `incoming_products`).
 
 Общая логика прихода — `IncomingProductRepository::recordArrival()`; её же вызывает синк, поэтому
-остаток увеличивается ровно один раз в обоих путях. Тест: `tests/Feature/ArrivalProductTest.php`.
+приход записывается ровно один раз в обоих путях, а остаток считается из движений. Тест: `tests/Feature/ArrivalProductTest.php`.
 
 ## 4. Авторизация
 
@@ -236,7 +237,7 @@ Headers: X-Sync-ID: <uuid>
 
 | Метод | Путь | Контроллер |
 |---|---|---|
-| GET | `/api/get_product_stocks/{productCategoryId}` | `ProductStockController` — товары категории с остатком (`quantity`); собирается из `products` + `product_stocks` (задача 9.3) |
+| GET | `/api/get_product_stocks/{productCategoryId}` | `ProductStockController` — товары категории с остатком (`quantity`); остаток считается из движений (Σ приходов − Σ продаж, `ProductStockRepository::QUANTITY_SQL`) |
 | GET | `/api/get_products/{productCategoryId}` | `ProductController` — товары + `quantity`, `buy_price`, `last_sale_price` (задача 9.3) |
 | POST | `/api/add_product`, `/api/edit_product`, `/api/delete_store_product` | `ProductController` |
 | GET | `/api/get_product_categories/{specializationId}` | `ProductCategoryController` |

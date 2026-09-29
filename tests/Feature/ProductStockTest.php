@@ -17,8 +17,9 @@ use Tests\TestCase;
  * Что проверяем:
  *   • двойной источник «где лежит товар» убран: `product_stocks.product_categories_id`
  *     больше нет, категорию знает только `products.product_category_id`;
- *   • web-склад собирается из товаров (`LEFT JOIN` остатка): товар без строки остатка
- *     виден с нулём, чужая категория и soft-deleted товары не попадают;
+ *   • web-склад собирается из товаров, а остаток — производная величина
+ *     (Σ приходов − Σ продаж): товар без движений виден с нулём, чужая категория
+ *     и soft-deleted товары не попадают;
  *   • `buy_product_prices` и `sales_products_prices` **читаются**: в выдаче товаров
  *     появились `buy_price` (последняя закупка) и `last_sale_price` (последняя продажа);
  *   • товар, приехавший синком, получает строку остатка (0) — «сколько лежит» живёт
@@ -91,11 +92,18 @@ class ProductStockTest extends TestCase
         ];
     }
 
-    private function addStock(int $productId, int $quantity): void
+    /**
+     * Движение склада: приход товара. Остаток — производная величина
+     * (Σ приходов − Σ продаж), поэтому «положить на склад» = добавить приход,
+     * а не строку в `product_stocks`.
+     */
+    private function addArrival(int $productId, int $quantity, int $byPrice = 100): void
     {
-        DB::table('product_stocks')->insert([
+        DB::table('incoming_products')->insert([
             'product_id' => $productId,
             'quantity'   => $quantity,
+            'by_price'   => $byPrice,
+            'supplier'   => '',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -116,7 +124,7 @@ class ProductStockTest extends TestCase
         $foreignCategory = $this->seedProduct();
 
         // В своей категории: товар с остатком, товар без строки остатка и удалённый товар.
-        $this->addStock($own['productId'], 5);
+        $this->addArrival($own['productId'], 5);
 
         $withoutStock = DB::table('products')->insertGetId([
             'name'                => 'Без остатка',
@@ -163,8 +171,8 @@ class ProductStockTest extends TestCase
             'updated_at'          => now(),
         ]);
 
-        $this->addStock($product['productId'], 7);
-        $this->addStock($otherProductId, 1);
+        $this->addArrival($product['productId'], 7);
+        $this->addArrival($otherProductId, 1);
 
         // История закупок и продаж: в выдаче должны быть последние значения.
         DB::table('buy_product_prices')->insert([
@@ -203,6 +211,56 @@ class ProductStockTest extends TestCase
         $plain = $rows->firstWhere('id', $otherProductId);
         $this->assertNull($plain->buy_price);
         $this->assertNull($plain->last_sale_price);
+    }
+
+    /**
+     * Ключевая регрессия (правка 29.09.2026): «приход 5 − продажа 3 = 2».
+     *
+     * Раньше web-склад читал `product_stocks`, которое росло от приходов, но не
+     * уменьшалось продажей из мобильного приложения (она приходит синком в
+     * `order_product`) — web расходился с телефоном. Теперь остаток считается из
+     * движений, а soft-deleted заказ продажу не считает.
+     */
+    public function test_stock_is_arrivals_minus_sales(): void
+    {
+        $product = $this->seedProduct();
+
+        $this->addArrival($product['productId'], 5);
+
+        $clientId = DB::table('clients')->insertGetId([
+            'name'              => 'Клиент',
+            'specialization_id' => $product['specializationId'],
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        $orderId = DB::table('orders')->insertGetId([
+            'specialization_id' => $product['specializationId'],
+            'client_id'         => $clientId,
+            'user_id'           => $this->user->id,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        DB::table('order_product')->insert([
+            'order_id'   => $orderId,
+            'product_id' => $product['productId'],
+            'sale_price' => 1000,
+            'quantity'   => 3,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $row = collect(app(ProductStockRepository::class)->getByProductCategory($product['productCategoryId']))
+            ->firstWhere('id', $product['productId']);
+        $this->assertSame(2, (int) $row->quantity, 'Приход 5 минус продажа 3 должно быть 2');
+
+        // Заказ удалён (soft-delete) — продажа больше не учитывается.
+        DB::table('orders')->where('id', $orderId)->update(['deleted_at' => now()]);
+
+        $row = collect(app(ProductStockRepository::class)->getByProductCategory($product['productCategoryId']))
+            ->firstWhere('id', $product['productId']);
+        $this->assertSame(5, (int) $row->quantity, 'Удалённый заказ не уменьшает остаток');
     }
 
     public function test_product_coming_from_sync_gets_a_stock_row(): void

@@ -23,13 +23,14 @@ class ProductRepository extends Controller
      */
     public function getByCategory($categoryId)
     {
+        $quantitySql = ProductStockRepository::QUANTITY_SQL;
+
         return DB::select("
             SELECT products.*,
-                   COALESCE(stock.quantity, 0) AS quantity,
+                   ($quantitySql) AS quantity,
                    buy.buy_price               AS buy_price,
                    sales.sale_price            AS last_sale_price
             FROM products
-            LEFT JOIN product_stocks stock ON stock.product_id = products.id
             LEFT JOIN (
                 SELECT DISTINCT ON (product_id) product_id, buy_price
                 FROM buy_product_prices
